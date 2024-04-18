@@ -1,2 +1,5 @@
-# wave_tank_driver
-a set of utilities to drive the wave tank and collect data from it
+# What Is This:
+firmware for the neptunya demo system
+
+# How Do You Use This
+run `wavedash` to run the dashboard, and `wavedaq` to run the data aqusition system
