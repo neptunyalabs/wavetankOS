@@ -1,15 +1,15 @@
 #!/bin/bash
 
-#TODO: setup deploy key as public private key
+
+#Install for 64Bit Ubuntu (debian) systems
 
 #make file `waveware_deploy` with private key
 mkdir sw
 cd sw
 if grep -q microsoft /proc/version; then
-  #Install SYSTEMCTL
   echo "Install WSL..."
 else
-  echo "native Linux stuff"
+  echo "Install Linux..."
 fi
 
 cd ~/
@@ -24,6 +24,7 @@ if [ -f "~/.ssh/id_rsa" ]; then
     echo 'Add your public key to your github account'
     cat < ./.ssh/id_rsa.pub
 fi
+
 
 
 CNFG="/home/$(whoami)/.ssh/config"
@@ -46,25 +47,26 @@ sudo killall pigpiod
 git config --global user.name "wavetank"
 
 #Install Preliminaries
-sudo apt update
+sudo apt update -y
 
-sudo apt install git
-sudo apt install gcc
-sudo apt install g++
-sudo apt install build-essential
-sudo apt install net-tools
-sudo apt install gfortran
-sudo apt install libatlas-base-dev
+sudo apt install git -y
+sudo apt install gcc -y
+sudo apt install g++ -y
+sudo apt install build-essential -y
+sudo apt install net-tools -y
+sudo apt install gfortran -y
+sudo apt install libatlas-base-dev -y
 
-sudo apt install unzip,nettools
-sudo apt install make,cmake,gcc,gfortran
-sudo apt install python3-pip
-sudo apt install python3-setuptools
-sudo apt install python3-pigpio
-sudo apt install libatlas3-base
+sudo apt install unzip,nettools -y
+sudo apt install make,cmake,gcc,gfortran -y
+sudo apt install python3-pip -y
+sudo apt install python3-setuptools -y
+sudo apt install python3-pigpio -y
+sudo apt install libatlas3-base -y
 
 echo 'Installing Anaconda Python (follow instructions, agree & yes^10)'
-if [ -z "$CONDA_EXE" ] then
+if [ -z "$CONDA_EXE" ] 
+then
     wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
     bash ./Miniconda3-latest-Linux-x86_64.sh
     source ~/.bashrc
