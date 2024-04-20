@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#RUN WITH: bash <(curl -sL https://gist.githubusercontent.com/SoundsSerious/c0c7646fd37b03fd353602b9d2fc39eb/raw/019f7a2b4b23163b9e6351bc8a0a373a2bdf2185/setup.sh), update if gist chagnes
 
 #Install for 64Bit Ubuntu (debian) systems
 
@@ -26,6 +27,16 @@ if [ -f "~/.ssh/id_rsa" ]; then
 fi
 
 
+#Write bashrc file (install permisisons)
+eval $(ssh-agent -s)
+/bin/cat <<EOM >"/home/$(whoami)/.bashrc"
+sudo pigpiod
+EOM
+
+/bin/cat <<EOM >"/home/$(whoami)/.bash_logout"
+kill $SSH_AGENT_PID
+sudo killall pigpiod
+EOM
 
 CNFG="/home/$(whoami)/.ssh/config"
 echo "touch $CNFG"
@@ -34,10 +45,13 @@ echo "write config $CNFG"
 /bin/cat <<EOM >$CNFG
 Host github.com
     Hostname github.com
-    IdentityFile=/home/user/.ssh/waveware_deploy
+    IdentityFile=/home/$(whoami)/.ssh/waveware_deploy
+Host gist.github.com
+    Hostname gist.github.com
+    IdentityFile=/home/$(whoami)/.ssh/waveware_deploy
+
 EOM
 
-eval $(ssh-agent -s)
 ssh-add ~/.ssh/waveware_deploy
 
 #stop pigpiod
@@ -67,37 +81,27 @@ sudo apt install libatlas3-base -y
 echo 'Installing Anaconda Python (follow instructions, agree & yes^10)'
 if [ -z "$CONDA_EXE" ] 
 then
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-    bash ./Miniconda3-latest-Linux-x86_64.sh
+    curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+    bash Miniforge3-$(uname)-$(uname -m).sh
     source ~/.bashrc
-
-    ~/miniconda3/bin/conda create -n py3
-    ~/miniconda3/bin/conda activate py3
-    ~/miniconda3/bin/conda install -c anaconda pip
-    ~/miniconda3/bin/pip install -U pip-tools
+    
+    ~/miniforge3/bin/conda init bash
+    conda create -n py3 python=3.10 -y
+    conda activate py3
+    conda install -c anaconda pip 
+    pip install -U -y pip-tools
 else
-    ~/miniconda3/bin/conda activate py3
+    conda activate py3
 fi
 
-
-
-python3 -m pip install --force-reinstall ninja
-python3 -m pip install git+ssh://git@github.com/neptunyalabs/wave_tank_driver.git
+#python -m pip install --force-reinstall ninja
+python -m pip install git+ssh://git@github.com/neptunyalabs/wave_tank_driver.git
 
 #Install pigpiod source
-# wget https://github.com/joan2937/pigpio/archive/master.zip
-# unzip master.zip
-# cd pigpio-master
-# make
-# sudo make install
+wget https://github.com/joan2937/pigpio/archive/master.zip
+unzip master.zip
+cd pigpio-master
+make
+sudo make install
+cd ..
 
-
-
-
-# read -p "Press enter to continue"
-# 
-# echo 'Installing Ottermatics Lib'
-# git clone git@github.com:SoundsSerious/engforge.git
-# cd engforge
-# ~/miniconda3/bin/python3 -m pip install -r requirements.txt
-# ~/miniconda3/bin/python3 setup.py install
