@@ -39,9 +39,11 @@ class ranger:
 
 
    def _rise(self, gpio, level, tick):
+      print(gpio,level,tick)
       self._rising_time = tick
 
    def _fall(self, gpio, level, tick):
+      print(gpio,level,tick)
       self._falling_time = tick    
       if self._rising_time is not None and self._rising_time < tick:
          self._delta_tick = self._falling_time - self._rising_time
