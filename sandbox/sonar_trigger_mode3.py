@@ -39,11 +39,9 @@ class ranger:
 
 
    def _rise(self, gpio, level, tick):
-      sys.stdout.write(".")
       self._rising_time = tick
 
    def _fall(self, gpio, level, tick):
-      sys.stdout.write("_")
       self._falling_time = tick    
       if self._rising_time is not None and self._rising_time < tick:
          self._delta_tick = self._falling_time - self._rising_time
@@ -84,7 +82,7 @@ if __name__ == "__main__":
    r = 1
    while time.time() < end:
 
-      print("{} {}".format(r, sonar.read()))
+      print("{} {} {}".format(r, sonar.read(),f'{sonar._falling_time}|{sonar._rising_time}'))
       r += 1
       time.sleep(0.03)
 
