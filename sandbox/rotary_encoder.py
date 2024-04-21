@@ -118,7 +118,7 @@ if __name__ == "__main__":
    def callback(way):
       global pos
 
-      pos += way*0.005
+      pos += way*0.02
 
       print("pos={}".format(pos))
 
