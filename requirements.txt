@@ -10,6 +10,7 @@ dash
 dash_daq
 pi-plates
 RPi.GPIO
+pigpio
 
 
 

@@ -116,7 +116,7 @@ if __name__ == "__main__":
    pos = 0
 
    def callback(way):
-
+      print(f'way: {way}')
       global pos
 
       pos += way
@@ -124,8 +124,8 @@ if __name__ == "__main__":
       print("pos={}".format(pos))
 
    pi = pigpio.pi()
-
-   decoder = rotary_encoder.decoder(pi, 7, 8, callback)
+   print(f'starting encoder...')
+   decoder = rotary_encoder.decoder(pi, 9, 10, callback)
 
    time.sleep(300)
 
