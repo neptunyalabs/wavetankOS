@@ -22,40 +22,31 @@ class ranger:
       gpios connected to the trigger and echo pins.
       """
       self.pi    = pi
-      self._trig = trigger
+      #self._trig = trigger
       self._echo = echo
 
-      self._ping = False
-      self._high = None
-      self._time = None
+      self._rising_time = None
+      self._falling_time = None
+      self._delta_tick = None
 
-      self._triggered = False
 
-      self._trig_mode = pi.get_mode(self._trig)
-      self._echo_mode = pi.get_mode(self._echo)
-
-      pi.set_mode(self._trig, pigpio.OUTPUT)
+      #pi.set_mode(self._trig, pigpio.OUTPUT)
       pi.set_mode(self._echo, pigpio.INPUT)
 
-      self._cb = pi.callback(self._trig, pigpio.EITHER_EDGE, self._cbf)
-      self._cb = pi.callback(self._echo, pigpio.EITHER_EDGE, self._cbf)
+      #self._cb = pi.callback(self._trig, pigpio.EITHER_EDGE, self._cbf)
+      self._cb_rise = pi.callback(self._echo, pigpio.RISING_EDGE, self._rise)
+      self._cb_fall = pi.callback(self._echo, pigpio.FALLING_EDGE, self._fall)
 
-      self._inited = True
 
-   def _cbf(self, gpio, level, tick):
-      if gpio == self._trig:
-         if level == 0: # trigger sent
-            self._triggered = True
-            self._high = None
+   def _rise(self, gpio, level, tick):
+      self._rising_time = tick
+
+   def _fall(self, gpio, level, tick):
+      self._falling_time = tick    
+      if self._rising_time is not None and self._rising_time < tick:
+         self._delta_tick = self._falling_time - self._rising_time
       else:
-         if self._triggered:
-            if level == 1:
-               self._high = tick
-            else:
-               if self._high is not None:
-                  self._time = tick - self._high
-                  self._high = None
-                  self._ping = True
+         self._delta_tick = None
 
    def read(self):
       """
@@ -64,29 +55,15 @@ class ranger:
 
       round trip cms = round trip time / 1000000.0 * 34030
       """
-      if self._inited:
-         self._ping = False
-         self._triggered = False
-         self.pi.gpio_trigger(self._trig,20,1)
-         start = time.time()
-         while not self._ping:
-            if (time.time()-start) > 5.0:
-               return 20000
-            time.sleep(0.001)
-         return self._time
-      else:
-         return None
+      return self._delta_tick
 
    def cancel(self):
       """
       Cancels the ranger and returns the gpios to their
       original mode.
       """
-      if self._inited:
-         self._inited = False
-         self._cb.cancel()
-         self.pi.set_mode(self._trig, self._trig_mode)
-         self.pi.set_mode(self._echo, self._echo_mode)
+      self._cb_rise.cancel()
+      self._cb_fall.cancel()
 
 if __name__ == "__main__":
 
