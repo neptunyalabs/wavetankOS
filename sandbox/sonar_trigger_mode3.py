@@ -29,6 +29,8 @@ class ranger:
       self._falling_time = None
       self._delta_tick = None
 
+      self.speed_of_sound = 343.0
+      self.sound_conv = self.speed_of_sound / 2000000 #2x
 
       #pi.set_mode(self._trig, pigpio.OUTPUT)
       pi.set_mode(self._echo, pigpio.INPUT)
@@ -42,11 +44,13 @@ class ranger:
       self._rising_time = tick
 
    def _fall(self, gpio, level, tick):
-      self._falling_time = tick    
-      if self._rising_time is not None and self._rising_time < tick:
-         self._delta_tick = self._falling_time - self._rising_time
-      else:
-         self._delta_tick = None
+      if self._rising_time is not None:
+         self._falling_time = tick
+         dt = self._falling_time - self._rising_time
+         if dt < 0:
+            dt = 4294967295 + dt #wrap around
+         self._delta_tick = dt
+
 
    def read(self):
       """
@@ -55,7 +59,7 @@ class ranger:
 
       round trip cms = round trip time / 1000000.0 * 34030
       """
-      return self._delta_tick
+      return self._delta_tick * self.sound_conv
 
    def cancel(self):
       """
@@ -79,10 +83,11 @@ if __name__ == "__main__":
 
    r = 1
    while time.time() < end:
-
-      print("{} {} {}".format(r, sonar.read(),f'{sonar._falling_time}|{sonar._rising_time}'))
+      
+      #,f'{sonar._falling_time}|{sonar._rising_time}'))
+      print("{} {} {}".format(r, sonar._falling_time/1E6, sonar.read()))
       r += 1
-      time.sleep(0.03)
+      time.sleep(0.1)
 
    sonar.cancel()
 
