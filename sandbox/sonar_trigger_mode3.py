@@ -85,8 +85,9 @@ if __name__ == "__main__":
    while time.time() < end:
       
       #,f'{sonar._falling_time}|{sonar._rising_time}'))
-      print("{} {} {}".format(r, sonar._falling_time/1E6, sonar.read()))
-      r += 1
+      if sonar._falling_time:
+         print("{} {} {}".format(r, sonar._falling_time/1E6, sonar.read()))
+         r += 1
       time.sleep(0.1)
 
    sonar.cancel()
