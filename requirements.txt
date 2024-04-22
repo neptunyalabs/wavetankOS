@@ -8,8 +8,8 @@ statsmodels
 
 dash
 dash_daq
-pi-plates
-RPi.GPIO
+#pi-plates
+#RPi.GPIO
 pigpio
 
 

@@ -1,3 +1,5 @@
+"""Module to control """
+
 import asyncio
 import aiohttp
 from aiohttp import web
@@ -25,10 +27,8 @@ import random
 
 # BUCKET CONFIG
 # Permissons only for this bucket so not super dangerous
-bucket = "neptunya-demo-data"
+bucket = "nept-wavetank-data"
 folder = "V1"
-AWS_ACCESS_KEY_ID = "AKIATRDFYHRDQGXS3LJ5"
-AWS_SECRET_ACCESS_KEY = "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"
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
@@ -45,13 +45,9 @@ ACTIVE = False
 
 TEST_NAME = "DEMOCAL"
 LABEL_DEFAULT = {
-    "sen1-x": 0,
-    "sen1-rot": 0,
-    "sen2-x": 0,
-    "sen2-rot": 0,
-    "air-pla": 0,
-    "water-pla": 0,
-    "title": TEST_NAME,
+    #TODO: define other label characteristics
+    #test-name
+    #Hs - significant wave height run
 }
 
 LABEL_SET = {**LABEL_DEFAULT}
@@ -66,55 +62,12 @@ unprocessed = deque([], maxlen=1000)
 cache = ExpiringDict(max_len=WINDOW * 2 / POLL_RATE, max_age_seconds=WINDOW * 2)
 LAST = None
 
-# Store filtered values for low pass
-current_data = {
-    "alpha1": 1.0,
-    "alpha2": 1.0,
-}
+#Store filtered values for low pass
 
 #Sensor Constants
-PA = 101000
-PT_MAX = 206843 + PA
-PT_MIN = 0.0 + PA
-V_MAX = 4.5
-V_MIN = 0.5
-DPT = PT_MAX - PT_MIN
-DVT = V_MAX - V_MIN
 
-# PINS
-P1T = 0
-P1S = 1
-P2T = 2
-P2S = 3
-PLATE_ADDR = 0
+#PINS
 
-
-pressure_pins = {
-                'p1t':P1T,
-                'p1s':P1S,
-                'p2t':P2T,
-                'p2s':P2S
-                }
-
-
-PATM = 1E5
-lpa=low_pass_alpha =0.01
-biases = {k:0 for k in pressure_pins.keys()}
-MIN_LP = 0.75
-low_pass= {k:MIN_LP for k in pressure_pins.keys()}
-
-CONST = {'biases':biases,'low_pass':low_pass}
-
-def calc_pressure(volt):
-    '''returns the pressure by adjusting for voltage/pressure range'''
-    return (volt - V_MIN)*DPT/(DVT)+PA
-
-FAKE_BIAS = {
-                'p1t':20000*(0.5-random.random()),
-                'p1s':20000*(0.5-random.random()),
-                'p2t':20000*(0.5-random.random()),
-                'p2s':20000*(0.5-random.random()),
-                }
 
 START_TIME = time.time()
 FAKE_INIT_TIME = 60.

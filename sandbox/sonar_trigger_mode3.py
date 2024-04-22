@@ -29,7 +29,7 @@ class ranger:
       self._falling_time = None
       self._delta_tick = None
 
-      self.speed_of_sound = 343.0
+      self.speed_of_sound = 343.0 #TODO: add temperature correction
       self.sound_conv = self.speed_of_sound / 2000000 #2x
 
       #pi.set_mode(self._trig, pigpio.OUTPUT)
@@ -89,7 +89,11 @@ if __name__ == "__main__":
       if sonar._falling_time:
          if To is None:
             To = sonar._falling_time
-         print("{} {} {}".format(r, (sonar._falling_time-To)/1E6, sonar.read()))
+         dt = (sonar._falling_time-To)/1E6
+         if dt < 0:
+            dt = sonar._falling_time/1E6
+            To = 0
+         print("{} {} {}".format(r,dt, sonar.read()))
          r += 1
       time.sleep(0.1)
 
