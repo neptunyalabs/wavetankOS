@@ -82,11 +82,14 @@ if __name__ == "__main__":
    end = time.time() + 600.0
 
    r = 1
+   To = sonar._falling_time
    while time.time() < end:
       
       #,f'{sonar._falling_time}|{sonar._rising_time}'))
       if sonar._falling_time:
-         print("{} {} {}".format(r, sonar._falling_time/1E6, sonar.read()))
+         if To is None:
+            To = sonar._falling_time
+         print("{} {} {}".format(r, (sonar._falling_time-To)/1E6, sonar.read()))
          r += 1
       time.sleep(0.1)
 

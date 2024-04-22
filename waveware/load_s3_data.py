@@ -38,8 +38,8 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
 
 #TODO: deploy account for wave tank script
-#AWS_ACCESS_KEY_ID = "***REMOVED***"
-#AWS_SECRET_ACCESS_KEY = "***REMOVED***"
+#AWS_ACCESS_KEY_ID = "AKIATRDFYHRDQGXS3LJ5"
+#AWS_SECRET_ACCESS_KEY = "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"
 
 #login
 session = boto3.Session(profile_name='ottr-iot')

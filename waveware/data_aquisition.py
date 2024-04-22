@@ -27,8 +27,8 @@ import random
 # Permissons only for this bucket so not super dangerous
 bucket = "neptunya-demo-data"
 folder = "V1"
-AWS_ACCESS_KEY_ID = "***REMOVED***"
-AWS_SECRET_ACCESS_KEY = "***REMOVED***"
+AWS_ACCESS_KEY_ID = "AKIATRDFYHRDQGXS3LJ5"
+AWS_SECRET_ACCESS_KEY = "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"
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
