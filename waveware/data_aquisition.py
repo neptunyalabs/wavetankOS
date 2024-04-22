@@ -1,4 +1,4 @@
-"""Module to control """
+"""Module to control and gather data from raspberry system"""
 
 import asyncio
 import aiohttp
