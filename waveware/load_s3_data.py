@@ -27,7 +27,7 @@ def to_test_time(timestamp):
 def to_date(timestamp):
     return to_test_time(timestamp).date()
 
-bucket = "neptunya-wave-data"
+bucket = "nept-wavetank-data"
 folder = "V1"
 
 path = pathlib.Path(__file__)

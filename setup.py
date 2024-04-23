@@ -98,7 +98,7 @@ setup(
         "License :: CONFIDENTIAL | SMARTX USE ONLY",
     ],
     entry_points={
-        "console_scripts": ["wavedaq=waveware.data_aquisition:cli",
+        "console_scripts": ["wavedaq=waveware.fw_main:cli",
                             "wavedash=waveware.live_dashboard:main"]
     },
 )

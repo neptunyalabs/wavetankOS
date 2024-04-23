@@ -21,7 +21,6 @@ print(sys.executable)
 import logging
 import requests
 
-
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("dashboard")
 
@@ -42,7 +41,7 @@ app_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
 
 PLOTS = []
 max_ts = 0
-from waveware.data_aquisition import cache
+from waveware.hardware import cache
 
 def generate_plot(title, id=None):
 
