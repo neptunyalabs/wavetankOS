@@ -125,6 +125,8 @@ class hardware_control:
         self.cache = ExpiringDict(max_len=self.window * 2 / self.poll_rate, max_age_seconds=self.window * 2)
 
         self.last = {} #TODO: init pins as 0
+        #pin_enc_A
+        #pin_enc_B
 
 
     async def setup_hardware(self):
@@ -137,6 +139,15 @@ class hardware_control:
         #await self.setup_i2c_sensors()
         #await self.setup_gpio_sensors()
         #await self.setup_adc_sensors()
+
+    async def stop(self):
+        """
+        Cancel the rotary encoder decoder.
+        """
+        await self.cbA.cancel()
+        await self.cbB.cancel()
+        await self._cb_rise.cancel()
+        await self._cb_fall.cancel()
 
 
     async def push_data(self):
@@ -233,65 +244,54 @@ class hardware_control:
                 if self.last[self.pin_enc_A] == 1:
                     self.callback(-1) #reverse step
 
-    async def stop(self):
-        """
-        Cancel the rotary encoder decoder.
-        """
-        await self.cbA.cancel()
-        await self.cbB.cancel()
 
-#SONAR:
-# def __init__(self, pi, trigger, echo):
-#     """
-#     The class is instantiated with the Pi to use and the
-#     gpios connected to the trigger and echo pins.
-#     """
-#     self.pi    = pi
-#     #self._trig = trigger
-#     self._echo = echo
+
+    #SONAR:
+    async def setup_echo_sensors(self)
+        #self.pi    = pi
+        #self._trig = trigger
+#         self._echo = echo
 # 
-#     self._rising_time = None
-#     self._falling_time = None
-#     self._delta_tick = None
-# 
-#     self.speed_of_sound = 343.0 #TODO: add temperature correction
-#     self.sound_conv = self.speed_of_sound / 2000000 #2x
-# 
-#     await  pi.set_mode(self._echo, pigpio.INPUT)
-# 
-#     #self._cb = await pi.callback(self._trig, pigpio.EITHER_EDGE, self._cbf)
-#     self._cb_rise = pi.callback(self._echo, pigpio.RISING_EDGE, self._rise)
-#     self._cb_fall = pi.callback(self._echo, pigpio.FALLING_EDGE, self._fall)
-# 
-# 
-# def _rise(self, gpio, level, tick):
-#     self._rising_time = tick
-# 
-# def _fall(self, gpio, level, tick):
-#     if self._rising_time is not None:
-#         self._falling_time = tick
-#         dt = self._falling_time - self._rising_time
-#         if dt < 0:
-#         dt = 4294967295 + dt #wrap around
-#         self._delta_tick = dt
-# 
-# 
-# def read(self):
-#     """
-#     Triggers a reading.  The returned reading is the number
-#     of microseconds for the sonar round-trip.
-# 
-#     round trip cms = round trip time / 1000000.0 * 34030
-#     """
-#     return self._delta_tick * self.sound_conv
+#         #TODO: structure for these items. put in last dict per gpio
+#         self._rising_time = None
+#         self._falling_time = None
+#         self._delta_tick = None
+
+        self.speed_of_sound = 343.0 #TODO: add temperature correction
+        self.sound_conv = self.speed_of_sound / 2000000 #2x
+
+        #TODO: loop over pins, put callbacks in dict
+        await  self.pi.set_mode(self._echo, pigpio.INPUT)
+
+        #self._cb = await pi.callback(self._trig, pigpio.EITHER_EDGE, self._cbf)
+        self._cb_rise = self.pi.callback(self._echo, pigpio.RISING_EDGE, self._rise)
+        self._cb_fall = self.pi.callback(self._echo, pigpio.FALLING_EDGE, self._fall)
+
+    def _rise(self, gpio, level, tick):
+        self._rising_time = tick 
+
+    def _fall(self, gpio, level, tick):
+        if self._rising_time is not None:
+            self._falling_time = tick
+            dt = self._falling_time - self._rising_time
+            if dt < 0:
+            dt = 4294967295 + dt #wrap around
+            self.last[gpio] = dt
+
+    def read(self,gpio:int):
+        """
+        Triggers a reading.  The returned reading is the number
+        of microseconds for the sonar round-trip.
+
+        round trip cms = round trip time / 1000000.0 * 34030
+        """
+        return self.last[gpio] * self.sound_conv
 # 
 # def cancel(self):
 #     """
 #     Cancels the ranger and returns the gpios to their
 #     original mode.
 #     """
-#     self._cb_rise.cancel()
-#     self._cb_fall.cancel()
 
 #IMU MPU9250
 # from imusensor.MPU9250 import MPU9250
