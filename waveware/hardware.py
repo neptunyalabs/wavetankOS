@@ -41,6 +41,8 @@ from aiobotocore.session import get_session
 from collections import deque
 from expiringdict import ExpiringDict
 
+import asyncpio
+
 try:
     import pigpio
     ON_RASPI = True
@@ -76,6 +78,9 @@ FAKE_INIT_TIME = 60.
 
 class hardware_control:
     
+    #hw access
+    pi = None
+
     #encoder output
     a_ch_z:int = None
     b_ch_z:int = None
@@ -119,8 +124,19 @@ class hardware_control:
         self.unprocessed = deque([], maxlen=winlen)
         self.cache = ExpiringDict(max_len=self.window * 2 / self.poll_rate, max_age_seconds=self.window * 2)
 
+        self.last = {} #TODO: init pins as 0
 
-    async def setup_hardware(self)
+
+    async def setup_hardware(self):
+        self.pi = asyncpio.pi()
+        await self.pi.connect()
+
+        await self.setup_encoder()
+        await self.setup_echo_sensors()
+        await self.setup_motor_control()
+        #await self.setup_i2c_sensors()
+        #await self.setup_gpio_sensors()
+        #await self.setup_adc_sensors()
 
 
     async def push_data(self):
@@ -193,52 +209,36 @@ class hardware_control:
             log.info("mock writing s3...")
 
 
-#Encoder
-# 
-#     self.pi = pi
-#     self.gpioA = gpioA
-#     self.gpioB = gpioB
-#     self.callback = callback
-# 
-#     self.levA = 0
-#     self.levB = 0
-# 
-#     self.lastGpio = None
-# 
-# async def start(self):
-#     await self.pi.set_mode(self.gpioA, asyncpio.INPUT)
-#     await self.pi.set_mode(self.gpioB, asyncpio.INPUT)
-# 
-#     await self.pi.set_pull_up_down(self.gpioA, asyncpio.PUD_UP)
-#     await self.pi.set_pull_up_down(self.gpioB, asyncpio.PUD_UP)
-# 
-#     self.cbA = await self.pi.callback(self.gpioA, asyncpio.EITHER_EDGE, self._pulse)
-#     self.cbB = await self.pi.callback(self.gpioB, asyncpio.EITHER_EDGE, self._pulse)
-# 
-# def _pulse(self, gpio, level, tick):
-#     if gpio == self.gpioA:
-#         self.levA = level
-#     else:
-#         self.levB = level;
-# 
-#     if gpio != self.lastGpio: # debounce
-#         self.lastGpio = gpio
-# 
-#         if   gpio == self.gpioA and level == 1:
-#         if self.levB == 1:
-#             self.callback(1)
-#         elif gpio == self.gpioB and level == 1:
-#         if self.levA == 1:
-#             self.callback(-1)
-# 
-# async def cancel(self):
-# 
-#     """
-#     Cancel the rotary encoder decoder.
-#     """
-# 
-#     await self.cbA.cancel()
-#     await self.cbB.cancel()
+    async def setup_encoder(self):
+        await self.pi.set_mode(self.pin_enc_A, asyncpio.INPUT)
+        await self.pi.set_mode(self.pin_enc_B, asyncpio.INPUT)
+
+        await self.pi.set_pull_up_down(self.pin_enc_A, asyncpio.PUD_UP)
+        await self.pi.set_pull_up_down(self.pin_enc_B, asyncpio.PUD_UP)
+
+        ee = asyncpio.EITHER_EDGE
+        self.cbA = await self.pi.callback(self.pin_enc_A,ee , self._pulse)
+        self.cbB = await self.pi.callback(self.pin_enc_B,ee , self._pulse)
+
+    def _pulse(self, gpio, level, tick):
+
+        self.last[gpio] = level
+
+        if gpio != self.last[gpio]: # debounce
+            self.last['enc_last_pin'] = gpio
+            if gpio == self.pin_enc_A and level == 1:
+                if self.last[self.pin_enc_B] == 1:
+                    self.callback(1) #forward step
+            elif gpio == self.pin_enc_B and level == 1:
+                if self.last[self.pin_enc_A] == 1:
+                    self.callback(-1) #reverse step
+
+    async def stop(self):
+        """
+        Cancel the rotary encoder decoder.
+        """
+        await self.cbA.cancel()
+        await self.cbB.cancel()
 
 #SONAR:
 # def __init__(self, pi, trigger, echo):
