@@ -258,7 +258,7 @@ if __name__ == '__main__':
     pigs.start()
 
     loop = asyncio.get_event_loop()
-    tsk = asyncio.create_task(hw.print_data())
+    tsk = loop.create_task(hw.print_data())
     loop.run_forever()
 
     pigs.stop()
