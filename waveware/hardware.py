@@ -237,7 +237,7 @@ class hardware_control:
     async def print_data(self,int:int=1):
         while True:
             print(self.last)
-            asyncio.sleep(int)
+            await asyncio.sleep(1)
 
     
 if __name__ == '__main__':
