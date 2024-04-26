@@ -191,11 +191,11 @@ class hardware_control:
         if gpio != self.last[enc_inx]: # debounce
             self.last[enc_inx] = gpio
             if gpio == apin and level == 1:
-                if self.last[apin] == 1:
+                if self.last[bpin] == 1:
                     cb(1) #forward step
                     
             elif gpio == bpin and level == 1:
-                if self.last[bpin] == 1:
+                if self.last[apin] == 1:
                     cb(-1) #reverse step
 
     #SONAR:
