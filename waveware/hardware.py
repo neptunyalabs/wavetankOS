@@ -177,7 +177,7 @@ class hardware_control:
 
             ee = pigpio.EITHER_EDGE
 
-            #enccb[i] = self._make_pulse_func(apin,bpin,i)
+            enccb[i] = self._make_pulse_func(apin,bpin,i)
             self.cbA = await self.pi.callback(apin, ee , enccb[i])
             self.cbB = await self.pi.callback(bpin, ee , enccb[i])
 
