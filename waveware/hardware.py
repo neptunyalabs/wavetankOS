@@ -181,7 +181,7 @@ class hardware_control:
         return f
         
     def _pulse(self, gpio, level, tick,apin,bpin,enc_inx):
-
+        print(f'pulse : {gpio} | level: {level}')
         self.last[gpio] = level
 
         if gpio != self.last[enc_inx]: # debounce
