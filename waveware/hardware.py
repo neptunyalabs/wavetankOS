@@ -44,6 +44,7 @@ from expiringdict import ExpiringDict
 from imusensor.MPU9250 import MPU9250
 
 import asyncpio
+pigpio.exceptions = True
 
 try:
     import pigpio
@@ -177,6 +178,8 @@ class hardware_control:
 
             ee = pigpio.EITHER_EDGE
 
+            self.last[apin] = 0
+            self.last[bpin] = 0
             enccb[i] = self._make_pulse_func(apin,bpin,i)
             self.cbA = await self.pi.callback(apin, ee , enccb[i])
             self.cbB = await self.pi.callback(bpin, ee , enccb[i])
@@ -238,15 +241,23 @@ class hardware_control:
         get the current reading
         round trip cms = round trip time / 1000000.0 * 34030
         """
-        dt = self.last[gpio]['dt']
+        dt = self.last.get(gpio,None).get('dt',None)
         if dt is not None:
             return  dt * self.sound_conv
         return 0
     
-    async def print_data(self,int:int=1):
+    @property
+    def output_data(self):
+        out = {}
+        for i,echo_pin in enumerate(self.echo_pins):
+            out[f'echo_{echo_pin}'] = self.read(echo_pin)
+        for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
+            out[f'enc_{echo_pin}'] = self.last.get(f'pos_enc_{i}',None)
+
+    async def print_data(self,intvl:int=1):
         while True:
-            print(self.last)
-            await asyncio.sleep(int)
+            print(self.output_data)
+            await asyncio.sleep(intvl)
 
     
 if __name__ == '__main__':
