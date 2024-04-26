@@ -257,8 +257,8 @@ if __name__ == '__main__':
     pigs = threading.Thread(target=pigpio_thread)
     pigs.start()
 
+    loop = asyncio.get_event_loop()
     tsk = asyncio.create_task(hw.print_data())
-    loop = tsk.get_loop()
     loop.run_forever()
 
     pigs.stop()
