@@ -49,7 +49,7 @@ pigpio.exceptions = True
 
 ON_RASPI = True
 
-
+import threading
 import datetime
 import time
 import logging
@@ -234,10 +234,10 @@ class hardware_control:
             return  dt * self.sound_conv
         return 0
     
-    async def print_data(self,int:int=1):
+    async def print_data(self,intvl:int=1):
         while True:
             print(self.last)
-            await asyncio.sleep(1)
+            await asyncio.sleep(intvl)
 
     
 if __name__ == '__main__':
@@ -247,11 +247,21 @@ if __name__ == '__main__':
     echo_pins = [18]
 
     hw = hardware_control(encoder_pins,echo_pins)
-    hw.setup_hardware()
 
-    loop = asyncio.get_event_loop()
-    loop.create_task(hw.print_data())
+    def pigpio_thread():
+        hw.setup_hardware()
+        while True:
+            print(f'tick')
+            time.sleep(10)
+
+    pigs = threading.Thread(target=pigpio_thread)
+    pigs.start()
+
+    tsk = asyncio.create_task(hw.print_data())
+    loop = tsk.get_loop()
     loop.run_forever()
+
+    pigs.stop()
 
     #cal = hw.run_calibration()
     #loop.run_until_complete(cal)
