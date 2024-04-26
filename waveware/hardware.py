@@ -247,21 +247,24 @@ if __name__ == '__main__':
     echo_pins = [18]
 
     hw = hardware_control(encoder_pins,echo_pins)
+    hw.setup_hardware()
+    
+    time.sleep(120)
+    
+    # #def pigpio_thread():
+    #     hw.setup_hardware()
+    #     # while True:
+    #     #     print(f'tick')
+    #     #     time.sleep(10)
 
-    def pigpio_thread():
-        hw.setup_hardware()
-        while True:
-            print(f'tick')
-            time.sleep(10)
+    # pigs = threading.Thread(target=pigpio_thread)
+    # pigs.start()
 
-    pigs = threading.Thread(target=pigpio_thread)
-    pigs.start()
-
-    loop = asyncio.get_event_loop()
-    tsk = loop.create_task(hw.print_data())
-    loop.run_forever()
-
-    pigs.stop()
+#     loop = asyncio.get_event_loop()
+#     tsk = loop.create_task(hw.print_data())
+#     loop.run_forever()
+# 
+#     pigs.stop()
 
     #cal = hw.run_calibration()
     #loop.run_until_complete(cal)
