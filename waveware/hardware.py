@@ -179,6 +179,7 @@ class hardware_control:
         self.last[enc_inx] = 0 #
         sens = self.encoder_conf[inx]['sens']
         def cb(step):
+            print(f'step: {step}')
             nxt = self.last[cbinx] + step*sens
             self.last[cbinx] = nxt
         f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=enc_inx,cb=cb)
@@ -186,7 +187,7 @@ class hardware_control:
         
     def _pulse(self, gpio, level, tick,apin,bpin,enc_inx,cb):
         self.last[gpio] = level
-
+        print(f'pulse: {gpio}')
         if gpio != self.last[enc_inx]: # debounce
             self.last[enc_inx] = gpio
             if gpio == apin and level == 1:
