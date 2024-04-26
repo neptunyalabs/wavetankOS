@@ -84,6 +84,7 @@ class hardware_control:
     pi = None
 
     #pinout / registers
+    encoder_conf: list = None #[{sens:x,},...]
     encoder_pins: list = None  #[(A,B),(A2,B2)...]
     echo_pins: list = None #[1,2,3]
     #potentiometer_pin: int = None
@@ -110,7 +111,7 @@ class hardware_control:
     cache: ExpiringDict
 
     #TODO: pins_def
-    def  __init__(self,encoder_ch:list,echo_ch:list,winlen = 1000,*args,**kwargs):
+    def  __init__(self,encoder_ch:list,echo_ch:list,winlen = 1000,enc_conf = None):
         self.start_time = time.time()
         self.is_fake_init = lambda: True if (time.time() - self.start_time) <  FAKE_INIT_TIME else False
 
@@ -125,6 +126,11 @@ class hardware_control:
         self.last = {} #TODO: init pins as 0
         self.echo_pins = echo_ch
         self.encoder_pins = encoder_ch
+        if enc_conf is None:
+            self.encoder_conf = [{'sens':0.005*4}]*len(self.encoder_pins)
+        else:
+            assert len(enc_conf) == len(self.encoder_pins), f'encoder conf mismatch'
+            self.encoder_conf = enc_conf
         
 
     #Setup & Shutdown
@@ -177,22 +183,25 @@ class hardware_control:
     def _make_pulse_func(self,apin,bpin,inx):
         """function to scope lambda"""
         inx = f'enc_{inx}_last_pin'
-        f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=inx)
+        cbinx = f'pos_enc_{inx}'
+        self.last[cbinx] = 0 #initalizes
+        sens = self.encoder_conf[inx]['sens']
+        cb = lambda stp: self.last[cbinx] + stp*sens
+        f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=inx,cb=cb)
         return f
         
-    def _pulse(self, gpio, level, tick,apin,bpin,enc_inx):
-        print(f'pulse : {gpio} | level: {level}')
+    def _pulse(self, gpio, level, tick,apin,bpin,enc_inx,cb):
         self.last[gpio] = level
 
         if gpio != self.last[enc_inx]: # debounce
             self.last[enc_inx] = gpio
             if gpio == apin and level == 1:
                 if self.last[apin] == 1:
-                    self.callback(1) #forward step
+                    cb(1) #forward step
                     
             elif gpio == bpin and level == 1:
                 if self.last[bpin] == 1:
-                    self.callback(-1) #reverse step
+                    cb(-1) #reverse step
 
     #SONAR:
     async def setup_echo_sensors(self):
@@ -239,6 +248,7 @@ class hardware_control:
 if __name__ == '__main__':
 
     encoder_pins = [(9,10)]
+    encoder_sens = [{'sens':0.005*4}]
     echo_pins = [18]
 
     hw = hardware_control(encoder_pins,echo_pins)
