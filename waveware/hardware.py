@@ -228,9 +228,11 @@ class hardware_control:
             return  dt * self.sound_conv
         return 0
     
-    async def print_last(self):
+    async def print_data(self,int:int=1):
         while True:
-            
+            print(self.last)
+            await asyncio.sleep(int)
+
     
 if __name__ == '__main__':
 
@@ -241,13 +243,14 @@ if __name__ == '__main__':
     hw.setup()
 
     loop = asyncio.get_event_loop()
-    loop.
+    loop.create_task(hw.print_data)
+    loop.run_forever()
 
     #cal = hw.run_calibration()
     #loop.run_until_complete(cal)
     
-    if hw.status_ok is not True:
-        raise Exception(f'initial calibration didnt work!!!')
+    #if hw.status_ok is not True:
+    #    raise Exception(f'initial calibration didnt work!!!')
 
     # sensors = hw.start_data_acquisition()
     # controls = hw.start_controls()    
