@@ -161,6 +161,7 @@ class hardware_control:
 
     async def setup_encoder(self):
         for i,(apin,bpin) in enumerate(self.encoder_pins):
+            print(f'setting up encoder {i} on A:{apin} B:{bpin}')
             await self.pi.set_mode(apin, asyncpio.INPUT)
             await self.pi.set_mode(bpin, asyncpio.INPUT)
 
@@ -244,7 +245,7 @@ if __name__ == '__main__':
     hw.setup()
 
     loop = asyncio.get_event_loop()
-    loop.create_task(hw.print_data)
+    loop.create_task(hw.print_data())
     loop.run_forever()
 
     #cal = hw.run_calibration()
