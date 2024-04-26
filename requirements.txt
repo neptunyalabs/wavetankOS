@@ -11,8 +11,9 @@ dash
 dash_daq
 
 #GPIO
-pigpio
-
+pigpio #gpio fast
+smbus #i2c
+easydict
 asyncpio @ git+https://github.com/neptunyalabs/asyncpio.git
 imusensor @ git+https://github.com/niru-5/imusensor.git
 

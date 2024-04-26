@@ -203,10 +203,10 @@ class hardware_control:
             self.last[echo_pin] = {'dt':0,'rise':None}
 
             #TODO: loop over pins, put callbacks in dict
-            await  self.pi.set_mode(self._echo, pigpio.INPUT)
+            await  self.pi.set_mode(echo_pin, pigpio.INPUT)
 
-            self._cb_rise = await self.pi.callback(self._echo, pigpio.RISING_EDGE, self._rise)
-            self._cb_fall = await self.pi.callback(self._echo, pigpio.FALLING_EDGE, self._fall)
+            self._cb_rise = await self.pi.callback(echo_pin, pigpio.RISING_EDGE, self._rise)
+            self._cb_fall = await self.pi.callback(echo_pin, pigpio.FALLING_EDGE, self._fall)
 
     def _rise(self, gpio, level, tick):
         self.last[gpio]['rise'] = tick
