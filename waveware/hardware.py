@@ -231,14 +231,22 @@ class hardware_control:
         get the current reading
         round trip cms = round trip time / 1000000.0 * 34030
         """
-        dt = self.last[gpio]['dt']
+        dt = self.last.get(gpio,None).get('dt',None)
         if dt is not None:
             return  dt * self.sound_conv
         return 0
     
+    @property
+    def output_data(self):
+        out = {}
+        for i,echo_pin in enumerate(self.echo_pins):
+            out[f'echo_{echo_pin}'] = self.read(echo_pin)
+        for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
+            out[f'enc_{echo_pin}'] = self.last.get(f'pos_enc_{i}',None)
+
     async def print_data(self,intvl:int=1):
         while True:
-            print(self.last)
+            print(self.output_data)
             await asyncio.sleep(intvl)
 
     
