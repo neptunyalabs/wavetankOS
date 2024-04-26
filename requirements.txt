@@ -12,7 +12,10 @@ dash_daq
 
 #GPIO
 pigpio
-git+https://github.com/neptunyalabs/asyncpio.git
+
+asyncpio @ git+https://github.com/neptunyalabs/asyncpio.git
+imusensor @ git+https://github.com/niru-5/imusensor.git
+
 #pi-plates
 #RPi.GPIO
 

@@ -1,0 +1,20 @@
+Metadata-Version: 2.1
+Name: waveware
+Version: 0.0.1
+Summary: Firmware For Neptunya Wave Tank
+Home-page: https://github.com/neptunya/waveware
+Author: Kevin Russell
+Author-email: kevin@ottermatics.com
+License: Neptunya Use Only
+Keywords: Neptunya Core Python Utilites
+Classifier: Development Status :: 1 - Beta
+Classifier: Topic :: Utilities
+Classifier: Topic :: Networking Framework
+Classifier: Topic :: Distributed Systems
+Classifier: License :: CONFIDENTIAL | SMARTX USE ONLY
+
+# What Is This:
+firmware for the neptunya demo system
+
+# How Do You Use This
+run `wavedash` to run the dashboard, and `wavedaq` to run the data aqusition system

@@ -1,0 +1,3 @@
+[console_scripts]
+wavedaq = waveware.fw_main:cli
+wavedash = waveware.live_dashboard:main

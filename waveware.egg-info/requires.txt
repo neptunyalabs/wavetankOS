@@ -1,0 +1,10 @@
+requests
+numpy
+pandas
+dash
+dash_daq
+pigpio
+asyncpio@ git+https://github.com/neptunyalabs/asyncpio.git
+imusensor@ git+https://github.com/niru-5/imusensor.git
+aioboto3
+expiringdict
