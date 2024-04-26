@@ -252,7 +252,7 @@ class hardware_control:
             out[f'echo_{echo_pin}'] = self.read(echo_pin)
         for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
             out[f'enc_{echo_pin}'] = self.last.get(f'pos_enc_{i}',None)
-        return 
+        return out
 
     async def print_data(self,intvl:int=1):
         while True:
