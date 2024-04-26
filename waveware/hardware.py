@@ -44,13 +44,12 @@ from expiringdict import ExpiringDict
 from imusensor.MPU9250 import MPU9250
 
 import asyncpio
-pigpio.exceptions = True
+asyncpio.exceptions = True
 
-try:
-    import pigpio
-    ON_RASPI = True
-except:
-    ON_RASPI = False
+import pigpio
+pigpio.exceptions = True
+ON_RASPI = True
+
 
 import datetime
 import time
