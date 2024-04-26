@@ -166,6 +166,7 @@ class hardware_control:
 
 
     async def setup_encoder(self):
+        enccb = {}
         for i,(apin,bpin) in enumerate(self.encoder_pins):
             print(f'setting up encoder {i} on A:{apin} B:{bpin}')
             await self.pi.set_mode(apin, pigpio.INPUT)
@@ -176,9 +177,9 @@ class hardware_control:
 
             ee = pigpio.EITHER_EDGE
 
-            whenpulse = self._make_pulse_func(apin,bpin,i)
-            self.cbA = await self.pi.callback(apin, ee , whenpulse)
-            self.cbB = await self.pi.callback(bpin, ee , whenpulse)
+            enccb[i] = self._make_pulse_func(apin,bpin,i)
+            self.cbA = await self.pi.callback(apin, ee , enccb[i])
+            self.cbB = await self.pi.callback(bpin, ee , enccb[i])
 
     def _make_pulse_func(self,apin,bpin,inx):
         """function to scope lambda"""
@@ -216,8 +217,8 @@ class hardware_control:
             #TODO: loop over pins, put callbacks in dict
             await  self.pi.set_mode(echo_pin, asyncpio.INPUT)
 
-            self._cb_rise = await self.pi.callback(echo_pin, pigpio.RISING_EDGE, self._rise)
-            self._cb_fall = await self.pi.callback(echo_pin, pigpio.FALLING_EDGE, self._fall)
+            self._cb_rise = await self.pi.callback(echo_pin, asyncpio.RISING_EDGE, self._rise)
+            self._cb_fall = await self.pi.callback(echo_pin, asyncpio.FALLING_EDGE, self._fall)
 
     def _rise(self, gpio, level, tick):
         self.last[gpio]['rise'] = tick
