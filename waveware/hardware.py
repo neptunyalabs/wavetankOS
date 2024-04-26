@@ -187,7 +187,7 @@ class hardware_control:
         
     def _pulse(self, gpio, level, tick,apin,bpin,enc_inx,cb):
         self.last[gpio] = level
-        print(f'pulse: {gpio}')
+        print(f'pulse: {gpio,level,tick,apin,bpin,enc_inx}')
         if gpio != self.last[enc_inx]: # debounce
             self.last[enc_inx] = gpio
             if gpio == apin and level == 1:
@@ -250,7 +250,9 @@ if __name__ == '__main__':
     hw = hardware_control(encoder_pins,echo_pins)
     hw.setup_hardware()
     
-    time.sleep(120)
+    loop = asyncio.get_event_loop()
+    tsk = loop.create_task(hw.print_data())
+    loop.run_forever()
     
     # #def pigpio_thread():
     #     hw.setup_hardware()
@@ -261,9 +263,7 @@ if __name__ == '__main__':
     # pigs = threading.Thread(target=pigpio_thread)
     # pigs.start()
 
-#     loop = asyncio.get_event_loop()
-#     tsk = loop.create_task(hw.print_data())
-#     loop.run_forever()
+
 # 
 #     pigs.stop()
 
