@@ -177,7 +177,7 @@ class hardware_control:
 
             ee = pigpio.EITHER_EDGE
 
-            enccb[i] = self._make_pulse_func(apin,bpin,i)
+            #enccb[i] = self._make_pulse_func(apin,bpin,i)
             self.cbA = await self.pi.callback(apin, ee , enccb[i])
             self.cbB = await self.pi.callback(bpin, ee , enccb[i])
 
@@ -186,6 +186,7 @@ class hardware_control:
         enc_inx = f'enc_{inx}_last_pin'
         cbinx = f'pos_enc_{inx}'
         self.last[cbinx] = 0 #initalizes
+        self.last[enc_inx] = 0 #
         sens = self.encoder_conf[inx]['sens']
         cb = lambda stp: self.last[cbinx] + stp*sens
         f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=enc_inx,cb=cb)
