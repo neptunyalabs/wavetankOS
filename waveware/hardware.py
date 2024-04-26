@@ -182,12 +182,12 @@ class hardware_control:
 
     def _make_pulse_func(self,apin,bpin,inx):
         """function to scope lambda"""
-        inx = f'enc_{inx}_last_pin'
+        enc_inx = f'enc_{inx}_last_pin'
         cbinx = f'pos_enc_{inx}'
         self.last[cbinx] = 0 #initalizes
         sens = self.encoder_conf[inx]['sens']
         cb = lambda stp: self.last[cbinx] + stp*sens
-        f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=inx,cb=cb)
+        f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=enc_inx,cb=cb)
         return f
         
     def _pulse(self, gpio, level, tick,apin,bpin,enc_inx,cb):
