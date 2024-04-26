@@ -166,7 +166,8 @@ class hardware_control:
             self.pi.set_pull_up_down(bpin, pigpio.PUD_UP)
 
             ee = pigpio.EITHER_EDGE
-
+            self.last[apin] = 0 
+            self.last[bpin] = 0 
             enccb[i] = self._make_pulse_func(apin,bpin,i)
             self.cbA = self.pi.callback(apin, ee , enccb[i])
             self.cbB = self.pi.callback(bpin, ee , enccb[i])
