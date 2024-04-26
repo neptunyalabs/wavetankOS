@@ -188,7 +188,9 @@ class hardware_control:
         self.last[cbinx] = 0 #initalizes
         self.last[enc_inx] = 0 #
         sens = self.encoder_conf[inx]['sens']
-        cb = lambda stp: self.last[cbinx] + stp*sens
+        def cb(step):
+            nxt = self.last[cbinx] + step*sens
+            self.last[cbinx] = nxt
         f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=enc_inx,cb=cb)
         return f
         
