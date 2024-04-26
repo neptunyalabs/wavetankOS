@@ -249,7 +249,7 @@ if __name__ == '__main__':
     hw = hardware_control(encoder_pins,echo_pins)
     hw.setup_hardware()
 
-    loop = io.get_event_loop()
+    loop = asyncio.get_event_loop()
     loop.create_task(hw.print_data())
     loop.run_forever()
 
