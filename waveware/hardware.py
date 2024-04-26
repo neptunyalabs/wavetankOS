@@ -34,7 +34,6 @@ Store Data in key:value pandas format in queue format
 all items will have a `timestamp` that is use to orchestrate using `after` search, items are moved from the buffer to the cache after they have been processed, with additional calculations.
 """
 
-import io
 import asyncio
 import aiobotocore
 from aiobotocore.session import get_session
@@ -44,12 +43,14 @@ from expiringdict import ExpiringDict
 
 from imusensor.MPU9250 import MPU9250
 
+import asyncpio
+asyncpio.exceptions = True
+
 import pigpio
 pigpio.exceptions = True
-
 ON_RASPI = True
 
-import threading
+
 import datetime
 import time
 import logging
@@ -133,44 +134,54 @@ class hardware_control:
         
 
     #Setup & Shutdown
+    def setup(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self._setup_hardware())
 
-    def setup_hardware(self):
-        self.pi = pigpio.pi()
-        self.setup_encoder()
-        self.setup_echo_sensors()
+    async def _setup_hardware(self):
+        self.pi = asyncpio.pi()
+        con =  await self.pi.connect()
+
+        await self.setup_encoder()
+        await self.setup_echo_sensors()
         
         #TODO: functionality
-        #self.setup_motor_control()
-        #self.setup_i2c_sensors()
-        #self.setup_gpio_sensors()
-        #self.setup_adc_sensors()
+        #await self.setup_motor_control()
+        #await self.setup_i2c_sensors()
+        #await self.setup_gpio_sensors()
+        #await self.setup_adc_sensors()
 
     def stop(self):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self._stop())
+
+    async def _stop(self):
         """
         Cancel the rotary encoder decoder.
         """
-        self.cbA.cancel()
-        self.cbB.cancel()
-        self._cb_rise.cancel()
-        self._cb_fall.cancel()
+        await self.cbA.cancel()
+        await self.cbB.cancel()
+        await self._cb_rise.cancel()
+        await self._cb_fall.cancel()
 
 
-    def setup_encoder(self):
+    async def setup_encoder(self):
         enccb = {}
         for i,(apin,bpin) in enumerate(self.encoder_pins):
             print(f'setting up encoder {i} on A:{apin} B:{bpin}')
-            self.pi.set_mode(apin, pigpio.INPUT)
-            self.pi.set_mode(bpin, pigpio.INPUT)
+            await self.pi.set_mode(apin, pigpio.INPUT)
+            await self.pi.set_mode(bpin, pigpio.INPUT)
 
-            self.pi.set_pull_up_down(apin, pigpio.PUD_UP)
-            self.pi.set_pull_up_down(bpin, pigpio.PUD_UP)
+            await self.pi.set_pull_up_down(apin, pigpio.PUD_UP)
+            await self.pi.set_pull_up_down(bpin, pigpio.PUD_UP)
 
             ee = pigpio.EITHER_EDGE
-            self.last[apin] = 0 
-            self.last[bpin] = 0 
+
+            self.last[apin] = 0
+            self.last[bpin] = 0
             enccb[i] = self._make_pulse_func(apin,bpin,i)
-            self.cbA = self.pi.callback(apin, ee , enccb[i])
-            self.cbB = self.pi.callback(bpin, ee , enccb[i])
+            self.cbA = await self.pi.callback(apin, ee , enccb[i])
+            self.cbB = await self.pi.callback(bpin, ee , enccb[i])
 
     def _make_pulse_func(self,apin,bpin,inx):
         """function to scope lambda"""
@@ -180,7 +191,6 @@ class hardware_control:
         self.last[enc_inx] = 0 #
         sens = self.encoder_conf[inx]['sens']
         def cb(step):
-            #print(f'step: {step}')
             nxt = self.last[cbinx] + step*sens
             self.last[cbinx] = nxt
         f = lambda *args: self._pulse(*args,apin=apin,bpin=bpin,enc_inx=enc_inx,cb=cb)
@@ -188,7 +198,7 @@ class hardware_control:
         
     def _pulse(self, gpio, level, tick,apin,bpin,enc_inx,cb):
         self.last[gpio] = level
-        #print(f'pulse: {gpio,level,tick,apin,bpin,enc_inx}')
+
         if gpio != self.last[enc_inx]: # debounce
             self.last[enc_inx] = gpio
             if gpio == apin and level == 1:
@@ -200,7 +210,7 @@ class hardware_control:
                     cb(-1) #reverse step
 
     #SONAR:
-    def setup_echo_sensors(self):
+    async def setup_echo_sensors(self):
         """setup GPIO for reading from a list of sensor pins"""
         
         self.speed_of_sound = 343.0 #TODO: add temperature correction
@@ -210,11 +220,10 @@ class hardware_control:
             self.last[echo_pin] = {'dt':0,'rise':None}
 
             #TODO: loop over pins, put callbacks in dict
-            self.pi.set_mode(echo_pin, pigpio.INPUT)
-            fe = pigpio.FALLING_EDGE
-            re = pigpio.RISING_EDGE
-            self._cb_rise = self.pi.callback(echo_pin, re, self._rise)
-            self._cb_fall = self.pi.callback(echo_pin, fe, self._fall)
+            await  self.pi.set_mode(echo_pin, asyncpio.INPUT)
+
+            self._cb_rise = await self.pi.callback(echo_pin, asyncpio.RISING_EDGE, self._rise)
+            self._cb_fall = await self.pi.callback(echo_pin, asyncpio.FALLING_EDGE, self._fall)
 
     def _rise(self, gpio, level, tick):
         self.last[gpio]['rise'] = tick
@@ -258,24 +267,11 @@ if __name__ == '__main__':
     echo_pins = [18]
 
     hw = hardware_control(encoder_pins,echo_pins)
-    hw.setup_hardware()
-    
+    hw.setup()
+
     loop = asyncio.get_event_loop()
-    tsk = loop.create_task(hw.print_data())
+    loop.create_task(hw.print_data())
     loop.run_forever()
-    
-    # #def pigpio_thread():
-    #     hw.setup_hardware()
-    #     # while True:
-    #     #     print(f'tick')
-    #     #     time.sleep(10)
-
-    # pigs = threading.Thread(target=pigpio_thread)
-    # pigs.start()
-
-
-# 
-#     pigs.stop()
 
     #cal = hw.run_calibration()
     #loop.run_until_complete(cal)
@@ -288,7 +284,7 @@ if __name__ == '__main__':
     
 
 #     #Data Recording
-#      def push_data(self):
+#     async def push_data(self):
 #         """Periodically looks for new data to upload 1/3 of window time"""
 #         while True:
 # 
@@ -313,24 +309,24 @@ if __name__ == '__main__':
 #                     # Finally try writing the data
 #                     if data_rows:
 #                         log.info(f"writing to S3")
-#                         self.write_s3(data_set)
+#                         await self.write_s3(data_set)
 #                     else:
 #                         log.info(f"no data, skpping s3 write")
 #                     # Finally Wait Some Time
-#                     asyncio.sleep(self.window / 3.0)
+#                     await asyncio.sleep(self.window / 3.0)
 # 
 #                 elif self.active:
 #                     log.info(f"no data")
-#                     asyncio.sleep(self.window / 3.0)
+#                     await asyncio.sleep(self.window / 3.0)
 #                 else:
 #                     log.info(f"not active")
-#                     asyncio.sleep(self.window / 3.0)
+#                     await asyncio.sleep(self.window / 3.0)
 # 
 #             except Exception as e:
 #                 log.error(str(e), exc_info=1)
 # 
 # 
-#      def write_s3(self,data: dict,title=None):
+#     async def write_s3(self,data: dict,title=None):
 #         """writes the dictionary to the bucket
 #         :param data: a dictionary to write as json
 #         :param : default='data', use to log actions ect
@@ -347,9 +343,9 @@ if __name__ == '__main__':
 #                 key = f"{folder}/{self.labels['title']}/{date}/data_{time}.json"
 # 
 #             session = get_session()
-#              with session.create_client('s3',region_name='us-east-1',config='wavetank') as client:
+#             async with session.create_client('s3',region_name='us-east-1',config='wavetank') as client:
 # 
-#                 resp = client.put_object(
+#                 resp = await client.put_object(
 #                     Bucket=bucket, Key=key, Body=json.dumps(data)
 #                 )
 #                 log.info(f"success writing {key}")
@@ -385,10 +381,10 @@ if __name__ == '__main__':
 # sensor = adafruit_si7021.SI7021(board.I2C())
 
 
-#TODO: dont poll data with software, use  pigpio
+#TODO: dont poll data with software, use async pigpio
 #Poll Data:
 # if data:
-#     buffer.put(data)    
+#     await buffer.put(data)    
 #Process Data:
 # ts = new["timestamp"]
 # new.update(**LABEL_SET)
