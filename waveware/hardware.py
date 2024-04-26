@@ -138,8 +138,9 @@ class hardware_control:
 
         await self.setup_encoder()
         await self.setup_echo_sensors()
-        await self.setup_motor_control()
-
+        
+        #TODO: functionality
+        #await self.setup_motor_control()
         #await self.setup_i2c_sensors()
         #await self.setup_gpio_sensors()
         #await self.setup_adc_sensors()
