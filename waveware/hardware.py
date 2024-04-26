@@ -168,13 +168,13 @@ class hardware_control:
     async def setup_encoder(self):
         for i,(apin,bpin) in enumerate(self.encoder_pins):
             print(f'setting up encoder {i} on A:{apin} B:{bpin}')
-            await self.pi.set_mode(apin, asyncpio.INPUT)
-            await self.pi.set_mode(bpin, asyncpio.INPUT)
+            await self.pi.set_mode(apin, pigpio.INPUT)
+            await self.pi.set_mode(bpin, pigpio.INPUT)
 
-            await self.pi.set_pull_up_down(apin, asyncpio.PUD_UP)
-            await self.pi.set_pull_up_down(bpin, asyncpio.PUD_UP)
+            await self.pi.set_pull_up_down(apin, pigpio.PUD_UP)
+            await self.pi.set_pull_up_down(bpin, pigpio.PUD_UP)
 
-            ee = asyncpio.EITHER_EDGE
+            ee = pigpio.EITHER_EDGE
 
             whenpulse = self._make_pulse_func(apin,bpin,i)
             self.cbA = await self.pi.callback(apin, ee , whenpulse)
@@ -214,7 +214,7 @@ class hardware_control:
             self.last[echo_pin] = {'dt':0,'rise':None}
 
             #TODO: loop over pins, put callbacks in dict
-            await  self.pi.set_mode(echo_pin, pigpio.INPUT)
+            await  self.pi.set_mode(echo_pin, asyncpio.INPUT)
 
             self._cb_rise = await self.pi.callback(echo_pin, pigpio.RISING_EDGE, self._rise)
             self._cb_fall = await self.pi.callback(echo_pin, pigpio.FALLING_EDGE, self._fall)
