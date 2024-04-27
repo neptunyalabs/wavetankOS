@@ -146,6 +146,7 @@ class hardware_control:
 
         #MPU
         self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
+        self.imu.begin()
         self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
         self.imu.setAccelRange("AccelRangeSelect2G")
         self.imu.setGyroRange("GyroRangeSelect250DPS")
@@ -153,7 +154,7 @@ class hardware_control:
         #TODO: save calibration data
         #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
 
-        self.imu.begin()
+        
 
 
     def run(self):
