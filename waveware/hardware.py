@@ -55,7 +55,7 @@ ON_RASPI = True
 import datetime
 import time
 import logging
-import json
+import json,os
 
 
 # BUCKET CONFIG
@@ -65,6 +65,8 @@ folder = "TEST"
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
+
+PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 
 #TODO: default values to run system
 LABEL_DEFAULT = {
@@ -142,15 +144,15 @@ class hardware_control:
         self.setup_i2c()
     
     def setup_i2c(self):
-        print(f'setup i2c')
+        if not PLOT_STREAM: print(f'setup i2c')
         self.smbus = smbus.SMBus(1)
 
         #MPU
-        print(f'setup mpu9250')
+        if not PLOT_STREAM: print(f'setup mpu9250')
         self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
-        print(f'mpu9250 begin')
+        if not PLOT_STREAM: print(f'mpu9250 begin')
         self.imu.begin()
-        print(f'mpu9250 config')
+        if not PLOT_STREAM: print(f'mpu9250 config')
         self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
         self.imu.setAccelRange("AccelRangeSelect2G")
         self.imu.setGyroRange("GyroRangeSelect250DPS")
@@ -168,7 +170,7 @@ class hardware_control:
         try:
             loop.run_forever()
         except KeyboardInterrupt as e:
-            print("Caught keyboard interrupt. Canceling tasks...")
+            if not PLOT_STREAM: print("Caught keyboard interrupt. Canceling tasks...")
             self.stop()
             sys.exit(0)
         finally:
@@ -211,19 +213,19 @@ class hardware_control:
 
     #MPU:
     async def imu_task(self):
-        print(f'starting imu task')
+        if not PLOT_STREAM: print(f'starting imu task')
         while True:
             try:
                 await asyncio.to_thread(self._read_imu)
                 await asyncio.sleep(self.poll_rate)
             except Exception as e:
-                print(f'imu error: {e}')
+                if not PLOT_STREAM: print(f'imu error: {e}')
 
     def _read_imu(self):
         """blocking call use in thread"""
-        #print(f'first read imu')
+        #if not PLOT_STREAM: print(f'first read imu')
         #while True:
-        print(f'read imu')
+        if not PLOT_STREAM: print(f'read imu')
         start = time.time()
         self.imu.readSensor()
         #self.imu.computeOrientation()
@@ -239,7 +241,7 @@ class hardware_control:
     async def setup_encoder(self):
         enccb = {}
         for i,(apin,bpin) in enumerate(self.encoder_pins):
-            print(f'setting up encoder {i} on A:{apin} B:{bpin}')
+            if not PLOT_STREAM: print(f'setting up encoder {i} on A:{apin} B:{bpin}')
             await self.pi.set_mode(apin, pigpio.INPUT)
             await self.pi.set_mode(bpin, pigpio.INPUT)
 
@@ -288,7 +290,7 @@ class hardware_control:
         self.sound_conv = self.speed_of_sound / 2000000 #2x
 
         for echo_pin in self.echo_pins:
-            print(f'starting ecno sensors on pin {echo_pin}')
+            if not PLOT_STREAM: print(f'starting ecno sensors on pin {echo_pin}')
 
             self.last[echo_pin] = {'dt':0,'rise':None}
 
@@ -332,8 +334,11 @@ class hardware_control:
     async def print_data(self,intvl:int=1):
         while True:
             try:
-                #print({k:f'{v:3.3f}' for k,v in self.output_data.items() if isinstance(v,(float,int))})
-                print(' '.join([v for k,v in self.output_data.items() if isinstance(v,(float,int))] ))
+                if PLOT_STREAM:
+                    print(' '.join([v for k,v in self.output_data.items() if isinstance(v,(float,int))] ))
+                else:
+                    print({k:f'{v:3.3f}' for k,v in self.output_data.items() if isinstance(v,(float,int))})
+                
                 await asyncio.sleep(intvl)
             except Exception as e:
                 print(e)
