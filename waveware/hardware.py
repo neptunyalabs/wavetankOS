@@ -37,6 +37,7 @@ all items will have a `timestamp` that is use to orchestrate using `after` searc
 import asyncio
 import aiobotocore
 from aiobotocore.session import get_session
+import struct
 
 from collections import deque
 from expiringdict import ExpiringDict
@@ -81,6 +82,19 @@ LABEL_DEFAULT = {
 
 FAKE_INIT_TIME = 60.
 
+#SI07 temp sensor registers
+HUMIDITY = 0xF5
+TEMPERATURE = 0xF3
+WRITE_HEATER_LEVEL = 0x51
+READ_HEATER_LEVEL = 0x11
+WRITE_HEATER_ENABLE = 0xE6
+READ_HEATER_ENABLE = 0xE7
+_RESET = 0xFE
+# _READ_USER1 = 0xE7
+# _USER1_VAL = 0x3A
+# _ID1_CMD = bytearray([0xFA, 0x0F])
+# _ID2_CMD = bytearray([0xFC, 0xC9])
+
 class hardware_control:
     
     #hw access
@@ -93,7 +107,7 @@ class hardware_control:
     #potentiometer_pin: int = None
     # #i2c addr
     mpu_addr: hex = 0x68#0x69 #3.3v
-    bmp_280_addr: hex = 0x40
+    si07_addr: hex = 0x40
     # #motor control
     # en_pin: int = None
     # a_ch: int = None
@@ -106,6 +120,7 @@ class hardware_control:
     #config flags
     active = False
     poll_rate = 1.0 / 1.
+    poll_temp = 60
     window = 60.0
     
     #Data Storage
@@ -135,6 +150,7 @@ class hardware_control:
         else:
             assert len(enc_conf) == len(self.encoder_pins), f'encoder conf mismatch'
             self.encoder_conf = enc_conf
+
     #Run / Setup
     #Setup & Shutdown
     def setup(self):
@@ -160,11 +176,15 @@ class hardware_control:
         #TODO: save calibration data
         #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
 
+        #Temp
+        self._i2c_command(_RESET)
+
 
 
     def run(self):
         loop = asyncio.get_event_loop()
         self.imu_read_task = loop.create_task(self.imu_task())
+        self.temp_task = loop.create_task(self.temp_task())
         self.print_task = loop.create_task(self.print_data())
         
         try:
@@ -188,7 +208,7 @@ class hardware_control:
         con =  await self.pi.connect()
 
         await self.setup_encoder()
-        await self.setup_echo_sensors()
+        await self.setup_echo_sensors()        
         
         #TODO: functionality
         #await self.setup_motor_control()
@@ -236,6 +256,31 @@ class hardware_control:
         mx,my,mz = imu.MagVals[0], imu.MagVals[1], imu.MagVals[2]
         dct = dict(ax=ax,ay=ay,az=az,gx=gx,gy=gy,gz=gz,mx=mx,my=my,mz=mz,time=time)
         self.record.update(dct)
+
+    #TEMP Sensors
+    async def temp_task(self):
+        if not PLOT_STREAM: print(f'starting temp task')
+        while True:
+            try:
+                await asyncio.to_thread(self._read_temp)
+                await asyncio.sleep(self.poll_temp)
+            except Exception as e:
+                if not PLOT_STREAM: print(f'temp error: {e}')
+
+    def _read_temp(self) -> None:
+
+        #signal to read
+        temp = self.smbus.read_i2c_block_data(0x40, 0xE3,2)
+        #what really happens here is that master sends a 0xE3 command (measure temperature, hold master mode) and read 2 bytes back
+        time.sleep(0.1)
+
+        # Convert the data
+        cTemp = ((temp[0] * 256 + temp[1]) * 175.72 / 65536.0) - 46.85
+        self.last['temp'] = self.temp = cTemp
+        
+        self.speed_of_sound = 20.05 * (273.16 + cTemp)**0.5
+        self.sound_conv = self.speed_of_sound / 2000000 #2x
+
 
     #Encoders
     async def setup_encoder(self):
@@ -342,6 +387,26 @@ class hardware_control:
                 await asyncio.sleep(intvl)
             except Exception as e:
                 print(e)
+
+    # @property
+    # def relative_humidity(self) -> float:
+    #     """The measured relative humidity in percent."""
+    #     self.start_measurement(HUMIDITY)
+    #     value = self._data()
+    #     self._measurement = 0
+    #     return min(100.0, value * 125.0 / 65536.0 - 6.0)                
+
+# def _crc(data: bytearray) -> int:
+#     crc = 0
+#     for byte in data:
+#         crc ^= byte
+#         for _ in range(8):
+#             if crc & 0x80:
+#                 crc <<= 1
+#                 crc ^= 0x131
+#             else:
+#                 crc <<= 1
+#     return crc    
 
 def main():
     encoder_pins = [(9,10)]
