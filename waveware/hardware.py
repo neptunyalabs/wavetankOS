@@ -215,6 +215,7 @@ class hardware_control:
         while True:
             try:
                 await asyncio.to_thread(self._read_imu)
+                await asyncio.sleep(self.poll_rate)
             except Exception as e:
                 print(f'imu error: {e}')
 
@@ -236,7 +237,7 @@ class hardware_control:
 
             #delay = max(self.poll_rate-(time.time() - start),0)
             #if delay > 0.001:
-            time.sleep(self.poll_rate)
+            #time.sleep(self.poll_rate)
 
     #Encoders
     async def setup_encoder(self):
