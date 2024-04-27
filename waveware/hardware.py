@@ -242,7 +242,7 @@ class hardware_control:
         """blocking call use in thread"""
         #if not PLOT_STREAM: print(f'first read imu')
         #while True:
-        if not PLOT_STREAM: print(f'read imu')
+        #if not PLOT_STREAM: print(f'read imu')
         start = time.time()
         self.imu.readSensor()
         #self.imu.computeOrientation()
@@ -265,7 +265,7 @@ class hardware_control:
                 if not PLOT_STREAM: print(f'temp error: {e}')
 
     def _read_temp(self) -> None:
-
+        if not PLOT_STREAM: print(f'read temp')
         #signal to read
         temp = self.smbus.read_i2c_block_data(0x40, 0xE3,2)
         #what really happens here is that master sends a 0xE3 command (measure temperature, hold master mode) and read 2 bytes back
