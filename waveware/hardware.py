@@ -267,16 +267,19 @@ class hardware_control:
     def _read_temp(self) -> None:
         if not PLOT_STREAM: print(f'read temp')
         #signal to read
-        temp = self.smbus.read_i2c_block_data(0x40, 0xE3,2)
-        #what really happens here is that master sends a 0xE3 command (measure temperature, hold master mode) and read 2 bytes back
-        time.sleep(0.1)
+        try:
+            temp = self.smbus.read_i2c_block_data(0x40, 0xE3,2)
+            #what really happens here is that master sends a 0xE3 command (measure temperature, hold master mode) and read 2 bytes back
+            time.sleep(0.1)
 
-        # Convert the data
-        cTemp = ((temp[0] * 256 + temp[1]) * 175.72 / 65536.0) - 46.85
-        self.last['temp'] = self.temp = cTemp
-        
-        self.speed_of_sound = 20.05 * (273.16 + cTemp)**0.5
-        self.sound_conv = self.speed_of_sound / 2000000 #2x
+            # Convert the data
+            cTemp = ((temp[0] * 256 + temp[1]) * 175.72 / 65536.0) - 46.85
+            self.record['temp'] = cTemp
+            
+            self.speed_of_sound = 20.05 * (273.16 + cTemp)**0.5
+            self.sound_conv = self.speed_of_sound / 2000000 #2x
+        except Exception as e:
+            print(e)
 
 
     #Encoders
