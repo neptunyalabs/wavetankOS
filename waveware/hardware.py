@@ -89,8 +89,8 @@ class hardware_control:
     echo_pins: list = None #[1,2,3]
     #potentiometer_pin: int = None
     # #i2c addr
-    # mpu_addr: hex = 0x68#0x69 #3.3v
-    # bmp_280_addr: hex = 0x40
+    mpu_addr: hex = 0x68#0x69 #3.3v
+    bmp_280_addr: hex = 0x40
     # #motor control
     # en_pin: int = None
     # a_ch: int = None
@@ -124,6 +124,7 @@ class hardware_control:
         self.cache = ExpiringDict(max_len=self.window * 2 / self.poll_rate, max_age_seconds=self.window * 2)
 
         self.last = {} #TODO: init pins as 0
+        self.record = {}
         self.echo_pins = echo_ch
         self.encoder_pins = encoder_ch
         if enc_conf is None:
@@ -245,9 +246,64 @@ class hardware_control:
             return  dt * self.sound_conv
         return 0
     
+    #MPU:
+    def setup_i2c(self):
+        self.smbus = smbus.SMBus(1)
+        self.setup_i2c_tasks()
+
+    def setup_i2c_tasks(self):
+        self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
+        self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
+        self.imu.setAccelRange("AccelRangeSelect2G")
+        self.imu.setGyroRange("GyroRangeSelect250DPS")
+
+        #TODO: save calibration data
+        #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
+
+        self.imu.begin()
+        
+    def run(self):
+        loop = asyncio.get_event_loop()
+        self.imu_read_task = loop.create_task(self.imu_task())
+        self.print_task = loop.create_task(self.print_data())
+        loop.run_forever()
+
+
+    def imu_calibrate(self):
+        self.imu.caliberateGyro()
+        self.imu.caliberateAccelerometer()
+        self.imu.caliberateMagPrecise()
+        
+
+    async def imu_task(self):
+        while True:
+            try:
+                await asyncio.to_thread(self._read_imu)
+            except Exception as e:
+                print(f'imu error: {e}')
+
+    def _read_imu(self):
+        """blocking call use in thread"""
+        
+        while True:
+            start = time.time()
+            self.imu.readSensor()
+            #self.imu.computeOrientation()
+            imu = self.imu
+
+            ax,ay,az = imu.AccelVals[0], imu.AccelVals[1], imu.AccelVals[2]
+            gx,gy,gz = imu.GyroVals[0], imu.GyroVals[1], imu.GyroVals[2]
+            mx,my,mz = imu.MagVals[0], imu.MagVals[1], imu.MagVals[2]
+            dct = dict(ax=ax,ay=ay,az=az,gx=gx,gy=gy,gz=gz,mx=mx,my=my,mz=mz,time=time)
+            self.record.update(dct)
+
+            delay = max(self.poll_rate-(time.time() - start),0)
+            if delay > 0.001:
+                time.sleep(delay)
+
     @property
     def output_data(self):
-        out = {}
+        out = self.record
         for i,echo_pin in enumerate(self.echo_pins):
             out[f'echo_{echo_pin}'] = self.read(echo_pin)
         for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
@@ -256,7 +312,7 @@ class hardware_control:
 
     async def print_data(self,intvl:int=1):
         while True:
-            print(self.output_data)
+            print({k:f'{v:3.3f}' for k,v in self.output_data.items()})
             await asyncio.sleep(intvl)
 
     
@@ -268,10 +324,8 @@ if __name__ == '__main__':
 
     hw = hardware_control(encoder_pins,echo_pins)
     hw.setup()
+    hw.run()
 
-    loop = asyncio.get_event_loop()
-    loop.create_task(hw.print_data())
-    loop.run_forever()
 
     #cal = hw.run_calibration()
     #loop.run_until_complete(cal)
@@ -353,27 +407,6 @@ if __name__ == '__main__':
 #         else:
 #             log.info("mock writing s3...")
 
-#IMU MPU9250
-# from imusensor.MPU9250 import MPU9250
-# 
-# address = 0x68
-# bus = smbus.SMBus(1)
-# imu = MPU9250.MPU9250(bus, address)
-# imu.begin()
-# # imu.caliberateGyro()
-# # imu.caliberateAccelerometer()
-# # or load your own caliberation file
-# #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
-# 
-# while True:
-# 	imu.readSensor()
-# 	imu.computeOrientation()
-# 
-# 	#print ("Accel x: {0} ; Accel y : {1} ; Accel z : {2}".format(imu.AccelVals[0], imu.AccelVals[1], imu.AccelVals[2]))
-# 	#print ("Gyro x: {0} ; Gyro y : {1} ; Gyro z : {2}".format(imu.GyroVals[0], imu.GyroVals[1], imu.GyroVals[2]))
-# 	#print ("Mag x: {0} ; Mag y : {1} ; Mag z : {2}".format(imu.MagVals[0], imu.MagVals[1], imu.MagVals[2]))
-# 	print ("roll: {0} ; pitch : {1} ; yaw : {2}".format(imu.roll, imu.pitch, imu.yaw))
-# 	time.sleep(0.1)
 
 #TEMP SENSOR
 # import board
