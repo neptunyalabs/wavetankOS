@@ -47,6 +47,7 @@ import asyncpio
 asyncpio.exceptions = True
 
 import pigpio
+import smbus
 pigpio.exceptions = True
 ON_RASPI = True
 
@@ -132,12 +133,41 @@ class hardware_control:
         else:
             assert len(enc_conf) == len(self.encoder_pins), f'encoder conf mismatch'
             self.encoder_conf = enc_conf
-        
-
+    #Run / Setup
     #Setup & Shutdown
     def setup(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._setup_hardware())
+        loop.run_until_complete(self._setup_hardware())    
+
+        self.setup_i2c()
+    
+    def setup_i2c(self):
+        self.smbus = smbus.SMBus(1)
+
+        #MPU
+        self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
+        self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
+        self.imu.setAccelRange("AccelRangeSelect2G")
+        self.imu.setGyroRange("GyroRangeSelect250DPS")
+
+        #TODO: save calibration data
+        #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
+
+        self.imu.begin()
+
+
+    def run(self):
+        loop = asyncio.get_event_loop()
+        self.imu_read_task = loop.create_task(self.imu_task())
+        self.print_task = loop.create_task(self.print_data())
+        loop.run_forever()
+
+
+    def imu_calibrate(self):
+        self.imu.caliberateGyro()
+        self.imu.caliberateAccelerometer()
+        self.imu.caliberateMagPrecise()    
+
 
     async def _setup_hardware(self):
         self.pi = asyncpio.pi()
@@ -247,34 +277,6 @@ class hardware_control:
         return 0
     
     #MPU:
-    def setup_i2c(self):
-        self.smbus = smbus.SMBus(1)
-        self.setup_i2c_tasks()
-
-    def setup_i2c_tasks(self):
-        self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
-        self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
-        self.imu.setAccelRange("AccelRangeSelect2G")
-        self.imu.setGyroRange("GyroRangeSelect250DPS")
-
-        #TODO: save calibration data
-        #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
-
-        self.imu.begin()
-        
-    def run(self):
-        loop = asyncio.get_event_loop()
-        self.imu_read_task = loop.create_task(self.imu_task())
-        self.print_task = loop.create_task(self.print_data())
-        loop.run_forever()
-
-
-    def imu_calibrate(self):
-        self.imu.caliberateGyro()
-        self.imu.caliberateAccelerometer()
-        self.imu.caliberateMagPrecise()
-        
-
     async def imu_task(self):
         while True:
             try:
