@@ -176,9 +176,6 @@ class hardware_control:
         #TODO: save calibration data
         #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
 
-        #Temp
-        self._i2c_command(_RESET)
-
 
 
     def run(self):
