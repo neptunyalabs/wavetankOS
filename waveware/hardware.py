@@ -160,14 +160,12 @@ class hardware_control:
         loop = asyncio.get_event_loop()
         self.imu_read_task = loop.create_task(self.imu_task())
         self.print_task = loop.create_task(self.print_data())
-        loop.run_forever()
-
+        
         try:
-            loop.run_until_complete(tasks)
+            loop.run_forever()
         except KeyboardInterrupt as e:
             print("Caught keyboard interrupt. Canceling tasks...")
             self.stop()
-            loop.run_forever()
         finally:
             loop.close()
 
@@ -207,6 +205,7 @@ class hardware_control:
         await self.print_task.cancel()
 
 
+    #Encoders
     async def setup_encoder(self):
         enccb = {}
         for i,(apin,bpin) in enumerate(self.encoder_pins):
