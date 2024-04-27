@@ -103,7 +103,7 @@ class hardware_control:
 
     #config flags
     active = False
-    poll_rate = 1.0 / 100.
+    poll_rate = 1.0 / 1.
     window = 60.0
     
     #Data Storage
