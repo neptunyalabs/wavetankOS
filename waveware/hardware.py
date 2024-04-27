@@ -139,14 +139,18 @@ class hardware_control:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._setup_hardware())    
 
-        #self.setup_i2c()
+        self.setup_i2c()
     
     def setup_i2c(self):
+        print(f'setup i2c')
         self.smbus = smbus.SMBus(1)
 
         #MPU
+        print(f'setup mpu9250')
         self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
+        print(f'mpu9250 begin')
         self.imu.begin()
+        print(f'mpu9250 config')
         self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
         self.imu.setAccelRange("AccelRangeSelect2G")
         self.imu.setGyroRange("GyroRangeSelect250DPS")
@@ -154,7 +158,6 @@ class hardware_control:
         #TODO: save calibration data
         #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
 
-        
 
 
     def run(self):
@@ -206,6 +209,34 @@ class hardware_control:
         self.imu_read_task.cancel()
         self.print_task.cancel()
 
+    #MPU:
+    async def imu_task(self):
+        print(f'starting imu task')
+        while True:
+            try:
+                await asyncio.to_thread(self._read_imu)
+            except Exception as e:
+                print(f'imu error: {e}')
+
+    def _read_imu(self):
+        """blocking call use in thread"""
+        print(f'first read imu')
+        while True:
+            print(f'read imu')
+            start = time.time()
+            self.imu.readSensor()
+            #self.imu.computeOrientation()
+            imu = self.imu
+
+            ax,ay,az = imu.AccelVals[0], imu.AccelVals[1], imu.AccelVals[2]
+            gx,gy,gz = imu.GyroVals[0], imu.GyroVals[1], imu.GyroVals[2]
+            mx,my,mz = imu.MagVals[0], imu.MagVals[1], imu.MagVals[2]
+            dct = dict(ax=ax,ay=ay,az=az,gx=gx,gy=gy,gz=gz,mx=mx,my=my,mz=mz,time=time)
+            self.record.update(dct)
+
+            #delay = max(self.poll_rate-(time.time() - start),0)
+            #if delay > 0.001:
+            time.sleep(self.poll_rate)
 
     #Encoders
     async def setup_encoder(self):
@@ -260,6 +291,8 @@ class hardware_control:
         self.sound_conv = self.speed_of_sound / 2000000 #2x
 
         for echo_pin in self.echo_pins:
+            print(f'starting ecno sensors on pin {echo_pin}')
+
             self.last[echo_pin] = {'dt':0,'rise':None}
 
             #TODO: loop over pins, put callbacks in dict
@@ -288,32 +321,7 @@ class hardware_control:
             return  dt * self.sound_conv
         return 0
     
-    #MPU:
-    async def imu_task(self):
-        while True:
-            try:
-                await asyncio.to_thread(self._read_imu)
-            except Exception as e:
-                print(f'imu error: {e}')
 
-    def _read_imu(self):
-        """blocking call use in thread"""
-        
-        while True:
-            start = time.time()
-            self.imu.readSensor()
-            #self.imu.computeOrientation()
-            imu = self.imu
-
-            ax,ay,az = imu.AccelVals[0], imu.AccelVals[1], imu.AccelVals[2]
-            gx,gy,gz = imu.GyroVals[0], imu.GyroVals[1], imu.GyroVals[2]
-            mx,my,mz = imu.MagVals[0], imu.MagVals[1], imu.MagVals[2]
-            dct = dict(ax=ax,ay=ay,az=az,gx=gx,gy=gy,gz=gz,mx=mx,my=my,mz=mz,time=time)
-            self.record.update(dct)
-
-            delay = max(self.poll_rate-(time.time() - start),0)
-            if delay > 0.001:
-                time.sleep(delay)
 
     @property
     def output_data(self):
