@@ -201,8 +201,8 @@ class hardware_control:
         await self.cbB.cancel()
         await self._cb_rise.cancel()
         await self._cb_fall.cancel()
-        await self.imu_read_task.cancel()
-        await self.print_task.cancel()
+        self.imu_read_task.cancel()
+        self.print_task.cancel()
 
 
     #Encoders
