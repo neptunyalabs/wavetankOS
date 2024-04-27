@@ -42,7 +42,7 @@ from collections import deque
 from expiringdict import ExpiringDict
 
 from imusensor.MPU9250 import MPU9250
-
+import sys
 import asyncpio
 asyncpio.exceptions = True
 
@@ -165,6 +165,7 @@ class hardware_control:
             loop.run_forever()
         except KeyboardInterrupt as e:
             print("Caught keyboard interrupt. Canceling tasks...")
+            sys.exit(0)
             self.stop()
         finally:
             loop.close()
