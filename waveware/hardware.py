@@ -332,7 +332,7 @@ class hardware_control:
     async def print_data(self,intvl:int=1):
         while True:
             try:
-                print({k:f'{v:3.3f}' for k,v in self.output_data.items()})
+                print({k:f'{v:3.3f}' for k,v in self.output_data.items() if isinstance(v,(float,int))})
                 await asyncio.sleep(intvl)
             except Exception as e:
                 print(e)
