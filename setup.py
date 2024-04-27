@@ -99,6 +99,7 @@ setup(
     ],
     entry_points={
         "console_scripts": ["wavedaq=waveware.fw_main:cli",
-                            "wavedash=waveware.live_dashboard:main"]
+                            "wavedash=waveware.live_dashboard:main"
+                            "hwstream=waveware.hardware:main"]
     },
 )

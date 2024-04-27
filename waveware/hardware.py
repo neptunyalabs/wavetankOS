@@ -332,14 +332,13 @@ class hardware_control:
     async def print_data(self,intvl:int=1):
         while True:
             try:
-                print({k:f'{v:3.3f}' for k,v in self.output_data.items() if isinstance(v,(float,int))})
+                #print({k:f'{v:3.3f}' for k,v in self.output_data.items() if isinstance(v,(float,int))})
+                print(' '.join([v for k,v in self.output_data.items() if isinstance(v,(float,int))] ))
                 await asyncio.sleep(intvl)
             except Exception as e:
                 print(e)
 
-    
-if __name__ == '__main__':
-
+def main():
     encoder_pins = [(9,10)]
     encoder_sens = [{'sens':0.005*4}]
     echo_pins = [18]
@@ -347,6 +346,12 @@ if __name__ == '__main__':
     hw = hardware_control(encoder_pins,echo_pins)
     hw.setup()
     hw.run()
+
+    
+if __name__ == '__main__':
+    main()
+
+
 
 
     #cal = hw.run_calibration()
