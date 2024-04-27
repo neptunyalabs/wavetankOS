@@ -139,7 +139,7 @@ class hardware_control:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._setup_hardware())    
 
-        self.setup_i2c()
+        #self.setup_i2c()
     
     def setup_i2c(self):
         self.smbus = smbus.SMBus(1)
@@ -166,8 +166,8 @@ class hardware_control:
             loop.run_forever()
         except KeyboardInterrupt as e:
             print("Caught keyboard interrupt. Canceling tasks...")
-            sys.exit(0)
             self.stop()
+            sys.exit(0)
         finally:
             loop.close()
 
