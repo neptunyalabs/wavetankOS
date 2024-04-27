@@ -335,7 +335,7 @@ class hardware_control:
         while True:
             try:
                 if PLOT_STREAM:
-                    print(' '.join([f'{v:3.4f}' for k,v in self.output_data.items() if isinstance(v,(float,int))] ))
+                    print(' '.join([f'{v:3.4f}' for k,v in self.output_data.items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
                     print({k:f'{v:3.3f}' for k,v in self.output_data.items() if isinstance(v,(float,int))})
                 
