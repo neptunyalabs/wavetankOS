@@ -162,6 +162,15 @@ class hardware_control:
         self.print_task = loop.create_task(self.print_data())
         loop.run_forever()
 
+        try:
+            loop.run_until_complete(tasks)
+        except KeyboardInterrupt as e:
+            print("Caught keyboard interrupt. Canceling tasks...")
+            self.stop()
+            loop.run_forever()
+        finally:
+            loop.close()
+
 
     def imu_calibrate(self):
         self.imu.caliberateGyro()
@@ -194,6 +203,8 @@ class hardware_control:
         await self.cbB.cancel()
         await self._cb_rise.cancel()
         await self._cb_fall.cancel()
+        await self.imu_read_task.cancel()
+        await self.print_task.cancel()
 
 
     async def setup_encoder(self):
