@@ -204,7 +204,7 @@ class stepper_control:
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)
-                print(' '.join([f'|{v:5.4f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print(' '.join([f'|{v:10.4f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
             
             await self.pi.write(self._dir,0)
@@ -222,7 +222,7 @@ class stepper_control:
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)                
-                print(' '.join([f'|{v:5.4f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print(' '.join([f'|{v:10.4f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
 
 
