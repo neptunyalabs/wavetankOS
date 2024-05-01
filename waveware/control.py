@@ -119,7 +119,7 @@ class stepper_control:
             has_file = os.path.exists(cal_file)
             if docal and not has_file:
                 self.calibrate_routine = self.calibrate()
-                task = asyncio.create_task(self.calibrate_routine())
+                task = loop.create_task(self.calibrate_routine())
                 task.add_done_callback(go,docal=False)
             else:
                 print('starting...')
