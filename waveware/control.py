@@ -204,7 +204,7 @@ class stepper_control:
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)
-                print(' '.join([f'|{v:10.4f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print(' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
             
             await self.pi.write(self._dir,0)
@@ -216,13 +216,14 @@ class stepper_control:
                 wave.append(asyncpio.pulse(0, 1<<self._step, 99000))
                 vlast = self.feedback_volts
                 await self.step_wave(wave)
+
                 inx -= 1
                 vnow = self.feedback_volts
                 dvds = (vnow-vlast)/-1
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)                
-                print(' '.join([f'|{v:10.4f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print(' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
 
 
