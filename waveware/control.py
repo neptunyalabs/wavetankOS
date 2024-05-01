@@ -229,6 +229,7 @@ class stepper_control:
             print(f'REV:|{inx}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
             step_count += 1
 
+
         #drive center
         cent_voltage = 3.3/2
         fv = self.feedback_volts
@@ -241,7 +242,7 @@ class stepper_control:
             print(dv,coef_100,inx)
             #set direction
             est_steps = dv / float(coef_100)
-            if est_steps <0:
+            if est_steps <= 0:
                 dir = -1
                 await self.pi.write(self._dir,0)
             else:
@@ -260,7 +261,7 @@ class stepper_control:
             coef_10 = (coef_10*0.9 + dvds*0.1)
             coef_100 = (coef_10*0.99 + dvds*0.01)                
             DIR = 'FWD' if dir > 0 else 'REV'
-            print(f'{DIR}|'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+            print(f'{DIR}|{fv} {dv}|'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
             step_count += 1        
 
 
@@ -272,7 +273,8 @@ class stepper_control:
             await self.pi.wave_delete(self.wave_last)
             while self.wave_last == await self.pi.wave_tx_at():
                 #print(f'waiting...')
-                pass
+                await asyncio.sleep(0)
+
         ##create the new wave
         self.wave_last = self.wave_next                    
         await self.pi.wave_add_generic(wave)
