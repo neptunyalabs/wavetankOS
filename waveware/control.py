@@ -233,7 +233,7 @@ class stepper_control:
             print(dv,coef_100,inx)
             #set direction
             est_steps = dv / float(coef_100)
-            if coef_100 <0:
+            if est_steps <0:
                 dir = -1
                 await self.pi.write(self._dir,1)
             else:
