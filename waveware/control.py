@@ -208,7 +208,7 @@ class stepper_control:
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_100*0.99 + dvds*0.01)
-                print(f'FWD:|{inx}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print(f'FWD:|{inx}{vnow}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
             
             print(f'rv: {lwr}')
@@ -230,7 +230,7 @@ class stepper_control:
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_100*0.99 + dvds*0.01)                
-                print(f'REV:|{inx}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print(f'REV:|{inx}| {vnow}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
             
 
