@@ -202,12 +202,12 @@ class stepper_control:
                 await self.step_wave(wave)
                 inx += 1
                 await self.sleep(0.0001)
-                
+
                 vnow = self.feedback_volts
                 dvds = (vnow-vlast)/dir
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
-                coef_100 = (coef_10*0.99 + dvds*0.01)
+                coef_100 = (coef_100*0.99 + dvds*0.01)
                 print(f'FWD:|{inx}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
             
@@ -229,7 +229,7 @@ class stepper_control:
                 dvds = (vnow-vlast)/(-dir)
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
-                coef_100 = (coef_10*0.99 + dvds*0.01)                
+                coef_100 = (coef_100*0.99 + dvds*0.01)                
                 print(f'REV:|{inx}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
             
