@@ -404,7 +404,7 @@ class stepper_control:
 if __name__ == '__main__':
 
     rw = regular_wave()
-    sc = stepper_control(9,6,12,wave=rw)
+    sc = stepper_control(6,12,wave=rw)
     sc.setup()
     sc.run()
 
