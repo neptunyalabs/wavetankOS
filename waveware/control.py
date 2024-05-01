@@ -187,7 +187,7 @@ class stepper_control:
         lower_lim = None
         dir = 1
         #determine local sensitivity
-        for upr,lwr in [[1,-1],[10,-10]]:#,[100,-100],[1000,-1000]]:
+        for upr,lwr in [[1,-1],[10,-10],[100,-100]]:#,[1000,-1000]]:
             
             print(f'fwd: {upr}')
             await self.pi.write(self._dir,dir)
