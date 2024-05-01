@@ -198,7 +198,7 @@ class stepper_control:
                 wave = [asyncpio.pulse(1<<self._step, 0, 1000)]
                 wave.append(asyncpio.pulse(0, 1<<self._step, 99000))
                 vlast = self.feedback_volts
-                await self.step_wave(wave,dir)
+                await self.step_wave(wave)
                 inx += 1
                 vnow = self.feedback_volts
                 dvds = vnow-vlast
@@ -216,7 +216,7 @@ class stepper_control:
                 wave = [asyncpio.pulse(1<<self._step, 0, 1000)]
                 wave.append(asyncpio.pulse(0, 1<<self._step, 99000))
                 vlast = self.feedback_volts
-                await self.step_wave(wave,dir)
+                await self.step_wave(wave)
                 inx -= 1
                 vnow = self.feedback_volts
                 dvds = (vnow-vlast)/-1
@@ -227,9 +227,9 @@ class stepper_control:
                 step_count += 1
 
 
-    async def step_wave(self,wave,dir):
+    async def step_wave(self,wave):
 
-        if hasattr(self,'wave_last'):
+        if hasattr(self,'wave_last') and self.wave_last is not None:
             await self.pi.wave_delete(self.wave_last)
             while self.wave_last == await self.pi.wave_tx_at():
                 #print(f'waiting...')
