@@ -233,12 +233,12 @@ class stepper_control:
             print(dv,coef_100,inx)
             #set direction
             est_steps = dv / float(coef_100)
-            if est_steps < 0:
+            if coef_100 <0:
                 dir = -1
                 await self.pi.write(self._dir,0)
             else:
                 dir = 1
-                await self.pi.write(self._dir,0)
+                await self.pi.write(self._dir,1)
             #define wave up for dt, then down for dt,j repeated inc
             wave = [asyncpio.pulse(1<<self._step, 0, 100)]
             wave.append(asyncpio.pulse(0, 1<<self._step, 900))
