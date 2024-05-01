@@ -169,7 +169,7 @@ class stepper_control:
         #do this before reading different pin, 
         self.smbus.write_i2c_block_data(0x48, 0x01, data)
 
-    async def calibrate(self):
+    async def calibrate(self,t_on=100,t_off=9900,inc=1):
         ##do some small jitters and estimate the local sensitivity, catch on ends
         print(f'calibrating!')
         self._st_cal = time.perf_counter()
@@ -187,7 +187,7 @@ class stepper_control:
         lower_lim = None
         dir = 1
         #determine local sensitivity
-        for upr,lwr in [[1,-1],[10,-10],[100,-100]]:#,[1000,-1000]]:
+        for upr,lwr in [[1,-1],[10,-10],[100,-100],[1000,-1000]]:
             
             print(f'fwd: {upr}')
             await self.pi.write(self._dir,dir)
@@ -195,10 +195,10 @@ class stepper_control:
                 #change dir if nessicary
 
                 #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step, 0, 100)]
-                wave.append(asyncpio.pulse(0, 1<<self._step, 9900))
+                wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
+                wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
                 vlast = self.feedback_volts
-                wave = wave * 5
+                wave = wave * inc
                 await self.step_wave(wave)
                 inx += 1
             vnow = self.feedback_volts
@@ -215,11 +215,12 @@ class stepper_control:
                 #change dir if nessicary
 
                 #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step, 0, 100)]
-                wave.append(asyncpio.pulse(0, 1<<self._step, 9900))
+                wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
+                wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
                 vlast = self.feedback_volts
                 await self.step_wave(wave)
                 inx -= 1
+
             vnow = self.feedback_volts
             dvds = (vnow-vlast)/(-dir)
             coef_2 = (coef_2 + dvds)/2
@@ -230,7 +231,13 @@ class stepper_control:
 
         #drive center
         cent_voltage = 3.3/2
-        while (dv:=abs(cent_voltage-self.feedback_volts)) > 0.01:
+        fv = self.feedback_volts
+        dv=cent_voltage-fv
+        while abs(dv) > 0.1:
+
+            fv = self.feedback_volts
+            dv=cent_voltage-fv
+
             print(dv,coef_100,inx)
             #set direction
             est_steps = dv / float(coef_100)
