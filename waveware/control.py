@@ -111,17 +111,20 @@ class stepper_control:
         self.feedback_task = loop.create_task(self.feedback(d))
         
 
-        def go(*args,**kw):
+        def go(*args,docal=True,**kw):
             nonlocal self, loop
             print('feedback OK.')
 
-            if not os.path.exists(os.path.join(control_dir,'wave_cal.json')):
+            cal_file = os.path.join(control_dir,'wave_cal.json')
+            has_file = os.path.exists(cal_file)
+            if docal and not has_file:
                 self.calibrate_routine = self.calibrate()
-                loop.run_until_complete(self.calibrate_routine)
-
-            print('starting...')
-            self.control_task = loop.create_task(self.control())
-            self.io_task = loop.create_task(self.control_io())
+                task = asyncio.create_task(self.calibrate_routine())
+                task.add_done_callback(go,docal=False)
+            else:
+                print('starting...')
+                self.control_task = loop.create_task(self.control())
+                self.io_task = loop.create_task(self.control_io())
 
         self.first_feedback.add_done_callback(go)
 
