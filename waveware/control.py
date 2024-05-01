@@ -230,9 +230,9 @@ class stepper_control:
         #drive center
         cent_voltage = 3.3/2
         while (dv:=abs(cent_voltage-self.feedback_volts)) > 0.01:
-            print(dv,dvds,inx)
+            print(dv,coef_100,inx)
             #set direction
-            est_steps = dv / dvds
+            est_steps = dv / float(coef_100)
             if est_steps < 0:
                 dir = -1
                 await self.pi.write(self._dir,0)
