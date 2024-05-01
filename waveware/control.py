@@ -187,8 +187,9 @@ class stepper_control:
         lower_lim = None
         dir = 1
         #determine local sensitivity
-        for upr,lwr in [[1,-1],[10,-10],[100,-100],[1000,-1000]]:
+        for upr,lwr in [[1,-1],[10,-10]]:#,[100,-100],[1000,-1000]]:
             
+            print(f'fwd: {upr}')
             await self.pi.write(self._dir,0)
             for step_plus in range(upr):
                 #change dir if nessicary
@@ -204,9 +205,10 @@ class stepper_control:
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)
-                print(' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print('FWD:|'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
             
+            print(f'rv: {lwr}')
             await self.pi.write(self._dir,1)
             for step_minus in range(lwr,0):
                 #change dir if nessicary
@@ -223,7 +225,7 @@ class stepper_control:
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)                
-                print(' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+                print('REV:|'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
 
 
