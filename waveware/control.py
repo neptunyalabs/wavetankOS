@@ -198,6 +198,7 @@ class stepper_control:
                 wave = [asyncpio.pulse(1<<self._step, 0, 100)]
                 wave.append(asyncpio.pulse(0, 1<<self._step, 9900))
                 vlast = self.feedback_volts
+                wave = wave * 5
                 await self.step_wave(wave)
                 inx += 1
             vnow = self.feedback_volts
