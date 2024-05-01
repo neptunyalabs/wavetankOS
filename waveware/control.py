@@ -243,19 +243,19 @@ class stepper_control:
             est_steps = dv / float(coef_100)
             if est_steps <0:
                 dir = -1
-                await self.pi.write(self._dir,1)
+                await self.pi.write(self._dir,0)
             else:
                 dir = 1
-                await self.pi.write(self._dir,0)
+                await self.pi.write(self._dir,1)
             #define wave up for dt, then down for dt,j repeated inc
-            wave = [asyncpio.pulse(1<<self._step, 0, 100)]
-            wave.append(asyncpio.pulse(0, 1<<self._step, 900))
+            wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
+            wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
             vlast = self.feedback_volts
             await self.step_wave(wave)
 
             inx -= 1
             vnow = self.feedback_volts
-            dvds = (vnow-vlast)/(-dir)
+            dvds = (vnow-vlast)/(dir)
             coef_2 = (coef_2 + dvds)/2
             coef_10 = (coef_10*0.9 + dvds*0.1)
             coef_100 = (coef_10*0.99 + dvds*0.01)                
