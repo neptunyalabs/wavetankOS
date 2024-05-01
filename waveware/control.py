@@ -122,8 +122,8 @@ class stepper_control:
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
                 print('starting...')
-                self.control_task = loop.create_task(self.control())
-                self.io_task = loop.create_task(self.control_io())
+                self.control_task = loop.create_task(self.control_steps())
+                self.io_task = loop.create_task(self.control_io_steps())
 
         self.first_feedback.add_done_callback(go)
 
@@ -309,7 +309,7 @@ class stepper_control:
         print(f'something failed!')
         await self._stop()
 
-    async def control_io(self):
+    async def control_io_steps(self):
         print(f'starting control IO...')
         self.wave_last = None
         self.wave_next = None
