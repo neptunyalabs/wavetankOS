@@ -63,7 +63,7 @@ class stepper_control:
 
     adc_addr = 0x48
 
-    def __init__(self, fb:int, dir:int,step:int,**conf):
+    def __init__(self, dir:int,step:int,**conf):
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
@@ -79,7 +79,6 @@ class stepper_control:
         #self.on_time_us = 25 #us
         self.dz_per_step = self.dz_per_rot / self.steps_per_rot
 
-        self._fb = fb
         self._dir = dir
         self._step = step
         
@@ -230,7 +229,6 @@ class stepper_control:
     async def step_wave(self,wave):
 
         if hasattr(self,'wave_last') and self.wave_last is not None:
-            print(self.wave_last)
             await self.pi.wave_delete(self.wave_last)
             while self.wave_last == await self.pi.wave_tx_at():
                 #print(f'waiting...')
