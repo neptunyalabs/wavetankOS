@@ -119,7 +119,7 @@ class stepper_control:
             has_file = os.path.exists(cal_file)
             if docal and not has_file:
                 task = loop.create_task(self.calibrate())
-                task.add_done_callback(go,docal=False)
+                task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
                 print('starting...')
                 self.control_task = loop.create_task(self.control())
