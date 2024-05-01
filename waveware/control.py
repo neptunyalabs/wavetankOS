@@ -230,11 +230,13 @@ class stepper_control:
     async def step_wave(self,wave):
 
         if hasattr(self,'wave_last') and self.wave_last is not None:
+            print(self.wave_last)
             await self.pi.wave_delete(self.wave_last)
             while self.wave_last == await self.pi.wave_tx_at():
                 #print(f'waiting...')
                 pass
-        await self.pi.wave_send_once(wave)
+        self.wave_next = wave
+        await self.pi.wave_send_once( self.wave_next)
         
         ##create the new wave
         self.wave_last = self.wave_next                    
