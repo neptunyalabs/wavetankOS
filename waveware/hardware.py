@@ -175,6 +175,32 @@ class hardware_control:
 
         #TODO: save calibration data
         #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
+        self.setup_adc()
+
+    def setup_adc(self):
+        if not PLOT_STREAM: print(f'setting up ADC')
+        data = [0x84,0x83]
+        self.smbus.write_i2c_block_data(0x48, 0x01, data)
+        time.sleep(0.1)
+
+    def _read_adc(self):
+        # ADS1115 address, 0x48(72)
+        # Read data back from 0x00(00), 2 bytes
+        # raw_adc MSB, raw_adc LSB
+        adc = {}
+        adc[0] = 
+        
+        
+    def _get_adc(self,ch:int)->float:
+        data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
+        # Convert the data
+        raw_adc = data[0] * 256 + data[1]
+
+        if raw_adc > 32767:
+                raw_adc -= 65535
+        return raw_adc / 32767.
+
+
 
 
 
