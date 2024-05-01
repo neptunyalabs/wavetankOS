@@ -118,6 +118,7 @@ class stepper_control:
             cal_file = os.path.join(control_dir,'wave_cal.json')
             has_file = os.path.exists(cal_file)
             if docal and not has_file:
+                print(f'calibrate first...')
                 task = loop.create_task(self.calibrate())
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
