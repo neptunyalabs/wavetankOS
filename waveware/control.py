@@ -230,7 +230,7 @@ class stepper_control:
         #drive center
         cent_voltage = 3.3/2
         while (dv:=abs(cent_voltage-self.feedback_volts)) > 0.01:
-            print(dv)
+            print(dv,dvds,inx)
             #set direction
             est_steps = dv / dvds
             if est_steps < 0:
