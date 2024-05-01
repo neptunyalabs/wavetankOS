@@ -235,13 +235,13 @@ class stepper_control:
             while self.wave_last == await self.pi.wave_tx_at():
                 #print(f'waiting...')
                 pass
-        self.wave_next = wave
-        await self.pi.wave_send_once( self.wave_next)
-        
         ##create the new wave
         self.wave_last = self.wave_next                    
         await self.pi.wave_add_generic(wave)
         self.wave_next = await self.pi.wave_create()
+        await self.pi.wave_send_once( self.wave_next)
+        
+
 
 
         ###Move one direction until d(feedback)/ds = 0
