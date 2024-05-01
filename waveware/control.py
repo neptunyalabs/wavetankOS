@@ -190,18 +190,18 @@ class stepper_control:
         for upr,lwr in [[1,-1],[10,-10]]:#,[100,-100],[1000,-1000]]:
             
             print(f'fwd: {upr}')
-            await self.pi.write(self._dir,0)
+            await self.pi.write(self._dir,dir)
             for step_plus in range(upr):
                 #change dir if nessicary
 
                 #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step, 0, 1000)]
-                wave.append(asyncpio.pulse(0, 1<<self._step, 99000))
+                wave = [asyncpio.pulse(1<<self._step, 0, 100)]
+                wave.append(asyncpio.pulse(0, 1<<self._step, 9900))
                 vlast = self.feedback_volts
                 await self.step_wave(wave)
                 inx += 1
                 vnow = self.feedback_volts
-                dvds = vnow-vlast
+                dvds = (vnow-vlast)/dir
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)
@@ -209,24 +209,54 @@ class stepper_control:
                 step_count += 1
             
             print(f'rv: {lwr}')
-            await self.pi.write(self._dir,1)
+            await self.pi.write(self._dir,0)
             for step_minus in range(lwr,0):
                 #change dir if nessicary
 
                 #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step, 0, 1000)]
-                wave.append(asyncpio.pulse(0, 1<<self._step, 99000))
+                wave = [asyncpio.pulse(1<<self._step, 0, 100)]
+                wave.append(asyncpio.pulse(0, 1<<self._step, 9900))
                 vlast = self.feedback_volts
                 await self.step_wave(wave)
 
                 inx -= 1
                 vnow = self.feedback_volts
-                dvds = (vnow-vlast)/-1
+                dvds = (vnow-vlast)/(-dir)
                 coef_2 = (coef_2 + dvds)/2
                 coef_10 = (coef_10*0.9 + dvds*0.1)
                 coef_100 = (coef_10*0.99 + dvds*0.01)                
                 print('REV:|'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
                 step_count += 1
+
+        #drive center
+        cent_voltage = 3.3/2
+        while (dv:=abs(cent_voltage-self.feedback_volts)) > 0.01:
+            print(dv)
+            #set direction
+            est_steps = dv / dvds
+            if est_steps < 0:
+                dir = -1
+                await self.pi.write(self._dir,0)
+            else:
+                dir = 1
+                await self.pi.write(self._dir,0)
+            #define wave up for dt, then down for dt,j repeated inc
+            wave = [asyncpio.pulse(1<<self._step, 0, 100)]
+            wave.append(asyncpio.pulse(0, 1<<self._step, 900))
+            vlast = self.feedback_volts
+            await self.step_wave(wave)
+
+            inx -= 1
+            vnow = self.feedback_volts
+            dvds = (vnow-vlast)/(-dir)
+            coef_2 = (coef_2 + dvds)/2
+            coef_10 = (coef_10*0.9 + dvds*0.1)
+            coef_100 = (coef_10*0.99 + dvds*0.01)                
+            DIR = 'FWD' if dir > 0 else 'REV'
+            print(f'{DIR}|'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
+            step_count += 1        
+
+
 
 
     async def step_wave(self,wave):
