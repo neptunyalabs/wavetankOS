@@ -227,23 +227,27 @@ class stepper_control:
         #drive center
     async def find_extends(self,t_on=100,t_off=9900,inc=1):
         print('find extents...')
+        start_coef_10 = self.coef_10
         start_dir = 1
-        while abs(self.coef_10) > 1E-5:
+        while abs(self.coef_10) > 1E-6:
             wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
             wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
             wave = wave * inc
             await self.step_wave(wave,dir=start_dir)
         print(f'found upper: {self.inx - 10}')
         self.upper_lim = self.inx - 10
+        self.coef_10 = start_coef_10
 
         start_dir = -1
-        while abs(self.coef_10) > 1E-5:
+        while abs(self.coef_10) > 1E-6:
             wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
             wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
             wave = wave * inc
-            await self.step_wave(wave,dir=start_dir)        
+            await self.step_wave(wave,dir=start_dir)
+
         print(f'found lower: {self.inx + 10}')
         self.lower_lim = self.inx + 10
+        self.coef_10 = start_coef_10
 
 
 
