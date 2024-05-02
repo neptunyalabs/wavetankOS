@@ -443,7 +443,7 @@ class stepper_control:
                             await self.pi.wave_send_once(self.wave_next)
                             await self.pi.write(self._dir,self.dir_mult)
                             
-                        
+                        print(self.feedback_volts)
                         self.fail_io = False
                         self.dt_io = time.perf_counter() - self.ct_st
 
