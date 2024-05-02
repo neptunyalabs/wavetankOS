@@ -202,7 +202,6 @@ class stepper_control:
         for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
             
             print(f'fwd: {upr}')
-            await self.pi.write(self._dir,dir)
             for step_plus in range(upr):
                 #change dir if nessicary
 
@@ -215,7 +214,6 @@ class stepper_control:
                 await self.step_wave(wave,dir=1)
             
             print(f'rv: {lwr}')
-            await self.pi.write(self._dir,0)
             for step_minus in range(lwr,0):
                 #change dir if nessicary
 
