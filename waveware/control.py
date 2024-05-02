@@ -88,6 +88,7 @@ class stepper_control:
         self.fail_io = False        
         self.pi = asyncpio.pi()
 
+        self._last_dir = 1
         self.feedback_volts = None
         self.fail_feedback = None
         self.control_io_int = int(1E6*self.control_interval)
@@ -172,21 +173,31 @@ class stepper_control:
 
     async def calibrate(self,t_on=100,t_off=9900,inc=1):
         ##do some small jitters and estimate the local sensitivity, catch on ends
+        
         print(f'calibrating!')
         self._st_cal = time.perf_counter()
         
         self.wave_last = None
         self.wave_next = None
 
-        step_count = 0
-        inx = 0
-        coef_2 = 0
-        coef_10 = 0
-        coef_100 = 0
+        self.step_count = 0
+        self.inx = 0
+        self.coef_2 = 0
+        self.coef_10 = 0
+        self.coef_100 = 0
 
-        upper_lim = None
-        lower_lim = None
-        dir = 1
+        self.upper_lim = None
+        self.center_inx = 0
+        self.lower_lim = None
+        
+
+        await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
+        await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
+        await self.find_extends(t_on=t_on,t_off=t_off,inc=inc)
+        await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
+
+    async def local_cal(self,t_on=100,t_off=9900,inc=1):
+        print('local cal...')
         #determine local sensitivity
         for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
             
@@ -200,17 +211,8 @@ class stepper_control:
                 wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
                 vlast = self.feedback_volts
                 wave = wave * inc
-                await self.step_wave(wave)
-                inx += 1
-                await self.sleep(0.0001)
 
-                vnow = self.feedback_volts
-                dvds = (vnow-vlast)/dir
-                coef_2 = (coef_2 + dvds)/2
-                coef_10 = (coef_10*0.9 + dvds*0.1)
-                coef_100 = (coef_100*0.99 + dvds*0.01)
-                print(f'FWD:|{inx}| {vnow}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
-                step_count += 1
+                await self.step_wave(wave,dir=1)
             
             print(f'rv: {lwr}')
             await self.pi.write(self._dir,0)
@@ -221,75 +223,94 @@ class stepper_control:
                 wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
                 wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
                 wave = wave * inc
-                vlast = self.feedback_volts
-                await self.step_wave(wave)
-                inx -= 1
-                await self.sleep(0.0001)
-
-                vnow = self.feedback_volts
-                dvds = (vnow-vlast)/(-dir)
-                coef_2 = (coef_2 + dvds)/2
-                coef_10 = (coef_10*0.9 + dvds*0.1)
-                coef_100 = (coef_100*0.99 + dvds*0.01)                
-                print(f'REV:|{inx}| {vnow}'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
-                step_count += 1
+                
+                await self.step_wave(wave,dir=-1)
             
-
-
         #drive center
+    async def find_extends(self,t_on=100,t_off=9900,inc=1):
+        print('find center...')
+        start_dir = 1
+        while abs(self.coef_10) > 1E-5:
+            wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
+            wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
+            wave = wave * inc
+            await self.step_wave(wave,dir=start_dir)
+        self.upper_lim = self.inx - 10
+
+        start_dir = -1
+        while abs(self.coef_10) > 1E-5:
+            wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
+            wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
+            wave = wave * inc
+            await self.step_wave(wave,dir=start_dir)        
+        self.lower_lim = self.inx + 10
+
+
+
+    async def center_head(self,t_on=100,t_off=9900,inc=1):
+        print('center head...')
         cent_voltage = 3.3/2
         fv = self.feedback_volts
         dv=cent_voltage-fv
-        while abs(dv) > 0.1:
+        while abs(dv) > 0.01:
 
             fv = self.feedback_volts
             dv=cent_voltage-fv
 
-            print(dv,coef_100,inx)
+            #print(dv,coef_100,inx)
             #set direction
-            est_steps = dv / float(coef_100)
+            est_steps = dv / float(self.coef_100)
             if est_steps <= 0:
                 dir = -1
-                await self.pi.write(self._dir,0)
             else:
                 dir = 1
-                await self.pi.write(self._dir,1)
             #define wave up for dt, then down for dt,j repeated inc
             wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
             wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
             wave = wave * inc
-            vlast = self.feedback_volts
-            await self.step_wave(wave)
 
-            inx -= 1
-            vnow = self.feedback_volts
-            dvds = (vnow-vlast)/(dir)
-            coef_2 = (coef_2 + dvds)/2
-            coef_10 = (coef_10*0.9 + dvds*0.1)
-            coef_100 = (coef_100*0.99 + dvds*0.01)                
-            DIR = 'FWD' if dir > 0 else 'REV'
-            print(f'{DIR}|{fv} {dv}|'+' '.join([f'|{v:10.7f}' for v in (dvds,coef_2,coef_10,coef_100)]))
-            step_count += 1        
+            await self.step_wave(wave,dir=dir)
+        
+        self.center_inx = self.inx
 
 
 
 
-    async def step_wave(self,wave):
+    async def step_wave(self,wave,dir=1):
+
+        if self._last_dir != dir:
+            dv = 1 if dir >= 0 else 0
+            await self.pi.write(self._dir,dv)
+            self._last_dir = dir
 
         if hasattr(self,'wave_last') and self.wave_last is not None:
             await self.pi.wave_delete(self.wave_last)
             while self.wave_last == await self.pi.wave_tx_at():
                 #print(f'waiting...')
                 await asyncio.sleep(0)
+        
+        vlast = self.feedback_volts
+        Nw = max(int(len(wave)/2),1)
 
         ##create the new wave
         self.wave_last = self.wave_next                    
         await self.pi.wave_add_generic(wave)
+
         self.wave_next = await self.pi.wave_create()
         await self.pi.wave_send_once( self.wave_next)
         
+        vnow = self.feedback_volts
 
-
+        dvds = (vnow-vlast)/((dir*Nw))
+        self.coef_2 = (self.coef_2 + dvds)/2
+        self.coef_10 = (self.coef_10*0.9 + dvds*0.1)
+        self.coef_100 = (self.coef_100*0.99 + dvds*0.01)
+        if (abs(self.inx)%10==0):
+            DIR = 'FWD' if dir > 0 else 'REV'             
+            print(f'{DIR}:|{self.inx}| {vnow}'+' '.join([f'|{v:10.7f}' for v in (dvds,self.coef_2,self.coef_10,self.coef_100)]))
+        
+        self.step_count += Nw
+        self.inx = self.inx + dir*Nw
 
         ###Move one direction until d(feedback)/ds = 0
         ###Then move the other
