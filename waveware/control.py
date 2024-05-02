@@ -124,6 +124,7 @@ class stepper_control:
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
                 print('starting...')
+                self.set_mode('steps')
                 self.control_task = loop.create_task(self.control_steps())
                 self.io_task = loop.create_task(self.control_io_steps())
 
@@ -227,7 +228,10 @@ class stepper_control:
         #drive center
     async def find_extends(self,t_on=100,t_off=9900,inc=1):
         print('find extents...')
+        start_coef_100 = self.coef_100
         start_coef_10 = self.coef_10
+        start_coef_2 = self.coef_2
+        
         start_dir = 1
         while abs(self.coef_10) > 1E-6:
             wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
@@ -236,7 +240,11 @@ class stepper_control:
             await self.step_wave(wave,dir=start_dir)
         print(f'found upper: {self.inx - 10}')
         self.upper_lim = self.inx - 10
+
+        self.coef_100 = start_coef_100
         self.coef_10 = start_coef_10
+        self.coef_2 = start_coef_2
+
 
         start_dir = -1
         while abs(self.coef_10) > 1E-6:
@@ -247,7 +255,10 @@ class stepper_control:
 
         print(f'found lower: {self.inx + 10}')
         self.lower_lim = self.inx + 10
+
+        self.coef_100 = start_coef_100
         self.coef_10 = start_coef_10
+        self.coef_2 = start_coef_2
 
 
 
@@ -343,6 +354,11 @@ class stepper_control:
                 self.fail_feedback = True
                 print(f'control error: {e}')       
 
+    #TODO: set PWM width in real application to meet v
+    #r = self.pi.(self._res) #TODO: adc
+    #TODO: determine delta between z and bounds, stop if nessicary
+    #TODO: determine delta between z / r    
+
     async def control_steps(self):
         print(f'starting control...')
         while self.is_safe():
@@ -358,13 +374,7 @@ class stepper_control:
 
 
                         z = self.z_t #always measure goal pos for error
-                        v = (self.v_t + self.v_t_1)/2 #correct integral for pwm
-
-
-                        #TODO: set PWM width in real application to meet v
-                        #r = self.pi.(self._res) #TODO: adc
-                        #TODO: determine delta between z and bounds, stop if nessicary
-                        #TODO: determine delta between z / r                    
+                        v = (self.v_t + self.v_t_1)/2 #correct integral for pwm                
 
                         if v != 0 and self.is_safe():
                             self.step_delay_us = max( int(1E6 * self.dz_per_step / abs(v)) , self.min_dt)
