@@ -305,7 +305,7 @@ class stepper_control:
         self.coef_100 = (self.coef_100*0.99 + dvds*0.01)
         if (abs(self.inx)%10==0):
             DIR = 'FWD' if dir > 0 else 'REV'             
-            print(f'{DIR}:|{self.inx}| {vnow}'+' '.join([f'|{v:10.7f}' for v in (dvds,self.coef_2,self.coef_10,self.coef_100)]))
+            print(f'{DIR}:|{self.inx:<4}| {vnow:3.5f}'+' '.join([f'|{v:10.7f}' for v in (dvds,self.coef_2,self.coef_10,self.coef_100)]))
         
         self.step_count += Nw
         self.inx = self.inx + dir*Nw
