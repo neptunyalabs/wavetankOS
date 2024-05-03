@@ -33,7 +33,8 @@ dr_inx = 860
 dr = dr_ref[dr_inx]
 
 
-drive_modes = ['steps','cal','stop']
+drive_modes = ['steps','cal','stop','stuck','vel_pwm']
+default_mode = 'steps'
 
 class regular_wave:
 
@@ -160,7 +161,7 @@ class stepper_control:
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
                 print('starting...')
-                self.set_mode('steps')
+                self.set_mode(default_mode)
                 self.control_task = loop.create_task(self.control_steps())
                 self.io_task = loop.create_task(self.control_io_steps())
 
@@ -218,13 +219,17 @@ class stepper_control:
         
         print(f'calibrating!')
         self._st_cal = time.perf_counter()
+        start_mode = self.mode_changed
+        if self.drive_mode == 'cal':
+            print(f'starting steps control io')
         
-        self.reset()
+            self.reset()
 
-        await self.local_cal(t_on=t_on,t_off=99000,inc=inc)
-        await self.center_head(t_on=t_on,t_off=99000,inc=inc)
-        await self.find_extends(t_on=t_on,t_off=99000,inc=inc)
-        await self.center_head(t_on=t_on,t_off=99000,inc=inc)       
+            await self.local_cal(t_on=t_on,t_off=99000,inc=inc)
+            await self.center_head(t_on=t_on,t_off=99000,inc=inc)
+            await self.find_extends(t_on=t_on,t_off=99000,inc=inc)
+            await self.center_head(t_on=t_on,t_off=99000,inc=inc)
+        
 
     async def local_cal(self,t_on=100,t_off=9900,inc=1):
         print('local cal...')
@@ -269,6 +274,7 @@ class stepper_control:
             wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
             wave = wave * inc
             await self.step_wave(wave)
+
         print(f'found upper: {self.inx - 10}')
         self.upper_v = self.feedback_volts
         self.upper_lim = self.inx - 10
@@ -288,9 +294,12 @@ class stepper_control:
         print(f'found lower: {self.inx + 10}')
         self.lower_lim = self.inx + 10
         self.lower_v = self.feedback_volts
+
         self.coef_100 = start_coef_100
         self.coef_10 = start_coef_10
         self.coef_2 = start_coef_2
+        
+        self.ref_dsdv = self.coef_100
 
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
@@ -323,7 +332,7 @@ class stepper_control:
 
             #print(dv,coef_100,inx)
             #set direction
-            est_steps = dv / float(self.coef_100)
+            est_steps = dv / float(self.ref_dsdv)
             if est_steps <= 0:
                 dir = -1
             else:
@@ -442,12 +451,18 @@ class stepper_control:
                     self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
                     self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
 
-                    if self.maybe_stuck:
-                        print(f'CAUTION: maybe stuck: {self.coef_2}')
+
 
                     if self.stuck:
                         print('STUCK!')
-                        await self.reverse()
+                        await self.set_mode('stuck')
+
+                    elif self.maybe_stuck:
+                        print(f'CAUTION: maybe stuck: {self.coef_2}')
+
+                    else:
+                        self.ref_dsdv = self.coef_100
+
                     #    raise Exception(f'were stuck jim!')
 
 
