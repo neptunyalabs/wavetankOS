@@ -62,7 +62,7 @@ class stepper_control:
     kzp_sup = 1.#/T
     kzi_err = 0.1
     
-    min_dt = 1
+    min_dt = 10
 
     adc_addr = 0x48
 
