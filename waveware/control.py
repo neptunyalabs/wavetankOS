@@ -127,8 +127,8 @@ class stepper_control:
         
         #offset defaults to center
         #TODO: change reference position via api
-        self.zi_0 = None
-        self.vref_0 = None
+        self.zi_0 = 0
+        self.vref_0 = 0
 
 
     async def _setup(self):
