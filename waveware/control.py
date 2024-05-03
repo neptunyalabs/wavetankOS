@@ -416,7 +416,7 @@ class stepper_control:
                     if Nw < 1:
                         continue
 
-                    self.dvds = (vnow-vlast)/((dir*Nw))
+                    self.dvds = (vnow-vlast)/((self._last_dir*Nw))
                     self.coef_2 = (self.coef_2 + self.dvds)/2
                     self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
                     self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
@@ -430,7 +430,7 @@ class stepper_control:
 
             except Exception as e:
                 self.fail_feedback = True
-                print(f'control error: {e}')
+                print(f'feedback error: {e}')
                 traceback.print_stack()
 
     #TODO: set PWM width in real application to meet v
