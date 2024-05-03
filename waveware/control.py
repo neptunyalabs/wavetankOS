@@ -218,7 +218,7 @@ class stepper_control:
         self.reset()
 
         await self.local_cal(t_on=t_on,t_off=9900,inc=inc)
-        await self.center_head(t_on=t_on,t_off=9900,inc=inc)
+        #await self.center_head(t_on=t_on,t_off=9900,inc=inc)
         await self.find_extends(t_on=t_on,t_off=9900,inc=inc)
         await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
 
