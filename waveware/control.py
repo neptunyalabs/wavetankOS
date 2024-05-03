@@ -27,7 +27,7 @@ def config_bit(pinx,fvinx=4):
     vr = fv_ref[fvinx]
     return int(f'1{dv}{vr}0',2)
 
-wait_factor = 4
+wait_factor = 2
 fv_inx = 4
 dr_inx = 860
 dr = dr_ref[dr_inx]
