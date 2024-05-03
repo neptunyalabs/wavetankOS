@@ -365,8 +365,11 @@ class stepper_control:
         self.wave_next = await self.pi.wave_create()
         await self.pi.wave_send_once( self.wave_next)
 
-        if self.wave_last is not None:
-            while self.wave_last == await self.pi.wave_tx_at():
+        
+        if self.wave_last is not None and cur_mode is not None:
+            cur_mode = await self.pi.wave_tx_at()
+            while self.wave_last == await cur_mode:
+                cur_mode = await self.pi.wave_tx_at()
                 #print(f'waiting...')
                 await asyncio.sleep(0)
             await self.pi.wave_delete(self.wave_last)
@@ -456,7 +459,6 @@ class stepper_control:
                     if self.stuck:
                         print('STUCK!')
                         await self.set_mode('stuck')
-                        await self.reverse()
 
                     elif self.maybe_stuck:
                         print(f'CAUTION: maybe stuck: {self.coef_2}')
