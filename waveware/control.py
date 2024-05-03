@@ -70,23 +70,6 @@ class stepper_control:
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
-        
-        self.wave_last = None
-        self.wave_next = None
-
-        self.step_count = 0
-        self.inx = 0
-        self.vnow = 0
-        self.dvds = 0
-        self.coef_2 = 0
-        self.coef_10 = 0
-        self.coef_100 = 0
-
-        self.upper_lim = None
-        self.center_inx = 0
-        self.upper_v = None
-        self.lower_v = None        
-        self.lower_lim = None
 
         #setup drive mode first
         self.drive_mode = 'cal'
@@ -103,7 +86,29 @@ class stepper_control:
         self._step = step
         self._fb_an_pin = fb_an_pin
         
-        #make it so
+        self.reset()
+
+        self.setup_i2c()
+             
+    def reset(self):
+        self.wave_last = None
+        self.wave_next = None
+
+        self.dz_per_step = self.dz_per_rot / self.steps_per_rot
+        self.step_count = 0
+        self.inx = 0
+        self.vnow = 0
+        self.dvds = 0
+        self.coef_2 = 0
+        self.coef_10 = 0
+        self.coef_100 = 0
+
+        self.upper_lim = None
+        self.center_inx = 0
+        self.upper_v = None
+        self.lower_v = None        
+        self.lower_lim = None
+
         self.fail_control = False
         self.fail_io = False        
         self.pi = asyncpio.pi()
@@ -111,10 +116,8 @@ class stepper_control:
         self._last_dir = 1
         self.feedback_volts = None
         self.fail_feedback = None
-        self.control_io_int = int(1E6*self.control_interval)
+        self.control_io_int = int(1E6*self.control_interval)             
 
-        self.setup_i2c()
-             
     async def _setup(self):
         await self.pi.connect()
         await self.pi.set_mode(self._dir,asyncpio.OUTPUT)
@@ -199,22 +202,7 @@ class stepper_control:
         print(f'calibrating!')
         self._st_cal = time.perf_counter()
         
-        self.wave_last = None
-        self.wave_next = None
-
-        self.step_count = 0
-        self.inx = 0
-        self.coef_2 = 0
-        self.coef_10 = 0
-        self.coef_100 = 0
-
-        self.upper_lim = None
-        self.center_inx = 0
-        self.upper_v = None
-        self.lower_v = None        
-        self.lower_lim = None
-
-        
+        self.reset()
 
         await self.local_cal(t_on=t_on,t_off=99000,inc=inc)
         await self.center_head(t_on=t_on,t_off=99000,inc=inc)
