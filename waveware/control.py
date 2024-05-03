@@ -421,11 +421,12 @@ class stepper_control:
                     self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
                     self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
 
-                    if self.maybe_stuck and self.is_safe():
+                    if self.maybe_stuck:
                         print(f'CAUTION: maybe stuck: {self.coef_2}')
 
                     if self.stuck:
-                        raise Exception(f'were stuck jim!')
+                        print('STUCK!')
+                    #    raise Exception(f'were stuck jim!')
 
 
             except Exception as e:
