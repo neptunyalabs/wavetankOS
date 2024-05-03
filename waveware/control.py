@@ -104,24 +104,24 @@ class stepper_control:
         self.coef_10 = 0
         self.coef_100 = 0
 
-        self.upper_lim = None
+        self.upper_lim = 0
         self.center_inx = 0
-        self.upper_v = None
-        self.lower_v = None        
-        self.lower_lim = None
+        self.upper_v = 0
+        self.lower_v = 0        
+        self.lower_lim = 0
 
         self.fail_control = False
         self.fail_io = False
 
         self._last_dir = 1
-        self.feedback_volts = None
+        self.feedback_volts = 0
         self.fail_feedback = None
         self.control_io_int = int(1E6*self.control_interval)   
 
-        self.di_dz = None
-        self.dvref_range = None
+        self.di_dz = 0
+        self.dvref_range = 0
         #calculated z per 
-        self.dz_range = None
+        self.dz_range = 0
         #how much z changes per vref
         self.dzdvref = 0
         
