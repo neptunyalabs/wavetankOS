@@ -71,6 +71,21 @@ class stepper_control:
         
         for direction and step control signals."""
         
+        self.wave_last = None
+        self.wave_next = None
+
+        self.step_count = 0
+        self.inx = 0
+        self.coef_2 = 0
+        self.coef_10 = 0
+        self.coef_100 = 0
+
+        self.upper_lim = None
+        self.center_inx = 0
+        self.upper_v = None
+        self.lower_v = None        
+        self.lower_lim = None
+
         #setup drive mode first
         self.drive_mode = 'cal'
         self.mode_changed = asyncio.Future()
