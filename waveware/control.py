@@ -99,10 +99,10 @@ class stepper_control:
         self.step_count = 0
         self.inx = 0
         self.vnow = 0
-        self.dvds = -0.1
-        self.coef_2 = -0.1
-        self.coef_10 = -0.1
-        self.coef_100 = -0.1
+        self.dvds = -1E-12
+        self.coef_2 = -1E-12
+        self.coef_10 = -1E-12
+        self.coef_100 = -1E-12
 
         self.upper_lim = 0
         self.center_inx = 0
