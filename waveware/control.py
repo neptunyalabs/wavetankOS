@@ -313,7 +313,7 @@ class stepper_control:
         while abs(dv) > 0.01:
 
             fv = self.feedback_volts
-            dv=self.vref_0-fv
+            dv=fv-self.vref_0
 
             #print(dv,coef_100,inx)
             #set direction
