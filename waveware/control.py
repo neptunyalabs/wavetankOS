@@ -368,13 +368,15 @@ class stepper_control:
         Nw = max(int(len(wave)/2),1)
         
         busy = await self.pi.wave_tx_busy()
-        if self.wave_last is not None and busy:
-            cur_mode = await self.pi.wave_tx_at()
-            while self.wave_last == cur_mode:
-                cur_mode = await self.pi.wave_tx_at()
-                #print(f'waiting...')
-                await asyncio.sleep(0)
-            await self.pi.wave_delete(self.wave_last)
+        if self.wave_last is not None and busy==1:
+            cur_mode = self.pi.wave_tx_at()
+            if cur_mode is not None:
+                cur_mode = await cur_mode
+                while self.wave_last == cur_mode:
+                    cur_mode = await self.pi.wave_tx_at()
+                    #print(f'waiting...')
+                    await asyncio.sleep(0)
+                await self.pi.wave_delete(self.wave_last)
         
         
 
