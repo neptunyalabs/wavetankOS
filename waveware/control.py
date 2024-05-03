@@ -214,7 +214,7 @@ class stepper_control:
         #do this before reading different pin, 
         self.smbus.write_i2c_block_data(0x48, 0x01, data)
 
-    async def calibrate(self,t_on=100,t_off=9900,inc=1):
+    async def calibrate(self,t_on=100,t_off=99000,inc=1):
         ##do some small jitters and estimate the local sensitivity, catch on ends
         
         print(f'calibrating!')
@@ -225,10 +225,10 @@ class stepper_control:
         
             self.reset()
 
-            await self.local_cal(t_on=t_on,t_off=99000,inc=inc)
-            await self.center_head(t_on=t_on,t_off=99000,inc=inc)
-            await self.find_extends(t_on=t_on,t_off=99000,inc=inc)
-            await self.center_head(t_on=t_on,t_off=99000,inc=inc)
+            await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
+            await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
+            await self.find_extends(t_on=t_on,t_off=t_off,inc=inc)
+            await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
         
 
     async def local_cal(self,t_on=100,t_off=9900,inc=1):
@@ -366,10 +366,10 @@ class stepper_control:
         await self.pi.wave_send_once( self.wave_next)
 
         
-        if self.wave_last is not None:
-            cur_mode = await self.pi.wave_tx_at()
-            while self.wave_last == cur_mode:
-                cur_mode = await self.pi.wave_tx_at()
+        busy = await self.pi.wave_tx_busy()
+        if self.wave_last is not None and busy:
+            
+            while self.wave_last == await self.pi.wave_tx_at():
                 #print(f'waiting...')
                 await asyncio.sleep(0)
             await self.pi.wave_delete(self.wave_last)
