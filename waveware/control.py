@@ -100,7 +100,8 @@ class stepper_control:
         self.inx = 0
         self.vnow = 0
         self.dvds = -1E-12
-        self.coef_2 = -1E-12
+        self.coef_2 = 
+        -1E-12
         self.coef_10 = -1E-12
         self.coef_100 = -1E-12
 
@@ -128,7 +129,7 @@ class stepper_control:
         #offset defaults to center
         #TODO: change reference position via api
         self.zi_0 = 0
-        self.vref_0 = 0
+        self.vref_0 = 3.3/2
 
 
     async def _setup(self):
