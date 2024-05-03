@@ -116,7 +116,20 @@ class stepper_control:
         self._last_dir = 1
         self.feedback_volts = None
         self.fail_feedback = None
-        self.control_io_int = int(1E6*self.control_interval)             
+        self.control_io_int = int(1E6*self.control_interval)   
+
+        self.di_dz = None
+        self.dvref_range = None
+        #calculated z per 
+        self.dz_range = None
+        #how much z changes per vref
+        self.dzdvref = 0
+        
+        #offset defaults to center
+        #TODO: change reference position via api
+        self.zi_0 = None
+        self.vref_0 = None
+
 
     async def _setup(self):
         await self.pi.connect()
