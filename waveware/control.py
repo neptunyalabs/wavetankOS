@@ -76,6 +76,8 @@ class stepper_control:
 
         self.step_count = 0
         self.inx = 0
+        self.vnow = 0
+        self.dvds = 0
         self.coef_2 = 0
         self.coef_10 = 0
         self.coef_100 = 0
