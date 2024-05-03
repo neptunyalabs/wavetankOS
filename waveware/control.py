@@ -456,14 +456,13 @@ class stepper_control:
                     if self.stuck:
                         print('STUCK!')
                         await self.set_mode('stuck')
+                        await self.reverse()
 
                     elif self.maybe_stuck:
                         print(f'CAUTION: maybe stuck: {self.coef_2}')
 
                     else:
                         self.ref_dsdv = self.coef_100
-
-                    #    raise Exception(f'were stuck jim!')
 
 
             except Exception as e:
