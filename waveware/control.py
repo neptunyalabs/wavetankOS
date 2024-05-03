@@ -538,7 +538,7 @@ class stepper_control:
 
                         #update metrics
                         self.inx += inc * ( 1 if self.dir_mult else -1 )
-                        self.steps += inc
+                        self.step_count += inc
                             
                         #print(self.feedback_volts)
                         self.fail_io = False
