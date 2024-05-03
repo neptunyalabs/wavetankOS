@@ -381,6 +381,14 @@ class stepper_control:
             return True
         return False
 
+    async def reverse(self):
+        if self._last_dir == 1:
+            await self.pi.write(self._dir,0)
+            self._last_dir = -1
+        else:
+            await self.pi.write(self._dir,1)
+            self._last_dir = 1
+
     #TODO: add feedback callback interrupt
     async def feedback(self,feedback_futr=None):
         self.dvds = 0
@@ -429,6 +437,7 @@ class stepper_control:
 
                     if self.stuck:
                         print('STUCK!')
+                        await self.reverse()
                     #    raise Exception(f'were stuck jim!')
 
 
