@@ -179,6 +179,7 @@ class stepper_control:
         loop.run_until_complete(self._stop())        
 
     async def _stop(self):
+        print(f'stopping!')
         await self.pi.wave_tx_stop()
         await self.pi.wave_clear()
         await self.pi.stop()
