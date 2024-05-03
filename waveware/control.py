@@ -383,7 +383,7 @@ class stepper_control:
 
     #TODO: add feedback callback interrupt
     async def feedback(self,feedback_futr=None):
-        self.dvds = None
+        self.dvds = 0
         VR = volt_ref[fv_inx]
         while True:
             vlast = vnow = self.feedback_volts #prep vars
@@ -409,12 +409,13 @@ class stepper_control:
                         feedback_futr = None #twas, no more 
 
                     
-                    Nw = int(self.inx - st_inx)
+                    Nw = abs(int(self.inx - st_inx))
 
                     #ok!
                     self.fail_feedback = False                    
 
                     if Nw < 1:
+                        print(f'skip N steps: {Nw}')
                         continue
 
                     self.dvds = (vnow-vlast)/((self._last_dir*Nw))
