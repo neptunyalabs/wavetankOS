@@ -37,7 +37,7 @@ drive_modes = ['steps','cal','stop']
 
 class regular_wave:
 
-    def __init__(self,Hs=0.1,Ts=1) -> None:
+    def __init__(self,Hs=1,Ts=3) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()
@@ -58,8 +58,11 @@ class stepper_control:
     dz_per_rot = 0.01
     wave: regular_wave
     control_interval: float = 1./1000 #valid on linux, windows is 15ms
+
+    kzp_sup = 1#/T
+    kzi_err = 0.1
     
-    min_dt = 3
+    min_dt = 5
 
     adc_addr = 0x48
 
@@ -151,7 +154,8 @@ class stepper_control:
     def is_safe(self):
         return all([not self.fail_control, 
                     not self.fail_io, 
-                    not self.fail_feedback])
+                    not self.fail_feedback,
+                    not self.stuck])
     
     def set_mode(self,new_mode):
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
@@ -189,12 +193,15 @@ class stepper_control:
 
         self.upper_lim = None
         self.center_inx = 0
+        self.upper_v = None
+        self.lower_v = None        
         self.lower_lim = None
+
         
 
-        await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
-        await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
-        await self.find_extends(t_on=t_on,t_off=t_off,inc=inc)
+        await self.local_cal(t_on=t_on,t_off=99000,inc=inc)
+        await self.center_head(t_on=t_on,t_off=99000,inc=inc)
+        await self.find_extends(t_on=t_on,t_off=99000,inc=inc)
         await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
 
     async def local_cal(self,t_on=100,t_off=9900,inc=1):
@@ -239,6 +246,7 @@ class stepper_control:
             wave = wave * inc
             await self.step_wave(wave,dir=start_dir)
         print(f'found upper: {self.inx - 10}')
+        self.upper_v = self.feedback_volts
         self.upper_lim = self.inx - 10
 
         self.coef_100 = start_coef_100
@@ -255,22 +263,39 @@ class stepper_control:
 
         print(f'found lower: {self.inx + 10}')
         self.lower_lim = self.inx + 10
-
+        self.lower_v = self.feedback_volts
         self.coef_100 = start_coef_100
         self.coef_10 = start_coef_10
         self.coef_2 = start_coef_2
 
+        #TODO: write calibration file
+        #TODO: write the z-index and prep for z offset
+        self.di_dz = self.upper_lim - self.lower_lim + 20
+        self.dvref_range = self.upper_v - self.lower_v
+        #calculated z per 
+        self.dz_range = self.dz_per_step * self.di_dz
+        #how much z changes per vref
+        self.dzdvref = self.dz_range/self.dvref_range  
+        
+        #offset defaults to center
+        #TODO: change reference position via api
+        self.zi_0 = (self.upper_lim+self.lower_lim)/2 #center
+        self.vref_0 = (self.upper_v+self.lower_v)/2 #center
+
+
+
+
+
 
 
     async def center_head(self,t_on=100,t_off=9900,inc=1):
-        print('center head...')
-        cent_voltage = 3.3/2
+        print('center head...') 
         fv = self.feedback_volts
-        dv=cent_voltage-fv
+        dv=self.vref_0-fv
         while abs(dv) > 0.01:
 
             fv = self.feedback_volts
-            dv=cent_voltage-fv
+            dv=self.vref_0-fv
 
             #print(dv,coef_100,inx)
             #set direction
@@ -286,6 +311,7 @@ class stepper_control:
 
             await self.step_wave(wave,dir=dir)
         
+        self.center_v = self.feedback_volts
         self.center_inx = self.inx
 
 
@@ -304,7 +330,6 @@ class stepper_control:
                 #print(f'waiting...')
                 await asyncio.sleep(0)
         
-        vlast = self.feedback_volts
         Nw = max(int(len(wave)/2),1)
 
         ##create the new wave
@@ -315,14 +340,9 @@ class stepper_control:
         await self.pi.wave_send_once( self.wave_next)
         
         vnow = self.feedback_volts
-
-        dvds = (vnow-vlast)/((dir*Nw))
-        self.coef_2 = (self.coef_2 + dvds)/2
-        self.coef_10 = (self.coef_10*0.9 + dvds*0.1)
-        self.coef_100 = (self.coef_100*0.99 + dvds*0.01)
         if (abs(self.inx)%10==0):
             DIR = 'FWD' if dir > 0 else 'REV'             
-            print(f'{DIR}:|{self.inx:<4}| {vnow:3.5f}'+' '.join([f'|{v:10.7f}' for v in (dvds,self.coef_2,self.coef_10,self.coef_100)]))
+            print(f'{DIR}:|{self.inx:<4}| {vnow:3.5f}'+' '.join([f'|{v:10.7f}' for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100)]))
         
         self.step_count += Nw
         self.inx = self.inx + dir*Nw
@@ -330,25 +350,65 @@ class stepper_control:
         ###Move one direction until d(feedback)/ds = 0
         ###Then move the other
 
+    @property
+    def maybe_stuck(self):
+        if abs(self.coef_2) < 1E-5 and self.step_count > 100:
+            return True
+        return False
+    
+    @property
+    def stuck(self):
+        if abs(self.coef_10) < 1E-6 and self.step_count > 100:
+            return True
+        return False
 
+    #TODO: add feedback callback interrupt
     async def feedback(self,feedback_futr=None):
+        self.dvds = None
+        VR = volt_ref[fv_inx]
         while True:
+            vlast = vnow = self.feedback_volts #prep vars
             try:
                 while True:
+                    vlast = vnow
+                    st_inx = self.inx
                     wait = wait_factor/float(dr_inx)
                     await asyncio.sleep(wait)
+
                     data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
                     
                     # Convert the data
                     raw_adc = data[0] * 256 + data[1]
                     if raw_adc > 32767:
                         raw_adc -= 65535
-                    self.feedback_volts = (raw_adc/32767)*volt_ref[fv_inx]
-                    self.fail_feedback = False
+                    self.feedback_volts = vnow = (raw_adc/32767)*VR
+                    self.z_cur = (self.vnow)*self.dzdvref
+                    
 
                     if feedback_futr is not None:
                         feedback_futr.set_result(True)
                         feedback_futr = None #twas, no more 
+
+                    
+                    Nw = int(self.inx - st_inx)
+
+                    #ok!
+                    self.fail_feedback = False                    
+
+                    if Nw < 1:
+                        continue
+
+                    self.dvds = (vnow-vlast)/((dir*Nw))
+                    self.coef_2 = (self.coef_2 + self.dvds)/2
+                    self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
+                    self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
+
+                    if self.maybe_stuck:
+                        print(f'CAUTION: maybe stuck: {self.coef_2}')
+
+                    if self.stuck:
+                        raise Exception(f'were stuck jim!')
+
 
             except Exception as e:
                 self.fail_feedback = True
@@ -357,13 +417,15 @@ class stepper_control:
     #TODO: set PWM width in real application to meet v
     #r = self.pi.(self._res) #TODO: adc
     #TODO: determine delta between z and bounds, stop if nessicary
-    #TODO: determine delta between z / r    
+    #TODO: determine delta between z / v
+    #TODO: combine with step_wave code   
 
     async def control_steps(self):
         print(f'starting control...')
         while self.is_safe():
             start_mode = self.mode_changed
             if self.drive_mode == 'steps':
+                print(f'starting steps control io')
                 try: #avoid loop overhead in subloop
                     while self.is_safe() and start_mode is self.mode_changed:
                         t = time.perf_counter() - self.start
@@ -371,15 +433,25 @@ class stepper_control:
                         self.z_t_1 = z = self.wave.z_pos(t+self.control_interval)
                         self.v_t = v= self.wave.z_vel(t)
                         self.v_t_1 = v= self.wave.z_vel(t+self.control_interval)
+                        
+                        #avg velocity
+                        v = (self.v_t + self.v_t_1)/2
 
-
-                        z = self.z_t #always measure goal pos for error
-                        v = (self.v_t + self.v_t_1)/2 #correct integral for pwm                
-
+                        #always measure goal pos for error
+                        
+                        z = self.z_t
+                        z_err = z - self.z_cur
+                        z_err_cuml = z_err*self.kzi_err + z_err_cuml*(1-self.kzi_err)
+                        
+                        #correct integral for pwm ala velocity
+                        vsup = z_err * self.kzp_sup / self.wave.Ts
+                        print(t,z,z_err,vsup,v,vsup+v)
+                        
+                        
                         if v != 0 and self.is_safe():
                             self.step_delay_us = max( int(1E6 * self.dz_per_step / abs(v)) , self.min_dt)
                         else:
-                            self.step_delay_us = int(1E6)
+                            self.step_delay_us = int(1E6) #no instruction (no v)
 
                         self.dir_mult = 1 if v >= 0 else 0
                         
@@ -401,10 +473,12 @@ class stepper_control:
         self.wave_next = None
         itick = 0
         printerval = 1000
-        self.dt_io = 0.005 #u-seconds typical
+        self.dt_io = 0.005 #mseconds typical async
         while self.is_safe():
             start_mode = self.mode_changed
             if self.drive_mode == 'steps':
+                print(f'starting steps control io')
+                self._zi_inx_start = self.inx
                 try: #avoid loop overhead in subloop
                     while self.is_safe() and start_mode is self.mode_changed:
                         itick += 1
@@ -413,9 +487,10 @@ class stepper_control:
                         #dir set
                         #determine timing to meet step goal
                         dt = max(self.step_delay_us,self.min_dt) #div int by 2
-                        
+                        max_step = (self.control_interval/self.dt_io)
+
                         #increment pulses to handle async gap
-                        inc = min(max(int((1E6*self.dt_io)/self.step_delay_us),1),100)
+                        inc = min(max(int((1E6*self.dt_io)/self.step_delay_us),1),)
 
                         #define wave up for dt, then down for dt,j repeated inc
                         wave = [asyncpio.pulse(1<<self._step, 0, dt)]
@@ -442,8 +517,12 @@ class stepper_control:
                             #delete last
                             await self.pi.wave_send_once(self.wave_next)
                             await self.pi.write(self._dir,self.dir_mult)
+
+                        #update metrics
+                        self.inx += inc * ( 1 if self.dir_mult else -1 )
+                        self.steps += inc
                             
-                        print(self.feedback_volts)
+                        #print(self.feedback_volts)
                         self.fail_io = False
                         self.dt_io = time.perf_counter() - self.ct_st
 
