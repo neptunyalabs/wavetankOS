@@ -86,6 +86,7 @@ class stepper_control:
         self._step = step
         self._fb_an_pin = fb_an_pin
         
+        self.pi = asyncpio.pi() #a lifetime subsription
         self.reset()
 
         self.setup_i2c()
@@ -110,8 +111,7 @@ class stepper_control:
         self.lower_lim = None
 
         self.fail_control = False
-        self.fail_io = False        
-        self.pi = asyncpio.pi()
+        self.fail_io = False
 
         self._last_dir = 1
         self.feedback_volts = None
