@@ -196,6 +196,9 @@ class stepper_control:
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
             print(f'same old drive mode: {new_mode}')
+            return
+        else:
+            print(f'new mode: {new_mode}')
         
         self.drive_mode = new_mode
         if hasattr(self,'mode_changed'):
