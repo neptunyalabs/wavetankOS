@@ -27,7 +27,7 @@ def config_bit(pinx,fvinx=4):
     vr = fv_ref[fvinx]
     return int(f'1{dv}{vr}0',2)
 
-wait_factor = 2
+wait_factor = 3
 fv_inx = 4
 dr_inx = 860
 dr = dr_ref[dr_inx]
@@ -221,7 +221,7 @@ class stepper_control:
         await self.local_cal(t_on=t_on,t_off=99000,inc=inc)
         await self.center_head(t_on=t_on,t_off=99000,inc=inc)
         await self.find_extends(t_on=t_on,t_off=99000,inc=inc)
-        await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
+        await self.center_head(t_on=t_on,t_off=99000,inc=inc)       
 
     async def local_cal(self,t_on=100,t_off=9900,inc=1):
         print('local cal...')
@@ -229,6 +229,7 @@ class stepper_control:
         for upr,lwr in [[1,-1],[10,-10],[100,-100],[1000,-1000]]:
             
             print(f'fwd: {upr}')
+            self._last_dir = 1
             for step_plus in range(upr):
                 #change dir if nessicary
 
@@ -238,9 +239,10 @@ class stepper_control:
                 vlast = self.feedback_volts
                 wave = wave * inc
 
-                await self.step_wave(wave,dir=1)
+                await self.step_wave(wave)
             
             print(f'rv: {lwr}')
+            self._last_dir = -1
             for step_minus in range(lwr,0):
                 #change dir if nessicary
 
@@ -249,7 +251,7 @@ class stepper_control:
                 wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
                 wave = wave * inc
                 
-                await self.step_wave(wave,dir=-1)
+                await self.step_wave(wave)
             
         #drive center
     async def find_extends(self,t_on=100,t_off=9900,inc=1):
@@ -258,12 +260,12 @@ class stepper_control:
         start_coef_10 = self.coef_10
         start_coef_2 = self.coef_2
         
-        start_dir = 1
+        self._last_dir = 1
         while abs(self.coef_10) > 1E-6:
             wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
             wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
             wave = wave * inc
-            await self.step_wave(wave,dir=start_dir)
+            await self.step_wave(wave)
         print(f'found upper: {self.inx - 10}')
         self.upper_v = self.feedback_volts
         self.upper_lim = self.inx - 10
@@ -273,12 +275,12 @@ class stepper_control:
         self.coef_2 = start_coef_2
 
 
-        start_dir = -1
+        self._last_dir = -1
         while abs(self.coef_10) > 1E-6:
             wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
             wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
             wave = wave * inc
-            await self.step_wave(wave,dir=start_dir)
+            await self.step_wave(wave)
 
         print(f'found lower: {self.inx + 10}')
         self.lower_lim = self.inx + 10
@@ -336,7 +338,9 @@ class stepper_control:
 
 
 
-    async def step_wave(self,wave,dir=1):
+    async def step_wave(self,wave,dir=None):
+        if dir is None:
+            dir = self._last_dir
 
         if self._last_dir != dir:
             dv = 1 if dir >= 0 else 0
