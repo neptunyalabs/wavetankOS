@@ -366,9 +366,9 @@ class stepper_control:
         await self.pi.wave_send_once( self.wave_next)
 
         
-        if self.wave_last is not None and cur_mode is not None:
+        if self.wave_last is not None:
             cur_mode = await self.pi.wave_tx_at()
-            while self.wave_last == await cur_mode:
+            while self.wave_last == cur_mode:
                 cur_mode = await self.pi.wave_tx_at()
                 #print(f'waiting...')
                 await asyncio.sleep(0)
