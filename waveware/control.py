@@ -416,6 +416,7 @@ class stepper_control:
 
                     if Nw < 1:
                         print(f'skip N steps: {Nw}')
+                        await asyncio.sleep(wait)
                         continue
 
                     self.dvds = (vnow-vlast)/((self._last_dir*Nw))
