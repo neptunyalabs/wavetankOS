@@ -382,6 +382,7 @@ class stepper_control:
         return False
 
     async def reverse(self):
+        print('reverse!!')
         if self._last_dir == 1:
             await self.pi.write(self._dir,0)
             self._last_dir = -1
