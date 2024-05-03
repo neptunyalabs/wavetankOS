@@ -350,20 +350,22 @@ class stepper_control:
             await self.pi.write(self._dir,dv)
             self._last_dir = dir
 
-        if hasattr(self,'wave_last') and self.wave_last is not None:
-            await self.pi.wave_delete(self.wave_last)
-            while self.wave_last == await self.pi.wave_tx_at():
-                #print(f'waiting...')
-                await asyncio.sleep(0)
-        
-        Nw = max(int(len(wave)/2),1)
-
-        ##create the new wave
-        self.wave_last = self.wave_next                    
+        self.wave_last = self.wave_next      
         await self.pi.wave_add_generic(wave)
 
         self.wave_next = await self.pi.wave_create()
         await self.pi.wave_send_once( self.wave_next)
+
+        if self.wave_last is not None:
+            while self.wave_last == await self.pi.wave_tx_at():
+                #print(f'waiting...')
+                await asyncio.sleep(0)
+            await self.pi.wave_delete(self.wave_last)
+        
+        Nw = max(int(len(wave)/2),1)
+
+        ##create the new wave
+
         
         vnow = self.feedback_volts
         if (abs(self.inx)%10==0):
