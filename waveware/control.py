@@ -217,15 +217,15 @@ class stepper_control:
         
         self.reset()
 
-        await self.local_cal(t_on=t_on,t_off=9900,inc=inc)
-        await self.center_head(t_on=t_on,t_off=9900,inc=inc)
-        await self.find_extends(t_on=t_on,t_off=9900,inc=inc)
+        await self.local_cal(t_on=t_on,t_off=99000,inc=inc)
+        await self.center_head(t_on=t_on,t_off=99000,inc=inc)
+        await self.find_extends(t_on=t_on,t_off=99000,inc=inc)
         await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
 
     async def local_cal(self,t_on=100,t_off=9900,inc=1):
         print('local cal...')
         #determine local sensitivity
-        for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
+        for upr,lwr in [[1,-1],[10,-10],[100,-100],[1000,-1000]]:
             
             print(f'fwd: {upr}')
             for step_plus in range(upr):
