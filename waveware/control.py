@@ -62,7 +62,7 @@ class stepper_control:
     kzp_sup = 1.#/T
     kzi_err = 0.1
     
-    min_dt = 10
+    min_dt = 100
 
     adc_addr = 0x48
 
@@ -512,7 +512,7 @@ class stepper_control:
         self.wave_last = None
         self.wave_next = None
         itick = 0
-        printerval = 1000
+        printerval = 100
         self.dt_io = 0.005 #mseconds typical async
         while self.is_safe():
             start_mode = self.mode_changed
@@ -535,30 +535,32 @@ class stepper_control:
                         wave.append(asyncpio.pulse(0, 1<<self._step, dt))
                         wave = wave*inc
 
-                        ##create the new wave
-                        self.wave_last = self.wave_next                    
-                        await self.pi.wave_add_generic(wave)
-                        self.wave_next = await self.pi.wave_create()
+                        await self.step_wave(wave)
 
-                        #eat up cycles waiting
-                        if self.wave_last is not None:
-                            #print(f'wave next {self.z_t} {self.v_t} {inc} {self.dir_mult} {self.step_delay_us}| {self.control_io_int}| {inc}| {len(wave)>>1}')
-                            await self.pi.wave_delete(self.wave_last)
-                            while self.wave_last == await self.pi.wave_tx_at():
-                                #print(f'waiting...')
-                                pass
-                            await self.pi.wave_send_once(self.wave_next)
-                            await self.pi.write(self._dir,self.dir_mult)
-                            
-                            
-                        else:
-                            #delete last
-                            await self.pi.wave_send_once(self.wave_next)
-                            await self.pi.write(self._dir,self.dir_mult)
-
-                        #update metrics
-                        self.inx += inc * ( 1 if self.dir_mult else -1 )
-                        self.step_count += inc
+#                         ##create the new wave
+#                         self.wave_last = self.wave_next                    
+#                         await self.pi.wave_add_generic(wave)
+#                         self.wave_next = await self.pi.wave_create()
+# 
+#                         #eat up cycles waiting
+#                         if self.wave_last is not None:
+#                             #print(f'wave next {self.z_t} {self.v_t} {inc} {self.dir_mult} {self.step_delay_us}| {self.control_io_int}| {inc}| {len(wave)>>1}')
+#                             await self.pi.wave_delete(self.wave_last)
+#                             while self.wave_last == await self.pi.wave_tx_at():
+#                                 #print(f'waiting...')
+#                                 pass
+#                             await self.pi.wave_send_once(self.wave_next)
+#                             await self.pi.write(self._dir,self.dir_mult)
+#                             
+#                             
+#                         else:
+#                             #delete last
+#                             await self.pi.wave_send_once(self.wave_next)
+#                             await self.pi.write(self._dir,self.dir_mult)
+# 
+#                         #update metrics
+#                         self.inx += inc * ( 1 if self.dir_mult else -1 )
+#                         self.step_count += inc
                             
                         #print(self.feedback_volts)
                         self.fail_io = False
