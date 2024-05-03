@@ -444,6 +444,8 @@ class stepper_control:
             start_mode = self.mode_changed
             if self.drive_mode == 'steps':
                 print(f'starting steps control io')
+                z_err_cuml = 0
+                z_err = 0
                 try: #avoid loop overhead in subloop
                     while self.is_safe() and start_mode is self.mode_changed:
                         t = time.perf_counter() - self.start
