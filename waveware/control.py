@@ -59,10 +59,10 @@ class stepper_control:
     wave: regular_wave
     control_interval: float = 1./1000 #valid on linux, windows is 15ms
 
-    kzp_sup = 1#/T
+    kzp_sup = 1.#/T
     kzi_err = 0.1
     
-    min_dt = 5
+    min_dt = 1
 
     adc_addr = 0x48
 
@@ -469,7 +469,7 @@ class stepper_control:
                         
                         
                         if v != 0 and self.is_safe():
-                            self.step_delay_us = max( int(1E6 * self.dz_per_step / abs(v)) , self.min_dt)
+                            self.step_delay_us = int(1E6 * self.dz_per_step / abs(v))
                         else:
                             self.step_delay_us = int(1E6) #no instruction (no v)
 
@@ -507,10 +507,8 @@ class stepper_control:
                         #dir set
                         #determine timing to meet step goal
                         dt = max(self.step_delay_us,self.min_dt) #div int by 2
-                        max_step = (self.control_interval/self.dt_io)
-
                         #increment pulses to handle async gap
-                        inc = min(max(int((1E6*self.dt_io)/self.step_delay_us),1),)
+                        inc = max(int((1E6*self.dt_io)/self.step_delay_us),1)
 
                         #define wave up for dt, then down for dt,j repeated inc
                         wave = [asyncpio.pulse(1<<self._step, 0, dt)]
