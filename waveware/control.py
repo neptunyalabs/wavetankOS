@@ -360,21 +360,23 @@ class stepper_control:
             self._last_dir = dir
 
         self.wave_last = self.wave_next      
+        
         await self.pi.wave_add_generic(wave)
-
         self.wave_next = await self.pi.wave_create()
         await self.pi.wave_send_once( self.wave_next)
 
+        Nw = max(int(len(wave)/2),1)
         
         busy = await self.pi.wave_tx_busy()
         if self.wave_last is not None and busy:
-            
-            while self.wave_last == await self.pi.wave_tx_at():
+            cur_mode = await self.pi.wave_tx_at()
+            while self.wave_last == cur_mode:
+                cur_mode = await self.pi.wave_tx_at()
                 #print(f'waiting...')
                 await asyncio.sleep(0)
             await self.pi.wave_delete(self.wave_last)
         
-        Nw = max(int(len(wave)/2),1)
+        
 
         ##create the new wave
 
