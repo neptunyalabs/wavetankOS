@@ -464,7 +464,7 @@ class stepper_control:
                         z_err_cuml = z_err*self.kzi_err + z_err_cuml*(1-self.kzi_err)
                         
                         #correct integral for pwm ala velocity
-                        vsup = z_err * self.kzp_sup / self.wave.Ts
+                        vsup = z_err * self.kzp_sup / self.wave.ts
                         print(t,z,z_err,vsup,v,vsup+v)
                         
                         
