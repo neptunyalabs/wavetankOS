@@ -474,7 +474,7 @@ class stepper_control:
             except Exception as e:
                 self.fail_feedback = True
                 print(f'feedback error: {e}')
-                traceback.print_stack()
+                self.feedback_task.print_stack()
 
     #TODO: set PWM width in real application to meet v
     #r = self.pi.(self._res) #TODO: adc
@@ -525,7 +525,7 @@ class stepper_control:
                 except Exception as e:
                     self.fail_control = True
                     print(f'control error: {e}')
-                    traceback.print_stack()
+                    self.control_task.print_stack()
             
             await self.mode_changed
 
@@ -598,7 +598,7 @@ class stepper_control:
                 except Exception as e:
                     self.fail_io = True
                     print(f'control io error: {e}')
-                    traceback.print_stack()
+                    self.io_task.print_stack()
                 
             await self.mode_changed
 
