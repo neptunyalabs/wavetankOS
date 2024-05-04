@@ -98,7 +98,7 @@ class stepper_control:
         
         for direction and step control signals."""
         self.dt_stop_and_wait = 1
-        
+
         #setup drive mode first
         self.drive_mode = 'cal'
         self.mode_changed = asyncio.Future()
@@ -514,8 +514,9 @@ class stepper_control:
 
         def trigger_read(gpio,level,tick):
             adc = self._adc_feedback_pin_cb
-            self._adc_feedback_pin_cb = asyncio.Future()
             adc.set_result(tick)
+            self._adc_feedback_pin_cb = asyncio.Future()
+            
 
         await self.pi.callback(self._adc_feedback_pin,asyncpio.RISING_EDGE,trigger_read)
 
@@ -530,8 +531,11 @@ class stepper_control:
                     #TODO: add feedback interrupt on GPIO7
                     #-await deferred, in pigpio callback set_result
                     tick = await self._adc_feedback_pin_cb
-
-                    data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
+                    
+                    try:
+                        data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
+                    except:
+                        continue
                     
                     # Convert the data
                     raw_adc = data[0] * 256 + data[1]
