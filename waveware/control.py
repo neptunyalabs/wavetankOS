@@ -535,7 +535,8 @@ class stepper_control:
                     
                     try:
                         data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
-                    except:
+                    except Exception as e:
+                        print(e)
                         continue
                     
                     # Convert the data
@@ -586,7 +587,8 @@ class stepper_control:
 
             except Exception as e:
                 self.fail_feedback = True
-                print(f'control error: {e}| {e.__traceback__}')       
+                print(f'control error: {e}')       
+                traceback.print_tb(e.__traceback__)
 
     #to handle stepping controls
     async def step_wave(self,wave,dir=None):
