@@ -37,7 +37,7 @@ high_thres = 0x8000
 
 
 drive_modes = ['manual','wave','stop','center','cal','local','extents']
-default_mode = 'cal'
+default_mode = 'wave'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
@@ -161,7 +161,7 @@ class stepper_control:
         await self.pi.connect()
         await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
         await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
-        await self.pi.wave_clear()
+        #await self.pi.wave_clear()
 
     def setup(self):
         self.start = time.perf_counter()
@@ -771,6 +771,7 @@ class stepper_control:
                 self.fail_sc = True
                 print(f'issue in pwm speed routine {e}')
                 await self.pi.write(self._vpwm_pin,0)
+            await self.pi.write(self._vpwm_pin,0)
         
         
     async def sleep(self,wait_time,short=True):
