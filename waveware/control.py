@@ -518,6 +518,8 @@ class stepper_control:
                     print(f'found bottom! {cv}')
                     found_btm = cv
                 now_dir = -1 * now_dir
+                await self.set_dir(now_dir)
+                await self.sleep(1E-3)
                 print(f'reversing: {last_dir} > {now_dir}')
         
         self.upper_v = found_top
