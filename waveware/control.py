@@ -368,6 +368,9 @@ class stepper_control:
     async def local_cal(self,t_on=100,t_off=9900,inc=1):
         print('local cal...')
         #determine local sensitivity
+        await self.pi.write(self._step_pin,0)
+        await self.pi.write(self._step_pin,1)
+        await self.pi.write(self._step_pin,0)
         for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
             
             print(f'fwd: {upr}')
