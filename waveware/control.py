@@ -491,6 +491,7 @@ class stepper_control:
         stuck,maybe_stuck = False,False
         while found_btm is False and found_top is False:
             self.v_cmd = vmove * 1 if now_dir > 0 else -1
+            print(f'set dir: {now_dir}')
             await self.pi.write(self._dir_pin,1 if now_dir > 0 else 0)
             await self.sleep(1E-3)
             sv = cv
