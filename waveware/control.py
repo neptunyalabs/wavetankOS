@@ -624,7 +624,7 @@ class stepper_control:
 
         
         self.wave_last = self.wave_next #push back
-        print(str(wave[:10])[:1000])
+        print(dir,len(wave))
         if self.wave_last is not None:
             ##create the new wave
             pad_amount = await self.pi.wave_get_micros()
