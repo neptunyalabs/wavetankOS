@@ -163,6 +163,11 @@ class stepper_control:
         await self.pi.connect()
         await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
         await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
+        await self.pi.set_mode(self._tpwm_pin,asyncpio.OUTPUT)
+        await self.pi.set_mode(self._vpwm_pin,asyncpio.OUTPUT)
+
+        await self.pi.set_mode(self._hlfb,asyncpio.INPUT)
+        await self.pi.set_mode(self._adc_feedback_pin,asyncpio.INPUT)
         #await self.pi.wave_clear()
 
     def setup(self):
