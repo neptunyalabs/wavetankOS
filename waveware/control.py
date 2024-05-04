@@ -131,6 +131,8 @@ class stepper_control:
         self.setup_i2c()
     
     def reset(self):
+        self.fail_st = False
+        self.fail_sc = False
         self.v_cmd =v= 0
         self.v_sup = 0
         self.dir_mult = 1 if v >= 0 else 0
