@@ -59,7 +59,7 @@ class test:
 
         
         self.wave_last = self.wave_next #push back
-        #print(dir,len(wave),self.wave_last)
+        print(dir,len(wave),self.wave_last)
 
         if self.wave_last is not None:
             ##create the new wave
