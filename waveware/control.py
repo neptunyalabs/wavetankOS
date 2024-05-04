@@ -587,7 +587,7 @@ class stepper_control:
                         feedback_futr = None #twas, no more 
 
                     
-                    Nw = int(self.inx - st_inx)
+                    Nw = abs(int(self.inx - st_inx))
 
                     #ok!
                     self.fail_feedback = False                    
