@@ -503,11 +503,7 @@ class stepper_control:
         await self.sleep(self.control_interval)
 
     async def run_stop(self):
-        self.v_cmd = 0
-        await self.pi.write(self._vpwm_pin,0)
-        await self.pi.write(self._tpwm_pin,0)
-        await self.pi.write(self._step_pin,0)
-        await self.pi.write(self._dir_pin,1)        
+        self.v_cmd = 0      
         await self.sleep(self.control_interval)
                     
 
@@ -675,7 +671,6 @@ class stepper_control:
         self._speed_stopped = False
         self._pause_ongoing = False
 
-        await self.pi.write(self._step_pin,0)
         await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
         self.dt_st = 0.005
         while True:
@@ -706,7 +701,7 @@ class stepper_control:
                         wave.append(asyncpio.pulse(0, 1<<self._step_pin, dt))
                         wave = wave*inc
                     else:
-                        wave = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
+                        wave = [asyncpio.pulse(0, 0, dt)]
 
                     await self.step_wave(wave)
                         
