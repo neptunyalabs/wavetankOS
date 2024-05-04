@@ -585,7 +585,7 @@ class stepper_control:
 
             except Exception as e:
                 self.fail_feedback = True
-                print(f'control error: {e}')       
+                print(f'control error: {e}| {e.__traceback__}')       
 
     #to handle stepping controls
     async def step_wave(self,wave,dir=None):
