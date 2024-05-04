@@ -170,7 +170,7 @@ class stepper_control:
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
         cb = config_bit(pin,fvinx = 4)
-        db = int(f'{dr}00001',2)
+        db = int(f'{dr}00000',2)
         data = [cb,db]
         #do this before reading different pin, 
         print(f'setting adc to: {[bin(d) for d in data]}')
@@ -512,15 +512,15 @@ class stepper_control:
         print(f'starting feedback!')
         self.dvds = None
         VR = volt_ref[fv_inx]
-        self._adc_feedback_pin_cb = asyncio.Future()
+        # self._adc_feedback_pin_cb = asyncio.Future()
 
-        def trigger_read(gpio,level,tick):
-            adc = self._adc_feedback_pin_cb
-            adc.set_result(tick)
-            self._adc_feedback_pin_cb = asyncio.Future()
-            
-
-        await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+#         def trigger_read(gpio,level,tick):
+#             adc = self._adc_feedback_pin_cb
+#             adc.set_result(tick)
+#             self._adc_feedback_pin_cb = asyncio.Future()
+#             
+# 
+#         await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
 
         while True:
             vlast = vnow = self.feedback_volts #prep vars
@@ -532,12 +532,13 @@ class stepper_control:
                     
                     #TODO: add feedback interrupt on GPIO7
                     #-await deferred, in pigpio callback set_result
-                    tick = await self._adc_feedback_pin_cb
+                    #tick = await self._adc_feedback_pin_cb
+                    await self.sleep(wait)
                     
                     try:
                         data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
                     except Exception as e:
-                        print(e)
+                        print('read i2c issue',e)
                         continue
                     
                     # Convert the data
