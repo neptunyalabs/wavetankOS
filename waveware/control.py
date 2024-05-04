@@ -386,6 +386,7 @@ class stepper_control:
                 wave = wave * inc
 
                 await self.step_wave(wave,dir=1)
+                await self.sleep(self.control_interval)
             
             print(f'rv: {lwr}')
             for step_minus in range(lwr,0):
@@ -397,6 +398,7 @@ class stepper_control:
                 wave = wave * inc
                 
                 await self.step_wave(wave,dir=-1)
+                await self.sleep(self.control_interval)
             
     #drive center
     @speed_off_then_revert
