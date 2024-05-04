@@ -145,6 +145,7 @@ class stepper_control:
         self.coef_100 = 0
 
         tol = 0.5
+        self.dzdvref = 0
         self.upper_lim = None
         self.center_inx = 0
         self.upper_v = 3.3-tol
