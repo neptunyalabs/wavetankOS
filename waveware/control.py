@@ -72,7 +72,7 @@ def speed_off_then_revert(f):
         
         self.set_speed_mode('off')
         try:
-            f(self,*args,**kwargs)
+            await f(self,*args,**kwargs)
         except Exception as e:
             print(f'error in calibrate {e}')
 
