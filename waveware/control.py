@@ -173,8 +173,8 @@ class stepper_control:
         print(f'setting adc to: {[bin(d) for d in data]}')
         self.smbus.write_i2c_block_data(0x48, 0x01, data)
         #setup alert pin!
-        self.smbus.write_i2c_block_data(0x48, 0x02, 0x0000)
-        self.smbus.write_i2c_block_data(0x48, 0x03, 0x8000)
+        self.smbus.write_i2c_block_data(0x48, 0x02, [0x00,0x00])
+        self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
 
     #RUN / OPS
 
