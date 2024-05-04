@@ -521,7 +521,7 @@ class stepper_control:
         self.upper_v = found_top
         self.lower_v = found_btm
 
-        if found_top == found_btm:
+        if abs(found_top - found_btm) < min_res:
             raise NoMotion()
             
         #TODO: write calibration file
