@@ -637,7 +637,7 @@ class stepper_control:
             pad_amount = await self.pi.wave_get_micros()
             
             #TODO: make sure this is a good idea
-            wave = [asyncpio.pulse(0, 0, pad_amount)] + wave
+            #wave = [asyncpio.pulse(0, 0, pad_amount)] + wave
             await self.pi.wave_add_generic(wave)
 
             self.wave_next = await self.pi.wave_create()
