@@ -494,7 +494,7 @@ class stepper_control:
         found_btm = False
         cv = sv = self.feedback_volts
         initalized = False
-        stuck,maybe_stuck = False,False
+        maybe_stuck = False
         while found_btm is False or found_top is False:
             self.v_cmd = vmove * (1 if now_dir > 0 else -1)
             #print(f'set dir: {now_dir}')
@@ -510,7 +510,7 @@ class stepper_control:
             elif maybe_stuck is False:
                 maybe_stuck = (t,cv)
             elif t-maybe_stuck[0]>crash_detect:
-                stuck = (t,cv)
+                maybe_stuck = False
                 if now_dir > 0:
                     print(f'found top! {cv}')
                     found_top = cv
