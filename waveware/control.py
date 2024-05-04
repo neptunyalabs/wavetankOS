@@ -262,6 +262,7 @@ class stepper_control:
             return
         
         self.drive_mode = new_mode
+        print(f'setting mode: {self.speed_control_mode}')
         if hasattr(self,'mode_changed'):
             self.mode_changed.set_result(new_mode)
         self.mode_changed = asyncio.Future()
@@ -274,7 +275,8 @@ class stepper_control:
             return
         
         self.speed_control_mode = new_mode
-        if hasattr(self,'mode_changed'):
+        print(f'setting speed mode: {self.speed_control_mode}')
+        if hasattr(self,'speed_control_mode_changed'):
             self.speed_control_mode_changed.set_result(new_mode)
         self.speed_control_mode_changed = asyncio.Future()        
 
