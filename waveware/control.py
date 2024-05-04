@@ -33,11 +33,16 @@ dr_inx = 860
 dr = dr_ref[dr_inx]
 
 
-drive_modes = ['steps','cal','stop']
+drive_modes = ['wave','stop','center','cal','local','extents']
+default_mode = 'wave'
+
+speed_modes = ['step','pwm','off']
+default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
+assert default_speed_mode in speed_modes
 
 class regular_wave:
 
-    def __init__(self,Hs=0.1,Ts=1) -> None:
+    def __init__(self,Hs=1,Ts=3) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()
@@ -52,18 +57,40 @@ class regular_wave:
 
     def z_vel(self,t):
         return self.a*self.omg*cos(self.omg*t)
+    
+def speed_off_then_revert(f):
+
+    def fme(self,*args,**kwargs):
+
+        cur_speed_mode = self.speed_control_mode
+        if cur_speed_mode == 'off':
+            f(self,*args,**kwargs)
+            return
+        
+        self.set_speed_mode('off')
+        try:
+            f(self,*args,**kwargs)
+        except Exception as e:
+            print(f'error in calibrate {e}')
+
+        self.set_speed_mode(cur_speed_mode)
+    
+    return fme     
 
 class stepper_control:
     steps_per_rot = 360/1.8
     dz_per_rot = 0.01
     wave: regular_wave
-    control_interval: float = 1./1000 #valid on linux, windows is 15ms
+    control_interval: float = 10./1000 #valid on linux, windows is 15ms
+
+    kzp_sup = 1#/T
+    kzi_err = 0.1
     
-    min_dt = 3
+    min_dt = 5
 
     adc_addr = 0x48
 
-    def __init__(self, dir:int,step:int,fb_an_pin=0,**conf):
+    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,**conf):
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
@@ -78,27 +105,48 @@ class stepper_control:
         self.dz_per_rot = conf.get('dz_per_rot',0.01)
         #self.on_time_us = 25 #us
         self.dz_per_step = self.dz_per_rot / self.steps_per_rot
+        self.max_speed_motor = 0.3 #TODO: get better motor constants
 
-        self._dir = dir
-        self._step = step
-        self._fb_an_pin = fb_an_pin
+        self._dir_pin = dir
+        self._step_pin = step
+        self._vpwm_pin = speed_pwm
+        self._adc_feedback_pin = fb_an_pin
+        self._hlfb = hlfb
+        #TODO: setup high/low interrupt on hlfb for ppr or torque / speed ect
         
-        #make it so
-        self.fail_control = False
-        self.fail_io = False        
+        #fail setupso
+        self._control_modes = {}
+        self._control_mode_fail_parms = {}
+
         self.pi = asyncpio.pi()
 
         self._last_dir = 1
         self.feedback_volts = None
         self.fail_feedback = None
-        self.control_io_int = int(1E6*self.control_interval)
-
+        self.reset()
         self.setup_i2c()
-             
+    
+    def reset(self):
+        self.wave_last = None
+        self.wave_next = None
+
+        self.step_count = 0
+        self.inx = 0
+        self.coef_2 = 0
+        self.coef_10 = 0
+        self.coef_100 = 0
+
+        self.upper_lim = None
+        self.center_inx = 0
+        self.upper_v = None
+        self.lower_v = None        
+        self.lower_lim = None        
+
+    #SETUP 
     async def _setup(self):
         await self.pi.connect()
-        await self.pi.set_mode(self._dir,asyncpio.OUTPUT)
-        await self.pi.set_mode(self._step,asyncpio.OUTPUT)
+        await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
+        await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
         await self.pi.wave_clear()
 
     def setup(self):
@@ -106,10 +154,41 @@ class stepper_control:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._setup())
 
+    
+    def setup_i2c(self,pin = 0):
+        self.smbus = smbus.SMBus(1)        
+        cb = config_bit(pin,fvinx = 4)
+        db = int(f'{dr}00011',2)
+        data = [cb,db]
+        #do this before reading different pin, 
+        self.smbus.write_i2c_block_data(0x48, 0x01, data)
+
+    #RUN / OPS
+
+
     def run(self):
         loop = asyncio.get_event_loop()
+
+        def check_failure(res):
+            try:
+                res.result()
+            except Exception as e:
+                print(f'speed drive failure: {e}|\n{e.__traceback__}')
+
+        self.speed_control_mode = default_speed_mode
+        self.mode_changed = asyncio.Future()
+        self.speed_control_mode_changed = asyncio.Future()
         self.first_feedback = d = asyncio.Future()
         self.feedback_task = loop.create_task(self.feedback(d))
+        
+        self.speed_off_task = loop.create_task(self.speed_control_off())
+        self.speed_pwm_task.add_done_callback(check_failure)
+
+        self.speed_pwm_task = loop.create_task(self.speed_pwm_task())
+        self.speed_pwm_task.add_done_callback(check_failure)
+
+        self.speed_step_task = loop.create_task(self.step_speed_control())
+        self.speed_step_task.add_done_callback(check_failure)
         
 
         def go(*args,docal=True,**kw):
@@ -123,10 +202,7 @@ class stepper_control:
                 task = loop.create_task(self.calibrate())
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
-                print('starting...')
-                self.set_mode('steps')
-                self.control_task = loop.create_task(self.control_steps())
-                self.io_task = loop.create_task(self.control_io_steps())
+                self.start_control()
 
         self.first_feedback.add_done_callback(go)
 
@@ -138,6 +214,7 @@ class stepper_control:
         finally:
             loop.close()
 
+    #STOPPPING / SAFETY
     def stop(self):
         loop = loop.get_event_loop()
         loop.run_until_complete(self._stop())        
@@ -149,54 +226,112 @@ class stepper_control:
 
 
     def is_safe(self):
-        return all([not self.fail_control, 
-                    not self.fail_io, 
+        base = any((self._control_mode_fail_parms.values()))
+        return all([not base,
+                    not self.fail_wave_goal,
                     not self.fail_feedback])
+                    #not self.stuck
     
     def set_mode(self,new_mode):
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
-            print(f'same old drive mode: {new_mode}')
+            print(f'same drive mode: {new_mode}')
+            return
         
         self.drive_mode = new_mode
         if hasattr(self,'mode_changed'):
             self.mode_changed.set_result(new_mode)
         self.mode_changed = asyncio.Future()
     
-    def setup_i2c(self,pin = 0):
-        self.smbus = smbus.SMBus(1)        
-        cb = config_bit(pin,fvinx = 4)
-        db = int(f'{dr}00011',2)
-        data = [cb,db]
-        #do this before reading different pin, 
-        self.smbus.write_i2c_block_data(0x48, 0x01, data)
+    def set_speed_mode(self,new_mode):
+        assert new_mode in speed_modes,'bad drive mode! choose: {drive_modes}'
+        new_mode = new_mode.lower().strip()
+        if new_mode == self.speed_control_mode:
+            print(f'same speed mode: {new_mode}')
+            return
+        
+        self.speed_control_mode = new_mode
+        if hasattr(self,'mode_changed'):
+            self.speed_control_mode_changed.set_result(new_mode)
+        self.speed_control_mode_changed = asyncio.Future()        
 
-    async def calibrate(self,t_on=100,t_off=9900,inc=1):
+    def make_control_mode(self,mode,loop_function,*args,**kw):
+        loop = asyncio.get_event_loop()
+        #make the loop task
+        func = self.control_mode(loop_function,mode)
+        task = loop.create_task(func)
+        
+        #task.add_done_callback #TODO: handle failures
+        self._control_modes[mode]=task
+        self._control_mode_fail_parms[mode] = False
+
+        def _fail_control(res):
+            print(f'mode done! {mode}')
+            try:
+                res.result()
+            except Exception as e:
+                traceback.print_exception(e)
+
+        task.add_done_callback(_fail_control)
+        return task
+
+    def start_control(self):
+        print('starting...')
+        loop = asyncio.get_event_loop()
+        self.set_mode(default_mode)
+
+        self.goals_task = self.make_control_mode('wave',self.wave_goal)
+        self.stop_task = self.make_control_mode('stop',self.run_stop)
+        self.center_task = self.make_control_mode('center',self.center_head)
+        self.cal_task = self.make_control_mode('cal',self.calibrate)
+        self.local_task = self.make_control_mode('local',self.local_cal)
+        self.extent_task = self.make_control_mode('extents',self.find_extends)
+
+
+
+    async def control_mode(self,loop_function:callable,mode_name:str):
+        """runs an async function"""
+        print(f'creating control {mode_name}|{loop_function.__name__}...')
+        
+        while self.is_safe():
+            start_mode = self.mode_changed
+
+            if (isinstance(mode_name,str) and self.drive_mode == mode_name) or (isinstance(mode_name,(list,tuple)) and self.drive_mode in mode_name):
+                print(f'starting control {mode_name}|{loop_function.__name__}...')
+                try: #avoid loop overhead in subloop
+                    while self.is_safe() and start_mode is self.mode_changed:
+                        await loop_function()
+                        self._control_mode_fail_parms[mode_name] = False
+                        
+                except Exception as e:
+                    self._control_mode_fail_parms[mode_name] = True
+                    print(f'control {mode_name}|{loop_function.__name__} error: {e}')
+                    task = asyncio.current_task()
+                    task.print_stack()
+            
+            #if your not the active loop wait until the mode has changed to check again. Only one mode can run at a time
+            await self.mode_changed
+
+        print(f'control io ending...')
+        await self._stop()
+
+    #CALIBRATE
+    @speed_off_then_revert
+    async def calibrate(self,t_on=100,t_off=99000,inc=1):
         ##do some small jitters and estimate the local sensitivity, catch on ends
         
         print(f'calibrating!')
         self._st_cal = time.perf_counter()
         
-        self.wave_last = None
-        self.wave_next = None
-
-        self.step_count = 0
-        self.inx = 0
-        self.coef_2 = 0
-        self.coef_10 = 0
-        self.coef_100 = 0
-
-        self.upper_lim = None
-        self.center_inx = 0
-        self.lower_lim = None
-        
+        self.reset()
 
         await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
         await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
         await self.find_extends(t_on=t_on,t_off=t_off,inc=inc)
         await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
 
+    @speed_off_then_revert
     async def local_cal(self,t_on=100,t_off=9900,inc=1):
         print('local cal...')
         #determine local sensitivity
@@ -207,8 +342,8 @@ class stepper_control:
                 #change dir if nessicary
 
                 #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
-                wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
+                wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+                wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
                 vlast = self.feedback_volts
                 wave = wave * inc
 
@@ -219,13 +354,14 @@ class stepper_control:
                 #change dir if nessicary
 
                 #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
-                wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
+                wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+                wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
                 wave = wave * inc
                 
                 await self.step_wave(wave,dir=-1)
             
-        #drive center
+    #drive center
+    @speed_off_then_revert
     async def find_extends(self,t_on=100,t_off=9900,inc=1):
         print('find extents...')
         start_coef_100 = self.coef_100
@@ -234,11 +370,12 @@ class stepper_control:
         
         start_dir = 1
         while abs(self.coef_10) > 1E-6:
-            wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
-            wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
+            wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+            wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
             wave = wave * inc
             await self.step_wave(wave,dir=start_dir)
         print(f'found upper: {self.inx - 10}')
+        self.upper_v = self.feedback_volts
         self.upper_lim = self.inx - 10
 
         self.coef_100 = start_coef_100
@@ -248,219 +385,357 @@ class stepper_control:
 
         start_dir = -1
         while abs(self.coef_10) > 1E-6:
-            wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
-            wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
+            wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+            wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
             wave = wave * inc
             await self.step_wave(wave,dir=start_dir)
 
         print(f'found lower: {self.inx + 10}')
         self.lower_lim = self.inx + 10
-
+        self.lower_v = self.feedback_volts
         self.coef_100 = start_coef_100
         self.coef_10 = start_coef_10
         self.coef_2 = start_coef_2
 
-
-
-    async def center_head(self,t_on=100,t_off=9900,inc=1):
-        print('center head...')
-        cent_voltage = 3.3/2
-        fv = self.feedback_volts
-        dv=cent_voltage-fv
-        while abs(dv) > 0.01:
-
-            fv = self.feedback_volts
-            dv=cent_voltage-fv
-
-            #print(dv,coef_100,inx)
-            #set direction
-            est_steps = dv / float(self.coef_100)
-            if est_steps <= 0:
-                dir = -1
-            else:
-                dir = 1
-            #define wave up for dt, then down for dt,j repeated inc
-            wave = [asyncpio.pulse(1<<self._step, 0, t_on)]
-            wave.append(asyncpio.pulse(0, 1<<self._step, t_off))
-            wave = wave * inc
-
-            await self.step_wave(wave,dir=dir)
+        #TODO: write calibration file
+        #TODO: write the z-index and prep for z offset
+        self.di_dz = self.upper_lim - self.lower_lim + 20
+        self.dvref_range = self.upper_v - self.lower_v
+        #calculated z per 
+        self.dz_range = self.dz_per_step * self.di_dz
+        #how much z changes per vref
+        self.dzdvref = self.dz_range/self.dvref_range  
         
+        #offset defaults to center
+        #TODO: change reference position via api
+        self.zi_0 = (self.upper_lim+self.lower_lim)/2 #center
+        self.vref_0 = (self.upper_v+self.lower_v)/2 #center
+
+
+    @speed_off_then_revert
+    async def center_head(self,t_on=100,t_off=9900,inc=1,tol=0.01):
+        print('center head...') 
+        fv = self.feedback_volts
+        dv=self.vref_0-fv
+
+        #print(dv,coef_100,inx)
+        #set direction
+        est_steps = dv / float(self.coef_100)
+        if est_steps <= 0:
+            dir = -1
+        else:
+            dir = 1
+
+        #define wave up for dt, then down for dt,j repeated inc
+        wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+        wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
+        wave = wave * inc
+
+        await self.step_wave(wave,dir=dir)
+        
+        self.center_v = self.feedback_volts
         self.center_inx = self.inx
 
 
+    #Wave Control Goal
+    async def wave_goal(self):
+        ###constantly determines
 
-
-    async def step_wave(self,wave,dir=1):
-
-        if self._last_dir != dir:
-            dv = 1 if dir >= 0 else 0
-            await self.pi.write(self._dir,dv)
-            self._last_dir = dir
-
-        if hasattr(self,'wave_last') and self.wave_last is not None:
-            await self.pi.wave_delete(self.wave_last)
-            while self.wave_last == await self.pi.wave_tx_at():
-                #print(f'waiting...')
-                await asyncio.sleep(0)
+        t = time.perf_counter() - self.start
+        self.z_t = z = self.wave.z_pos(t)
+        self.z_t_1 = z = self.wave.z_pos(t+self.control_interval)
+        self.v_t = v= self.wave.z_vel(t)
+        self.v_t_1 = v= self.wave.z_vel(t+self.control_interval)
         
-        vlast = self.feedback_volts
-        Nw = max(int(len(wave)/2),1)
+        #avg velocity
+        #v = self.v_t
+        v = (self.v_t + self.v_t_1)/2
+        v = min(max(v,-self.max_speed_motor),self.max_speed_motor)
 
-        ##create the new wave
-        self.wave_last = self.wave_next                    
-        await self.pi.wave_add_generic(wave)
-
-        self.wave_next = await self.pi.wave_create()
-        await self.pi.wave_send_once( self.wave_next)
+        #always measure goal pos for error
         
-        vnow = self.feedback_volts
-
-        dvds = (vnow-vlast)/((dir*Nw))
-        self.coef_2 = (self.coef_2 + dvds)/2
-        self.coef_10 = (self.coef_10*0.9 + dvds*0.1)
-        self.coef_100 = (self.coef_100*0.99 + dvds*0.01)
-        if (abs(self.inx)%10==0):
-            DIR = 'FWD' if dir > 0 else 'REV'             
-            print(f'{DIR}:|{self.inx:<4}| {vnow:3.5f}'+' '.join([f'|{v:10.7f}' for v in (dvds,self.coef_2,self.coef_10,self.coef_100)]))
+        z = self.z_t
+        z_err = z - self.z_cur
+        z_err_cuml = z_err*self.kzi_err + z_err_cuml*(1-self.kzi_err)
         
-        self.step_count += Nw
-        self.inx = self.inx + dir*Nw
+        #correct integral for pwm ala velocity
+        self.dv_err = z_err * self.kzp_sup / self.wave.Ts
+        self.v_sup = self.v_cmd + self.dv_err
 
-        ###Move one direction until d(feedback)/ds = 0
-        ###Then move the other
+        #determine direction
+        self.dir_mult = 1 if v >= 0 else 0
+        
+        #self.v_cmd = self.v_sup #TODO: validate this for position holding
+        self.v_cmd = v
+        await self.sleep(self.control_interval)
 
+    async def run_stop(self):
+        self.v_cmd = 0
+        await self.sleep(self.control_interval)
+                    
+
+    #FEEDBACK
+    @property
+    def maybe_stuck(self):
+        if abs(self.coef_2) < 1E-5 and self.step_count > 100:
+            return True
+        return False
+    
+    @property
+    def stuck(self):
+        if abs(self.coef_10) < 1E-6 and self.step_count > 100:
+            return True
+        return False
 
     async def feedback(self,feedback_futr=None):
+        self.dvds = None
+        VR = volt_ref[fv_inx]
+        self._adc_feedback_pin_cb = asyncio.Future()
+
+        def trigger_read(gpio,level,tick):
+            adc = self._adc_feedback_pin_cb
+            self._adc_feedback_pin_cb = asyncio.Future()
+            adc.set_result(tick)
+
+        await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+
         while True:
+            vlast = vnow = self.feedback_volts #prep vars
             try:
                 while True:
+                    vlast = vnow
+                    st_inx = self.inx
                     wait = wait_factor/float(dr_inx)
-                    await asyncio.sleep(wait)
+                    
+                    #TODO: add feedback interrupt on GPIO7
+                    #-await deferred, in pigpio callback set_result
+                    tick = await self._adc_feedback_pin_cb
+
                     data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
                     
                     # Convert the data
                     raw_adc = data[0] * 256 + data[1]
                     if raw_adc > 32767:
                         raw_adc -= 65535
-                    self.feedback_volts = (raw_adc/32767)*volt_ref[fv_inx]
-                    self.fail_feedback = False
+                    self.feedback_volts = vnow = (raw_adc/32767)*VR
+                    self.z_cur = (self.vnow)*self.dzdvref
+                    
 
                     if feedback_futr is not None:
                         feedback_futr.set_result(True)
                         feedback_futr = None #twas, no more 
 
+                    
+                    Nw = int(self.inx - st_inx)
+
+                    #ok!
+                    self.fail_feedback = False                    
+                    
+                    #stop catching
+                    if self.drive_mode == 'stop':
+                        continue
+
+                    elif Nw < 1:
+                        #no steps, no thank you
+                        if Nw < 1 and not hasattr(self,'t_no_inst'):
+                            print(f'no steps')
+                            self.t_no_inst = time.perf_counter()
+                        
+                        elif Nw < 1 and time.perf_counter() - self.t_no_inst>self.dt_stop_and_wait:
+                            print(f'stopping')
+                            self.set_mode('stop')
+                        
+                        continue #dont add voltage change or check stuck
+
+                    self.dvds = (vnow-vlast)/((self._last_dir*Nw))
+                    self.coef_2 = (self.coef_2 + self.dvds)/2
+                    self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
+                    self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
+
+                    if self.maybe_stuck:
+                        print(f'CAUTION: maybe stuck: {self.coef_2}')
+
+                    if self.stuck:
+                        self.set_mode('stop')
+
+
             except Exception as e:
                 self.fail_feedback = True
                 print(f'control error: {e}')       
 
-    #TODO: set PWM width in real application to meet v
-    #r = self.pi.(self._res) #TODO: adc
-    #TODO: determine delta between z and bounds, stop if nessicary
-    #TODO: determine delta between z / r    
+    #to handle stepping controls
+    async def step_wave(self,wave,dir=None):
+        """places waveform on pin with appropriate callbacks"""
 
-    async def control_steps(self):
-        print(f'starting control...')
-        while self.is_safe():
-            start_mode = self.mode_changed
-            if self.drive_mode == 'steps':
-                try: #avoid loop overhead in subloop
-                    while self.is_safe() and start_mode is self.mode_changed:
-                        t = time.perf_counter() - self.start
-                        self.z_t = z = self.wave.z_pos(t)
-                        self.z_t_1 = z = self.wave.z_pos(t+self.control_interval)
-                        self.v_t = v= self.wave.z_vel(t)
-                        self.v_t_1 = v= self.wave.z_vel(t+self.control_interval)
+        if dir is None:
+            dir = self._last_dir
+        elif self._last_dir != dir:
+            dv = 1 if dir >= 0 else 0
+            await self.pi.write(self._dir_pin,dv)
+            self._last_dir = dir
 
+        
+        self.wave_last = self.wave_next #push back
 
-                        z = self.z_t #always measure goal pos for error
-                        v = (self.v_t + self.v_t_1)/2 #correct integral for pwm                
-
-                        if v != 0 and self.is_safe():
-                            self.step_delay_us = max( int(1E6 * self.dz_per_step / abs(v)) , self.min_dt)
-                        else:
-                            self.step_delay_us = int(1E6)
-
-                        self.dir_mult = 1 if v >= 0 else 0
-                        
-                        self.fail_control = False
-                        await self.sleep(self.control_interval)
-                    
-                except Exception as e:
-                    self.fail_control = True
-                    print(f'control error: {e}')
+        if self.wave_last is not None:
+            ##create the new wave
+            pad_amount = await self.pi.wave_get_micros()
             
-            await self.mode_changed
+            #TODO: make sure this is a good idea
+            wave = [asyncpio.pulse(0, 0, pad_amount)] + wave
+            await self.pi.wave_add_generic(wave)
 
-        print(f'something failed!')
-        await self._stop()
+            self.wave_next = await self.pi.wave_create()
+            await self.pi.wave_send_once( self.wave_next)              
+            while self.wave_last == await self.pi.wave_tx_at():
+                #print(f'waiting...')
+                await asyncio.sleep(0)
 
-    async def control_io_steps(self):
-        print(f'starting control IO...')
-        self.wave_last = None
-        self.wave_next = None
-        itick = 0
-        printerval = 1000
-        self.dt_io = 0.005 #u-seconds typical
-        while self.is_safe():
-            start_mode = self.mode_changed
-            if self.drive_mode == 'steps':
-                try: #avoid loop overhead in subloop
-                    while self.is_safe() and start_mode is self.mode_changed:
-                        itick += 1
+            await self.pi.wave_delete(self.wave_last)
 
-                        self.ct_st = time.perf_counter()
-                        #dir set
-                        #determine timing to meet step goal
-                        dt = max(self.step_delay_us,self.min_dt) #div int by 2
-                        
-                        #increment pulses to handle async gap
-                        inc = min(max(int((1E6*self.dt_io)/self.step_delay_us),1),100)
+        else:
+            #do it raw
+            ##create the new wave
+            await self.pi.wave_add_generic(wave)
 
-                        #define wave up for dt, then down for dt,j repeated inc
-                        wave = [asyncpio.pulse(1<<self._step, 0, dt)]
-                        wave.append(asyncpio.pulse(0, 1<<self._step, dt))
+            self.wave_next = await self.pi.wave_create()
+            await self.pi.wave_send_once( self.wave_next)
+        
+        Nw = max(int(len(wave)/2),1)
+        
+        if (abs(self.inx)%10==0):
+            vnow = self.feedback_volts
+            DIR = 'FWD' if dir > 0 else 'REV'             
+            print(f'{DIR}:|{self.inx:<4}| {vnow:3.5f}'+' '.join([f'|{v:10.7f}' for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100)]))
+        
+        self.step_count += Nw
+        self.inx = self.inx + dir*Nw
+
+
+    #SPEED CONTROL MODES:
+    async def speed_control_off(self):
+        while True:
+            stc = self.speed_control_mode_changed
+            while self.speed_control_mode == 'off' and self.speed_control_mode_changed is stc:
+                await self.sleep(0.1)
+
+            await self.speed_control_mode_changed
+
+    async def step_speed_control(self):
+        """uses pigpio waves hardware concepts to drive output"""
+        self._speed_stopped = False
+        self._pause_ongoing = False
+
+        await self.pi.write(self._step_pin,0)
+        await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
+
+        while True:
+            stc = self.speed_control_mode_changed
+            try:        
+                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc:
+                    self.ct_st = time.perf_counter()
+
+                    v_dmd = self.v_cmd
+
+                    if v_dmd != 0 and self.is_safe():
+                        d_us = max( int(1E6 * self.dz_per_step / abs(v_dmd)) , self.min_dt)
+                        steps = True
+                    else:
+                        steps = False
+                        d_us = int(1E5) #no 
+
+                    #determine timing to meet step goal
+                    dt = max(d_us,self.min_dt) #div int by 2
+                    max_step = (self.control_interval/self.dt_st)
+
+                    #increment pulses to handle async gap
+                    inc = min(max(int((1E6*self.dt_st)/d_us),1),max_step)
+
+                    #define wave up for dt, then down for dt,j repeated inc
+                    if steps:
+                        wave = [asyncpio.pulse(1<<self._step_pin, 0, dt)]
+                        wave.append(asyncpio.pulse(0, 1<<self._step_pin, dt))
                         wave = wave*inc
+                    else:
+                        wave = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
-                        ##create the new wave
-                        self.wave_last = self.wave_next                    
-                        await self.pi.wave_add_generic(wave)
-                        self.wave_next = await self.pi.wave_create()
-
-                        #eat up cycles waiting
-                        if self.wave_last is not None:
-                            #print(f'wave next {self.z_t} {self.v_t} {inc} {self.dir_mult} {self.step_delay_us}| {self.control_io_int}| {inc}| {len(wave)>>1}')
-                            await self.pi.wave_delete(self.wave_last)
-                            while self.wave_last == await self.pi.wave_tx_at():
-                                #print(f'waiting...')
-                                pass
-                            await self.pi.wave_send_once(self.wave_next)
-                            await self.pi.write(self._dir,self.dir_mult)
-                            
-                            
-                        else:
-                            #delete last
-                            await self.pi.wave_send_once(self.wave_next)
-                            await self.pi.write(self._dir,self.dir_mult)
-                            
-                        print(self.feedback_volts)
-                        self.fail_io = False
-                        self.dt_io = time.perf_counter() - self.ct_st
-
-                        if itick >= printerval:
-                            itick = 0
-                            print(f'step dt: {self.dt_io}| {self.step_delay_us}| {self.control_io_int}| {inc}| {len(wave)>>1}')
-
-                except Exception as e:
-                    self.fail_io = True
-                    print(f'control io error: {e}')
-                    traceback.print_stack()
+                    await self.step_wave(wave,self.dir_mult)
+                        
+                    self.fail_st = False
+                    self.dt_st = time.perf_counter() - self.ct_st
                 
-            await self.mode_changed
+                #now your not in use
+                print(f'exit step speed control inner loop')
+                await self.pi.write(self._step_pin,0)
+                await self.speed_control_mode_changed
 
-        print(f'control io ending...')
-        await self._stop()
+            except Exception as e:
+                #kill PWM
+                self.fail_st = True
+                print(f'issue in speed step routine {e}')
+                await self.pi.write(self._step_pin,0)
 
+    async def pwm_speed_control(self):
+        """uses pigpio hw PWM to control pwm dutycycle"""
+        self._speed_stopped = False
+        self._pause_ongoing = False
+        
+        self.pwm_speed_base = 1000
+        self.pwm_speed_freq = 500
+        self.pwm_mid = int(self.pwm_speed_base/2)
+        self.pwm_speed_k = self.pwm_mid / self.max_speed_motor 
+
+        #Set the appropriate pin config
+        a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)
+        assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
+        b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
+        assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
+
+        while True:
+            stc = self.speed_control_mode_changed
+            try:
+                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc:
+                    self.ct_sc = time.perf_counter()
+                    
+                    #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
+
+                    v_dmd = self.v_cmd
+
+                    #set PWM cycle for velocity using
+                    if self._speed_stopped and v_dmd == 0:
+                        await self.pi.write(self._vpwm_pin,0)
+                        await self.sleep(0.1)
+                    else:
+                        
+                        if v_dmd == 0 or v_dmd is None:
+                            if self._pause_ongoing is False:
+                                self._pause_ongoing = time.perf_counter()
+
+                            elif time.perf_counter()-self._pause_ongoing > 5:
+                                print(f'go to zero')
+                                self._speed_stopped = True
+
+                        elif v_dmd != 0:
+                            self._pause_ongoing = False
+                            self._speed_stopped = False
+
+                        dc = self.pwm_mid + (v_dmd*self.pwm_speed_k)
+                        await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
+
+                    self.fail_sc = False
+                    self.dt_sc = time.perf_counter() - self.ct_sc
+
+                #now your not in use
+                print(f'exit pwm speed control inner loop')
+                await self.pi.write(self._vpwm_pin,0)
+                await self.speed_control_mode_changed
+
+            except Exception as e:
+                #kill PWM
+                self.fail_sc = True
+                print(f'issue in pwm speed routine {e}')
+                await self.pi.write(self._vpwm_pin,0)
+        
         
     async def sleep(self,wait_time,short=True):
         if short and wait_time >= 0.001:
@@ -479,18 +754,127 @@ class stepper_control:
 
 
 
-        
-
-
-
-
 
 
 if __name__ == '__main__':
 
     rw = regular_wave()
-    sc = stepper_control(6,12,wave=rw)
+    sc = stepper_control(4,6,12,7,13,wave=rw)
     sc.setup()
     sc.run()
 
 
+#     async def wave_goal(self):
+#         ###constantly determines
+#         while True:
+#             start_mode = self.mode_changed
+#             if self.drive_mode in ['steps','velpwm']:
+#                 print(f'starting steps control io')
+#                 try: #avoid loop overhead in subloop
+#                     while self.is_safe() and start_mode is self.mode_changed:
+#                         t = time.perf_counter() - self.start
+#                         self.z_t = z = self.wave.z_pos(t)
+#                         self.z_t_1 = z = self.wave.z_pos(t+self.control_interval)
+#                         self.v_t = v= self.wave.z_vel(t)
+#                         self.v_t_1 = v= self.wave.z_vel(t+self.control_interval)
+#                         
+#                         #avg velocity
+#                         #v = self.v_t
+#                         v = (self.v_t + self.v_t_1)/2
+#                         self.v_cmd = min(max(v,-self.max_speed_motor),self.max_speed_motor)
+# 
+#                         #always measure goal pos for error
+#                         
+#                         z = self.z_t
+#                         z_err = z - self.z_cur
+#                         z_err_cuml = z_err*self.kzi_err + z_err_cuml*(1-self.kzi_err)
+#                         
+#                         #correct integral for pwm ala velocity
+#                         self.dv_err = z_err * self.kzp_sup / self.wave.Ts
+#                         self.v_sup = self.v_cmd + self.dv_err
+# 
+#                         #determine direction
+#                         self.dir_mult = 1 if v >= 0 else 0
+#     
+#                         self.fail_wave_goal = False
+#                         await self.sleep(self.control_interval)
+#                     
+#                 except Exception as e:
+#                     self.fail_wave_goal = True
+#                     print(f'control error: {e}')
+# 
+#             await start_mode    
+
+# 
+#     async def control_io_steps(self):
+#         print(f'starting control IO...')
+#         self.wave_last = None
+#         self.wave_next = None
+#         itick = 0
+#         printerval = 1000
+#         self.dt_io = 0.005 #mseconds typical async
+#         while self.is_safe():
+#             start_mode = self.mode_changed
+#             if self.drive_mode == 'steps':
+#                 print(f'starting steps control io')
+#                 self._zi_inx_start = self.inx
+#                 try: #avoid loop overhead in subloop
+#                     while self.is_safe() and start_mode is self.mode_changed:
+#                         itick += 1
+# 
+#                         self.ct_st = time.perf_counter()
+#                         #dir set
+#                         #determine timing to meet step goal
+#                         dt = max(self.step_delay_us,self.min_dt) #div int by 2
+#                         max_step = (self.control_interval/self.dt_io)
+# 
+#                         #increment pulses to handle async gap
+#                         inc = min(max(int((1E6*self.dt_io)/self.step_delay_us),1),)
+# 
+#                         #define wave up for dt, then down for dt,j repeated inc
+#                         wave = [asyncpio.pulse(1<<self._step_pin, 0, dt)]
+#                         wave.append(asyncpio.pulse(0, 1<<self._step_pin, dt))
+#                         wave = wave*inc
+# 
+#                         ##create the new wave
+#                         self.wave_last = self.wave_next                    
+#                         await self.pi.wave_add_generic(wave)
+#                         self.wave_next = await self.pi.wave_create()
+# 
+#                         #eat up cycles waiting
+#                         if self.wave_last is not None:
+#                             #print(f'wave next {self.z_t} {self.v_t} {inc} {self.dir_mult} {self.step_delay_us}| {self.control_io_int}| {inc}| {len(wave)>>1}')
+#                             await self.pi.wave_delete(self.wave_last)
+#                             while self.wave_last == await self.pi.wave_tx_at():
+#                                 #print(f'waiting...')
+#                                 pass
+#                             await self.pi.wave_send_once(self.wave_next)
+#                             await self.pi.write(self._dir_pin,self.dir_mult)
+#                             
+#                             
+#                         else:
+#                             #delete last
+#                             await self.pi.wave_send_once(self.wave_next)
+#                             await self.pi.write(self._dir_pin,self.dir_mult)
+# 
+#                         #update metrics
+#                         self.inx += inc * ( 1 if self.dir_mult else -1 )
+#                         self.steps += inc
+#                             
+#                         #print(self.feedback_volts)
+#                         self.fail_io = False
+#                         self.dt_io = time.perf_counter() - self.ct_st
+# 
+#                         if itick >= printerval:
+#                             itick = 0
+#                             print(f'step dt: {self.dt_io}| {self.step_delay_us}| {self.control_io_int}| {inc}| {len(wave)>>1}')
+# 
+#                 except Exception as e:
+#                     self.fail_io = True
+#                     print(f'control io error: {e}')
+#                     traceback.print_stack()
+#                 
+#             await self.mode_changed
+# 
+#         print(f'control io ending...')
+#         await self._stop()
