@@ -495,7 +495,7 @@ class stepper_control:
         cv = sv = self.feedback_volts
         initalized = False
         stuck,maybe_stuck = False,False
-        while found_btm is False and found_top is False:
+        while found_btm is False or found_top is False:
             self.v_cmd = vmove * (1 if now_dir > 0 else -1)
             #print(f'set dir: {now_dir}')
             
