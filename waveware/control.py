@@ -705,7 +705,8 @@ class stepper_control:
         assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
         b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
         assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
-
+        await self.pi.write(self._vpwm_pin,0)
+        
         while True:
             stc = self.speed_control_mode_changed
             try:
