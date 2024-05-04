@@ -582,7 +582,7 @@ class stepper_control:
                         
                         elif time.perf_counter() - self.t_no_inst>self.dt_stop_and_wait:
                             print(f'stopping')
-                            #self.set_mode('stop')
+                            #self.set_mode('stop') #FIXME
                         
                         continue #dont add voltage change or check stuck
                     
@@ -596,7 +596,8 @@ class stepper_control:
                         print(f'CAUTION: maybe stuck: {self.coef_2}')
 
                     if self.stuck:
-                        self.set_mode('stop')
+                        #self.set_mode('stop') #FIXME
+                        pass
 
 
             except Exception as e:
