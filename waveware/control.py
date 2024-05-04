@@ -127,8 +127,10 @@ class stepper_control:
         self.setup_i2c()
     
     def reset(self):
-        self.v_cmd = 0
+        self.v_cmd =v= 0
         self.v_sup = 0
+        self.dir_mult = 1 if v >= 0 else 0
+        self._last_dir = 1 if v >= 0 else -1
 
         self.wave_last = None
         self.wave_next = None
@@ -471,6 +473,7 @@ class stepper_control:
 
         #determine direction
         self.dir_mult = 1 if v >= 0 else 0
+        self._last_dir = 1 if v >= 0 else -1
         
         #self.v_cmd = self.v_sup #TODO: validate this for position holding
         self.v_cmd = v
@@ -666,7 +669,7 @@ class stepper_control:
                     else:
                         wave = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
-                    await self.step_wave(wave,self.dir_mult)
+                    await self.step_wave(wave)
                         
                     self.fail_st = False
                     self.dt_st = time.perf_counter() - self.ct_st
