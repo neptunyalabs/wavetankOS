@@ -536,7 +536,7 @@ class stepper_control:
                     if raw_adc > 32767:
                         raw_adc -= 65535
                     self.feedback_volts = vnow = (raw_adc/32767)*VR
-                    self.z_cur = (self.vnow)*self.dzdvref
+                    self.z_cur = (vnow)*self.dzdvref
                     
 
                     if feedback_futr is not None:
