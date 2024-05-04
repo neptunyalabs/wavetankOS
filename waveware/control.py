@@ -500,6 +500,10 @@ class stepper_control:
 
     async def run_stop(self):
         self.v_cmd = 0
+        await self.pi.write(self._vpwm_pin,0)
+        await self.pi.write(self._tpwm_pin,0)
+        await self.pi.write(self._step_pin,0)
+        await self.pi.write(self._dir_pin,1)        
         await self.sleep(self.control_interval)
                     
 
