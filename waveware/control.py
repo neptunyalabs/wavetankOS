@@ -156,6 +156,7 @@ class stepper_control:
 
         tol = 0.5
         self.dzdvref = 0
+        self.z_est = 0
 
         self.upper_v = 3.3-tol
         self.lower_v = tol     
