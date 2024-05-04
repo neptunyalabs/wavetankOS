@@ -361,6 +361,8 @@ class stepper_control:
         self._st_cal = time.perf_counter()
         
         self.reset()
+        await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
+        await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)        
 
         await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
         await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
