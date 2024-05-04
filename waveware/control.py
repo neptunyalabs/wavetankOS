@@ -594,7 +594,7 @@ class stepper_control:
                     elif Nw < 1:
                         #no steps, no thank you
                         if self.t_no_inst is False:
-                            print(f'no steps')
+                            #print(f'no steps')
                             self.t_no_inst = time.perf_counter()
                         
                         elif time.perf_counter() - self.t_no_inst>self.dt_stop_and_wait:
