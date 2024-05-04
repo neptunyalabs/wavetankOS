@@ -370,7 +370,9 @@ class stepper_control:
         #determine local sensitivity
         await self.pi.write(self._step_pin,0)
         await self.pi.write(self._step_pin,1)
+        await self.sleep(1)
         await self.pi.write(self._step_pin,0)
+
         for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
             
             print(f'fwd: {upr}')
