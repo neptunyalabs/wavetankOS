@@ -243,10 +243,7 @@ class stepper_control:
         await self.pi.wave_tx_stop()
         await self.pi.wave_clear()
         await self.pi.stop()
-        await self.pi.write(self._vpwm_pin,0)
-        await self.pi.write(self._tpwm_pin,0)
-        await self.pi.write(self._step_pin,0)
-        await self.pi.write(self._dir_pin,1)
+
 
 
     def is_safe(self):
