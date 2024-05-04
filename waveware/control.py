@@ -64,19 +64,20 @@ class regular_wave:
 def speed_off_then_revert(f):
 
     async def fme(self,*args,**kwargs):
-
-        cur_speed_mode = self.speed_control_mode
-        if cur_speed_mode == 'off':
-            await f(self,*args,**kwargs)
-            return
-        
-        self.set_speed_mode('off')
-        try:
-            await f(self,*args,**kwargs)
-        except Exception as e:
-            print(f'error in {f.__name__} {e}')
-
-        self.set_speed_mode(cur_speed_mode)
+        out = await f(self,*args,**kwargs)
+        return out
+#         cur_speed_mode = self.speed_control_mode
+#         if cur_speed_mode == 'off':
+#             await f(self,*args,**kwargs)
+#             return
+#         
+#         self.set_speed_mode('off')
+#         try:
+#             await f(self,*args,**kwargs)
+#         except Exception as e:
+#             print(f'error in {f.__name__} {e}')
+# 
+#         self.set_speed_mode(cur_speed_mode)
     
     return fme     
 
