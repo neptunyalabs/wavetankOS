@@ -504,6 +504,7 @@ class stepper_control:
             sv = cv
             cv = self.feedback_volts
             t = time.time()
+            last_dir = now_dir
             if abs(cv-sv) > min_res:
                 continue #a step occured
             elif maybe_stuck is False:
@@ -516,8 +517,8 @@ class stepper_control:
                 else:
                     print(f'found bottom! {cv}')
                     found_btm = cv
-                print(f'reversing: {now_dir}')
                 now_dir = -1 * now_dir
+                print(f'reversing: {last_dir} > {now_dir}')
         
         self.upper_v = found_top
         self.lower_v = found_btm
