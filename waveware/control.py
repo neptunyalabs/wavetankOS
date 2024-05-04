@@ -532,7 +532,7 @@ class stepper_control:
 #             
 # 
 #         await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
-
+        self.t_no_inst = False
         while True:
             vlast = vnow = self.feedback_volts #prep vars
             try:
@@ -576,16 +576,17 @@ class stepper_control:
 
                     elif Nw < 1:
                         #no steps, no thank you
-                        if Nw < 1 and not hasattr(self,'t_no_inst'):
+                        if self.t_no_inst is False:
                             print(f'no steps')
                             self.t_no_inst = time.perf_counter()
                         
-                        elif Nw < 1 and time.perf_counter() - self.t_no_inst>self.dt_stop_and_wait:
+                        elif time.perf_counter() - self.t_no_inst>self.dt_stop_and_wait:
                             print(f'stopping')
-                            self.set_mode('stop')
+                            #self.set_mode('stop')
                         
                         continue #dont add voltage change or check stuck
-
+                    
+                    self.t_no_inst = False
                     self.dvds = (vnow-vlast)/((self._last_dir*Nw))
                     self.coef_2 = (self.coef_2 + self.dvds)/2
                     self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
