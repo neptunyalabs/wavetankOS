@@ -184,7 +184,7 @@ class stepper_control:
         self.speed_off_task = loop.create_task(self.speed_control_off())
         self.speed_pwm_task.add_done_callback(check_failure)
 
-        self.speed_pwm_task = loop.create_task(self.speed_pwm_task())
+        self.speed_pwm_task = loop.create_task(self.speed_pwm_control())
         self.speed_pwm_task.add_done_callback(check_failure)
 
         self.speed_step_task = loop.create_task(self.step_speed_control())
@@ -679,7 +679,7 @@ class stepper_control:
                 print(f'issue in speed step routine {e}')
                 await self.pi.write(self._step_pin,0)
 
-    async def pwm_speed_control(self):
+    async def speed_pwm_control(self):
         """uses pigpio hw PWM to control pwm dutycycle"""
         self._speed_stopped = False
         self._pause_ongoing = False
