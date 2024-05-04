@@ -167,6 +167,7 @@ class stepper_control:
         db = int(f'{dr}00000',2)
         data = [cb,db]
         #do this before reading different pin, 
+        print(f'setting adc to: {data}')
         self.smbus.write_i2c_block_data(0x48, 0x01, data)
 
     #RUN / OPS
