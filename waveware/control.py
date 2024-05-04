@@ -93,7 +93,7 @@ class stepper_control:
 
     adc_addr = 0x48
 
-    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm;int=10,**conf):
+    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm:int=10,**conf):
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
