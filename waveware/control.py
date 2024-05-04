@@ -63,11 +63,11 @@ class regular_wave:
     
 def speed_off_then_revert(f):
 
-    def fme(self,*args,**kwargs):
+    async def fme(self,*args,**kwargs):
 
         cur_speed_mode = self.speed_control_mode
         if cur_speed_mode == 'off':
-            f(self,*args,**kwargs)
+            await f(self,*args,**kwargs)
             return
         
         self.set_speed_mode('off')
