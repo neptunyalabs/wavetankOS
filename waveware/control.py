@@ -635,6 +635,7 @@ class stepper_control:
 
     async def step_speed_control(self):
         """uses pigpio waves hardware concepts to drive output"""
+        print(f'setting up step speed control')
         self._speed_stopped = False
         self._pause_ongoing = False
 
@@ -689,6 +690,7 @@ class stepper_control:
 
     async def speed_pwm_control(self):
         """uses pigpio hw PWM to control pwm dutycycle"""
+        print(f'setting pwm speed control')
         self._speed_stopped = False
         self._pause_ongoing = False
         
