@@ -413,6 +413,7 @@ class stepper_control:
             wave = wave * inc
             await self.step_wave(wave,dir=start_dir)
             await self.sleep(self.control_interval)
+
         print(f'found upper: {self.inx - 10}')
         self.upper_v = self.feedback_volts
         self.upper_lim = self.inx - 10
@@ -536,15 +537,18 @@ class stepper_control:
         print(f'starting feedback!')
         self.dvds = None
         VR = volt_ref[fv_inx]
-        # self._adc_feedback_pin_cb = asyncio.Future()
+        
 
-#         def trigger_read(gpio,level,tick):
-#             adc = self._adc_feedback_pin_cb
-#             adc.set_result(tick)
-#             self._adc_feedback_pin_cb = asyncio.Future()
-#             
-# 
-#         await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+        #TODO: get interrupt working, IO error on read, try latching?
+        # self._adc_feedback_pin_cb = asyncio.Future()
+        # def trigger_read(gpio,level,tick):
+        #     adc = self._adc_feedback_pin_cb
+        #     adc.set_result(tick)
+        #     self._adc_feedback_pin_cb = asyncio.Future()
+        #     
+        # 
+        # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+
         self.t_no_inst = False
         while True:
             vlast = vnow = self.feedback_volts #prep vars
@@ -631,7 +635,7 @@ class stepper_control:
 
         
         self.wave_last = self.wave_next #push back
-        print(dir,len(wave))
+        #print(dir,len(wave))
         if self.wave_last is not None:
             ##create the new wave
             pad_amount = await self.pi.wave_get_micros()
