@@ -498,7 +498,8 @@ class stepper_control:
         while found_btm is False and found_top is False:
             self.v_cmd = vmove * 1 if now_dir > 0 else -1
             print(f'set dir: {now_dir}')
-            await self.pi.write(self._dir_pin,1 if now_dir > 0 else 0)
+            
+            await self.set_dir(now_dir)
             await self.sleep(1E-3)
             sv = cv
             cv = self.feedback_volts
@@ -535,7 +536,10 @@ class stepper_control:
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
             
 
-
+    async def set_dir(self,dir=None):
+        if dir is None:
+            dir = self._last_dir
+        await self.pi.write(self._dir_pin,1 if dir > 0 else 0)
 
 
 
@@ -661,7 +665,7 @@ class stepper_control:
                 if vnow is None: vnow = 0
                 DIR = 'FWD' if dir > 0 else 'REV' 
                 mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
-                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} |{vnow:3.5f}| {mot_msg}'
+                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} {self._last_dir} |{vnow:3.5f}| {mot_msg}'
 
                 print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
             
