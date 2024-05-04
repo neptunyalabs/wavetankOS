@@ -710,16 +710,16 @@ class stepper_control:
                         d_us = int(1E5) #no 
 
                     #determine timing to meet step goal
-                    dt = max(d_us,self.min_dt) #div int by 2
-                    max_step = (self.control_interval/self.dt_st)
+                    dt = max(d_us,self.min_dt*2) #div int by 2
+                    max_step = (self.control_interval/self.dt_st) + 1
 
                     #increment pulses to handle async gap
                     inc = min(max(int((1E6*self.dt_st)/d_us),1),max_step)
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        wave = [asyncpio.pulse(1<<self._step_pin, 0, dt)]
-                        wave.append(asyncpio.pulse(0, 1<<self._step_pin, dt))
+                        wave = [asyncpio.pulse(1<<self._step_pin, 0, self.min_dt)]
+                        wave.append(asyncpio.pulse(0, 1<<self._step_pin, dt-self.min_dt))
                         wave = wave*inc
                     else:
                         wave = [asyncpio.pulse(0, 0, dt)]
