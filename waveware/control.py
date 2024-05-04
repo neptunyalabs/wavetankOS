@@ -314,8 +314,8 @@ class stepper_control:
                 traceback.print_exception(e)
         
         def on_start(*res):
-            self._control_modes[mode]=task
             task = loop.create_task(func)
+            self._control_modes[mode]=task
             task.add_done_callback(_fail_control)
         
         self.started.add_done_callback(on_start)
