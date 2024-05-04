@@ -29,7 +29,7 @@ def config_bit(pinx,fvinx=4):
 
 wait_factor = 2
 fv_inx = 4
-dr_inx = 860
+dr_inx = 128#860
 dr = dr_ref[dr_inx]
 # see https://thecavepearlproject.org/2020/05/21/using-the-ads1115-in-continuous-mode-for-burst-sampling/
 low_thres = 0x0000 
