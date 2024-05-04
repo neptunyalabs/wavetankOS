@@ -364,7 +364,6 @@ class stepper_control:
                 #define wave up for dt, then down for dt,j repeated inc
                 wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
                 wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-                vlast = self.feedback_volts
                 wave = wave * inc
 
                 await self.step_wave(wave,dir=1)
@@ -525,7 +524,7 @@ class stepper_control:
             vlast = vnow = self.feedback_volts #prep vars
             try:
                 while True:
-                    vlast = vnow
+                    vlast = vnow if vnow is not None else 0
                     st_inx = self.inx
                     wait = wait_factor/float(dr_inx)
                     
