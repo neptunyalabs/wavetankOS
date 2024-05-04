@@ -134,7 +134,9 @@ class stepper_control:
         self.feedback_volts = None
         self.fail_feedback = None
         self.reset()
+        self.setup_control()
         self.setup_i2c()
+        
     
     def reset(self):
         self.fail_st = False
@@ -236,7 +238,7 @@ class stepper_control:
                 task = loop.create_task(self.calibrate())
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
-                self.start_control()
+                self.started.set_result(True)
 
         self.first_feedback.add_done_callback(go)
 
@@ -298,10 +300,10 @@ class stepper_control:
         loop = asyncio.get_event_loop()
         #make the loop task
         func = self.control_mode(loop_function,mode)
-        task = loop.create_task(func)
+        
         
         #task.add_done_callback #TODO: handle failures
-        self._control_modes[mode]=task
+        self._control_modes[mode]=None #not started
         self._control_mode_fail_parms[mode] = False
 
         def _fail_control(res):
@@ -310,16 +312,23 @@ class stepper_control:
                 res.result()
             except Exception as e:
                 traceback.print_exception(e)
+        
+        def on_start(*res):
+            self._control_modes[mode]=task
+            task = loop.create_task(func)
+            task.add_done_callback(_fail_control)
+        
+        self.started.add_done_callback(on_start)
 
-        task.add_done_callback(_fail_control)
-        return task
 
-    def start_control(self):
+    def setup_control(self):
         print('starting...')
         loop = asyncio.get_event_loop()
         self.set_mode(default_mode)
+        self.started = asyncio.Future()
 
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
+        
         self.stop_task = self.make_control_mode('stop',self.run_stop)
         # self.center_task = self.make_control_mode('center',self.center_head)
         self.cal_task = self.make_control_mode('cal',self.calibrate)
