@@ -164,7 +164,7 @@ class stepper_control:
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
         cb = config_bit(pin,fvinx = 4)
-        db = int(f'{dr}00011',2)
+        db = int(f'{dr}00000',2)
         data = [cb,db]
         #do this before reading different pin, 
         self.smbus.write_i2c_block_data(0x48, 0x01, data)
@@ -706,7 +706,7 @@ class stepper_control:
         b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
         assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
         await self.pi.write(self._vpwm_pin,0)
-        
+
         while True:
             stc = self.speed_control_mode_changed
             try:
