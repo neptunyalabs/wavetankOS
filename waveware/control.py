@@ -74,7 +74,7 @@ def speed_off_then_revert(f):
         try:
             await f(self,*args,**kwargs)
         except Exception as e:
-            print(f'error in calibrate {e}')
+            print(f'error in {f.__name__} {e}')
 
         self.set_speed_mode(cur_speed_mode)
     
@@ -93,7 +93,7 @@ class stepper_control:
 
     adc_addr = 0x48
 
-    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,**conf):
+    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm;int=10,**conf):
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
@@ -114,6 +114,7 @@ class stepper_control:
         self._dir_pin = dir
         self._step_pin = step
         self._vpwm_pin = speed_pwm
+        self._tpwm_pin = torque_pwm
         self._adc_feedback_pin = fb_an_pin
         self._hlfb = hlfb
         #TODO: setup high/low interrupt on hlfb for ppr or torque / speed ect
@@ -146,6 +147,7 @@ class stepper_control:
         self.coef_2 = 0
         self.coef_10 = 0
         self.coef_100 = 0
+        self.z_err_cuml = 0
 
         tol = 0.5
         self.dzdvref = 0
@@ -241,6 +243,10 @@ class stepper_control:
         await self.pi.wave_tx_stop()
         await self.pi.wave_clear()
         await self.pi.stop()
+        await self.pi.write(self._vpwm_pin,0)
+        await self.pi.write(self._tpwm_pin,0)
+        await self.pi.write(self._step_pin,0)
+        await self.pi.write(self._dir_pin,1)
 
 
     def is_safe(self):
@@ -478,7 +484,7 @@ class stepper_control:
         
         z = self.z_t
         z_err = z - self.z_cur
-        z_err_cuml = z_err*self.kzi_err + z_err_cuml*(1-self.kzi_err)
+        self.z_err_cuml = z_err*self.kzi_err + self.z_err_cuml*(1-self.kzi_err)
         
         #correct integral for pwm ala velocity
         self.dv_err = z_err * self.kzp_sup / self.wave.Ts
