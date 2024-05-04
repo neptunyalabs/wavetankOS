@@ -182,7 +182,7 @@ class stepper_control:
         self.feedback_task = loop.create_task(self.feedback(d))
         
         self.speed_off_task = loop.create_task(self.speed_control_off())
-        self.speed_pwm_task.add_done_callback(check_failure)
+        self.speed_off_task.add_done_callback(check_failure)
 
         self.speed_pwm_task = loop.create_task(self.speed_pwm_control())
         self.speed_pwm_task.add_done_callback(check_failure)
