@@ -90,7 +90,7 @@ class stepper_control:
     kzp_sup = 1#/T
     kzi_err = 0.1
     
-    min_dt = 5
+    min_dt = 25
 
     adc_addr = 0x48
 
@@ -352,7 +352,7 @@ class stepper_control:
 
     #CALIBRATE
     @speed_off_then_revert
-    async def calibrate(self,t_on=100,t_off=9900,inc=1):
+    async def calibrate(self,t_on=1000,t_off=9900,inc=1):
         ##do some small jitters and estimate the local sensitivity, catch on ends
         
         print(f'calibrating!')
