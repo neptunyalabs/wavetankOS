@@ -650,7 +650,7 @@ class stepper_control:
             vnow = self.feedback_volts
             if vnow is None: vnow = 0
             DIR = 'FWD' if dir > 0 else 'REV'             
-            print(f'{DIR}:|{self.inx:<4}| {vnow:3.5f}'+' '.join([f'|{v:10.7f}' if v else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
+            print(f'{DIR}:|{self.inx:<4}|{self.v_cmd} |{vnow:3.5f}'+' '.join([f'|{v:10.7f}' if v else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
         
         self.step_count += Nw
         self.inx = self.inx + dir*Nw
