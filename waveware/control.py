@@ -496,8 +496,8 @@ class stepper_control:
         initalized = False
         stuck,maybe_stuck = False,False
         while found_btm is False and found_top is False:
-            self.v_cmd = vmove * 1 if now_dir > 0 else -1
-            print(f'set dir: {now_dir}')
+            self.v_cmd = vmove * (1 if now_dir > 0 else -1)
+            #print(f'set dir: {now_dir}')
             
             await self.set_dir(now_dir)
             await self.sleep(1E-3)
@@ -516,7 +516,7 @@ class stepper_control:
                 else:
                     print(f'found bottom! {cv}')
                     found_btm = cv
-                print(f'reversing')
+                print(f'reversing: {now_dir}')
                 now_dir = -1 * now_dir
         
         self.upper_v = found_top
