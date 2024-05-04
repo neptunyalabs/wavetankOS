@@ -31,6 +31,9 @@ wait_factor = 2
 fv_inx = 4
 dr_inx = 860
 dr = dr_ref[dr_inx]
+# see https://thecavepearlproject.org/2020/05/21/using-the-ads1115-in-continuous-mode-for-burst-sampling/
+low_thres = 0x0000 
+high_thres = 0x8000
 
 
 drive_modes = ['manual','wave','stop','center','cal','local','extents']
@@ -169,6 +172,9 @@ class stepper_control:
         #do this before reading different pin, 
         print(f'setting adc to: {[bin(d) for d in data]}')
         self.smbus.write_i2c_block_data(0x48, 0x01, data)
+        #setup alert pin!
+        self.smbus.write_i2c_block_data(0x48, 0x02, 0x0000)
+        self.smbus.write_i2c_block_data(0x48, 0x03, 0x8000)
 
     #RUN / OPS
 
