@@ -44,14 +44,11 @@ class test:
 
 
 
-    async def loop(self):
+    async def main(self):
         dir = 1
         await self.pi.write(self._step_pin,1)
-        await self.sleep(1)
         await self.pi.write(self._step_pin,0)
-        await self.sleep(1)        
         await self.pi.write(self._step_pin,1)
-        await self.sleep(1)
         await self.pi.write(self._step_pin,0)
 
         while True:
@@ -63,18 +60,18 @@ class test:
                     wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
                     wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
                     wave = wave * 100
-                    await self.step_wave(wave,dir=dir)
+                    await step_wave(self,wave,dir=dir)
 
           
 
 t = test()
 t.setup()
-loop = asyncio.get_event_loop()
+#loop = asyncio.get_event_loop()
 
-async def main(t):
-    await t.loop()
+# async def main(t):
+#     await loop(t)
 
-asyncio.run(main())
+asyncio.run(t.main())
 
 
 
