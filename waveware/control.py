@@ -677,7 +677,7 @@ class stepper_control:
             mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
             vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} |{vnow:3.5f}| {mot_msg}'
 
-            print(vmsg+' '.join([f'|{v:10.7f}' if v else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
+            print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
         
         self.step_count += Nw
         self.inx = self.inx + dir*Nw
