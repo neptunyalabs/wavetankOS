@@ -354,7 +354,7 @@ class stepper_control:
 
     #CALIBRATE
     @speed_off_then_revert
-    async def calibrate(self,t_on=1000,t_off=99000,inc=1):
+    async def calibrate(self,t_on=1000,t_off=9900,inc=1):
         ##do some small jitters and estimate the local sensitivity, catch on ends
         
         print(f'calibrating!')
@@ -410,6 +410,7 @@ class stepper_control:
             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
             wave = wave * inc
             await self.step_wave(wave,dir=start_dir)
+            await self.sleep(self.control_interval)
         print(f'found upper: {self.inx - 10}')
         self.upper_v = self.feedback_volts
         self.upper_lim = self.inx - 10
@@ -425,6 +426,7 @@ class stepper_control:
             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
             wave = wave * inc
             await self.step_wave(wave,dir=start_dir)
+            await self.sleep(self.control_interval)
 
         print(f'found lower: {self.inx + 10}')
         self.lower_lim = self.inx + 10
@@ -454,6 +456,9 @@ class stepper_control:
         fv = self.feedback_volts
         dv=self.vref_0-fv
 
+        if abs(dv) < tol:
+            self.set_mode('stop')
+
         #print(dv,coef_100,inx)
         #set direction
         est_steps = dv / float(self.coef_100)
@@ -468,10 +473,11 @@ class stepper_control:
         wave = wave * inc
 
         await self.step_wave(wave,dir=dir)
+        await self.sleep(self.control_interval)
         
         self.center_v = self.feedback_volts
         self.center_inx = self.inx
-
+    
 
     #Wave Control Goal
     async def wave_goal(self):
