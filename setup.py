@@ -64,8 +64,8 @@ def convert_url_fmt(git_repo):
     if mtch:
         assert len(mtch.groups()) == 1
         return new_dep_fmt.format(module=mtch.group(0), url_repo=git_repo)
-    else:
-        print(f"warning no match found for {git_repo}")
+    #else:
+        #print(f"warning no match found for {git_repo}")
     return git_repo
 
 
@@ -107,7 +107,7 @@ setup(
     ],
     entry_points={
         "console_scripts": ["wavedaq=waveware.fw_main:cli",
-                            "wavedash=waveware.live_dashboard:main",
-                            "hwstream=waveware.hardware:main"]
+                            "wavedash=waveware.live_dashboard:main"]
+                            #"hwstream=waveware.hardware:main"]
     },
 )

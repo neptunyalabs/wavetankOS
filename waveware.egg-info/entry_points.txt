@@ -1,4 +1,4 @@
 [console_scripts]
-hwstream = waveware.hardware:main
 wavedaq = waveware.fw_main:cli
 wavedash = waveware.live_dashboard:main
+

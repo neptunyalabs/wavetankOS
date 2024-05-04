@@ -1,3 +1,5 @@
+setuptools==58.2.0 #beyond this requires a new instlal strategy
+
 requests
 
 numpy

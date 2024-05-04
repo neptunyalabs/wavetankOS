@@ -11,4 +11,11 @@ waveware.egg-info/SOURCES.txt
 waveware.egg-info/dependency_links.txt
 waveware.egg-info/entry_points.txt
 waveware.egg-info/requires.txt
+waveware.egg-info/tmp3d8gxt0v
+waveware.egg-info/tmp3z2ctsi8
+waveware.egg-info/tmpaghny2cy
+waveware.egg-info/tmpbypf0lg9
+waveware.egg-info/tmpir5tzy77
+waveware.egg-info/tmpmxmna45q
+waveware.egg-info/tmpnggfzchz
 waveware.egg-info/top_level.txt

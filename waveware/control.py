@@ -31,13 +31,14 @@ wait_factor = 2
 fv_inx = 4
 dr_inx = 128#860
 dr = dr_ref[dr_inx]
+min_res = volt_ref[fv_inx]/(2**16/2)
 # see https://thecavepearlproject.org/2020/05/21/using-the-ads1115-in-continuous-mode-for-burst-sampling/
 low_thres = 0x0000 
 high_thres = 0x8000
 
 
-drive_modes = ['manual','wave','stop','center','cal','local','extents']
-default_mode = 'center'
+drive_modes = ['manual','wave','cal']#,'stop','center',,'local','extents']
+default_mode = 'cal'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
@@ -93,6 +94,7 @@ class stepper_control:
     kzi_err = 0.1
     
     min_dt = 10
+    dz_range = 0.3 #meters #TODO: input actual length of lead screw
 
     adc_addr = 0x48
 
@@ -154,15 +156,14 @@ class stepper_control:
 
         tol = 0.5
         self.dzdvref = 0
-        self.upper_lim = None
-        self.center_inx = 0
+
         self.upper_v = 3.3-tol
         self.lower_v = tol     
-        self.lower_lim = None
         self.vref_0 = (self.upper_v+self.lower_v)/2
 
         self._step_time = self.min_dt
         self._step_cint = 1
+
     #SETUP 
     async def _setup(self):
         await self.pi.connect()
@@ -194,8 +195,6 @@ class stepper_control:
         #self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
 
     #RUN / OPS
-
-
     def run(self):
         loop = asyncio.get_event_loop()
 
@@ -211,6 +210,7 @@ class stepper_control:
         self.first_feedback = d = asyncio.Future()
         self.feedback_task = loop.create_task(self.feedback(d))
         
+        #SPEED CONTROL MODES
         self.speed_off_task = loop.create_task(self.speed_control_off())
         self.speed_off_task.add_done_callback(check_failure)
 
@@ -317,18 +317,132 @@ class stepper_control:
 
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
         self.stop_task = self.make_control_mode('stop',self.run_stop)
-        self.center_task = self.make_control_mode('center',self.center_head)
+        # self.center_task = self.make_control_mode('center',self.center_head)
         self.cal_task = self.make_control_mode('cal',self.calibrate)
-        self.local_task = self.make_control_mode('local',self.local_cal)
-        self.extent_task = self.make_control_mode('extents',self.find_extends)
+        # self.local_task = self.make_control_mode('local',self.local_cal)
+        # self.extent_task = self.make_control_mode('extents',self.find_extends)
         
         #TODO: interactive
         #self.manual_task = self.make_control_mode('manual',self.manual_mode)
+    
+    #FEEDBACK & CONTROL TASKS
+    async def feedback(self,feedback_futr=None):
+        print(f'starting feedback!')
+        self.dvds = None
+        VR = volt_ref[fv_inx]
+        
+
+        #TODO: get interrupt working, IO error on read, try latching?
+        # self._adc_feedback_pin_cb = asyncio.Future()
+        # def trigger_read(gpio,level,tick):
+        #     adc = self._adc_feedback_pin_cb
+        #     adc.set_result(tick)
+        #     self._adc_feedback_pin_cb = asyncio.Future()
+        #     
+        # 
+        # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+
+        self.t_no_inst = False
+        while True:
+            vlast = vnow = self.feedback_volts #prep vars
+            tlast = tnow = time.perf_counter()
+            vdtlast = vdtnow = self.v_cmd
+            try:
+                while True:
+                    tlast = tnow #push back
+                    vdtlast = vdtnow
+                    vlast = vnow if vnow is not None else 0
+                    st_inx = self.inx
+                    wait = wait_factor/float(dr_inx)
+                    
+                    #TODO: add feedback interrupt on GPIO7
+                    #-await deferred, in pigpio callback set_result
+                    #tick = await self._adc_feedback_pin_cb
+                    await self.sleep(wait)
+                    
+                    try:
+                        data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
+                    except Exception as e:
+                        print('read i2c issue',e)
+                        continue
+                    
+                    # Convert the data
+                    vdtnow = self.v_cmd
+                    tnow = time.perf_counter()
+                    raw_adc = data[0] * 256 + data[1]
+                    if raw_adc > 32767:
+                        raw_adc -= 65535
+
+                    self.feedback_volts = vnow = (raw_adc/32767)*VR
+                    self.z_cur = (vnow)*self.dzdvref
+                    
+
+                    if feedback_futr is not None:
+                        feedback_futr.set_result(True)
+                        feedback_futr = None #twas, no more 
+
+                    
+                    dv = (vnow-vlast)
+                    dt = (tnow-tlast)
+                    accel = (vdtnow -vdtlast)/dt #speed
+                    self.z_est = self.z_est + self.v_cmd*dt+0.5*accel*dt**2
+
+                    self.dvdt = dv / dt
+                    self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
+                    self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
+                    self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
+
+                    #TODO: determine stationary
+                    
+                    Nw = abs(int(self.inx - st_inx))
+                    #dndt = Nw / dt
+                    #v_cmd = 
 
 
+                    #ok!
+                    self.fail_feedback = False                    
+                    
+                    #stop catching
+                    if self.drive_mode == 'stop':
+                        continue
 
+                    elif Nw < 1:
+                        #no steps, no thank you
+                        if self.t_no_inst is False:
+                            #print(f'no steps')
+                            self.t_no_inst = time.perf_counter()
+                        
+                        elif time.perf_counter() - self.t_no_inst>self.dt_stop_and_wait:
+                            print(f'stopping')
+                            #self.set_mode('stop') #FIXME
+                        
+                        continue #dont add voltage change or check stuck
+                    
+                    #increment measure if points exist
+                    self.t_no_inst = False
+                    self.dvds = dv/((self._last_dir*Nw))
+                    self.coef_2 = (self.coef_2 + self.dvds)/2
+                    self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
+                    self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
+
+
+                    if self.maybe_stuck:
+                        print(f'CAUTION: maybe stuck: {self.coef_2}')
+
+                    if self.stuck:
+                        #self.set_mode('stop') #FIXME
+                        pass
+
+
+            except Exception as e:
+                self.fail_feedback = True
+                print(f'control error: {e}')       
+                traceback.print_tb(e.__traceback__)
+
+
+    #CONTROL MODES
     async def control_mode(self,loop_function:callable,mode_name:str):
-        """runs an async function"""
+        """runs an async function that sets v_cmd for the speed control systems"""
         print(f'creating control {mode_name}|{loop_function.__name__}...')
         
         while self.is_safe():
@@ -354,138 +468,53 @@ class stepper_control:
         await self._stop()
         
 
-    #CALIBRATE
-    @speed_off_then_revert
-    async def calibrate(self,t_on=1000,t_off=9900,inc=1):
-        ##do some small jitters and estimate the local sensitivity, catch on ends
+    #Calibrate & Controlled Moves
+    async def calibrate(self,vmove = 0.001, crash_detect=1):
+        now_dir = self._last_dir
+        found_top = False
+        found_btm = False
+        cv = sv = self.feedback_volts
+        initalized = False
+        stuck,maybe_stuck = False,False
+        while found_btm is False and found_top is False:
+            self.v_cmd = vmove * 1 if now_dir > 0 else -1
+            await self.pi.write(self._dir_pin,1 if now_dir > 0 else 0)
+            await self.sleep(1E-3)
+            sv = cv
+            cv = self.feedback_volts
+            t = time.time()
+            if abs(cv-sv) > min_res:
+                continue #a step occured
+            elif maybe_stuck is False:
+                maybe_stuck = (t,cv)
+            elif t-maybe_stuck[0]>crash_detect:
+                stuck = (t,cv)
+                if now_dir > 0:
+                    print(f'found top! {cv}')
+                    found_top = cv
+                else:
+                    print(f'found bottom! {cv}')
+                    found_btm = cv
+                print(f'reversing')
+                now_dir = -1 * now_dir
         
-        print(f'calibrating!')
-        self._st_cal = time.perf_counter()
-        
-        self.reset()
-        await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
-        await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)        
-
-        await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
-        await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
-        await self.find_extends(t_on=t_on,t_off=t_off,inc=inc)
-        await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
-
-    @speed_off_then_revert
-    async def local_cal(self,t_on=100,t_off=9900,inc=1):
-        print('local cal...')
-        #determine local sensitivity
-
-        for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
+        self.upper_v = found_top
+        self.lower_v = found_btm
             
-            print(f'fwd: {upr}')
-            for step_plus in range(upr):
-                #change dir if nessicary
-
-                #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-                wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-                wave = wave * inc
-
-                await self.step_wave(wave,dir=1)
-                await self.sleep(self.control_interval)
-            
-            print(f'rv: {lwr}')
-            for step_minus in range(lwr,0):
-                #change dir if nessicary
-
-                #define wave up for dt, then down for dt,j repeated inc
-                wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-                wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-                wave = wave * inc
-                
-                await self.step_wave(wave,dir=-1)
-                await self.sleep(self.control_interval)
-            
-    #drive center
-    @speed_off_then_revert
-    async def find_extends(self,t_on=100,t_off=9900,inc=1):
-        print('find extents...')
-        start_coef_100 = self.coef_100
-        start_coef_10 = self.coef_10
-        start_coef_2 = self.coef_2
-        
-        start_dir = 1
-        while abs(self.coef_10) > 1E-6:
-            wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-            wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-            wave = wave * inc
-            await self.step_wave(wave,dir=start_dir)
-            await self.sleep(self.control_interval)
-
-        print(f'found upper: {self.inx - 10}')
-        self.upper_v = self.feedback_volts
-        self.upper_lim = self.inx - 10
-
-        self.coef_100 = start_coef_100
-        self.coef_10 = start_coef_10
-        self.coef_2 = start_coef_2
-
-
-        start_dir = -1
-        while abs(self.coef_10) > 1E-6:
-            wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-            wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-            wave = wave * inc
-            await self.step_wave(wave,dir=start_dir)
-            await self.sleep(self.control_interval)
-
-        print(f'found lower: {self.inx + 10}')
-        self.lower_lim = self.inx + 10
-        self.lower_v = self.feedback_volts
-        self.coef_100 = start_coef_100
-        self.coef_10 = start_coef_10
-        self.coef_2 = start_coef_2
-
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
-        self.di_dz = self.upper_lim - self.lower_lim + 20
         self.dvref_range = self.upper_v - self.lower_v
-        #calculated z per 
-        self.dz_range = self.dz_per_step * self.di_dz
+        #calculated z per
         #how much z changes per vref
         self.dzdvref = self.dz_range/self.dvref_range  
         
         #offset defaults to center
-        #TODO: change reference position via api
-        self.zi_0 = (self.upper_lim+self.lower_lim)/2 #center
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
+            
 
 
-    @speed_off_then_revert
-    async def center_head(self,t_on=100,t_off=9900,inc=1,tol=0.01):
-        print('center head...') 
-        fv = self.feedback_volts
-        dv=self.vref_0-fv
 
-        if abs(dv) < tol:
-            self.set_mode('stop')
 
-        #print(dv,coef_100,inx)
-        #set direction
-        est_steps = dv / float(self.coef_100)
-        if est_steps <= 0:
-            dir = -1
-        else:
-            dir = 1
-
-        #define wave up for dt, then down for dt,j repeated inc
-        print(dv,self.coef_100,dir)
-        wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-        wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-        wave = wave * inc
-
-        await self.step_wave(wave,dir=dir)
-        await self.sleep(self.control_interval)
-        
-        self.center_v = self.feedback_volts
-        self.center_inx = self.inx
-    
 
     #Wave Control Goal
     async def wave_goal(self):
@@ -538,96 +567,31 @@ class stepper_control:
             return True
         return False
 
-    async def feedback(self,feedback_futr=None):
-        print(f'starting feedback!')
-        self.dvds = None
-        VR = volt_ref[fv_inx]
-        
-
-        #TODO: get interrupt working, IO error on read, try latching?
-        # self._adc_feedback_pin_cb = asyncio.Future()
-        # def trigger_read(gpio,level,tick):
-        #     adc = self._adc_feedback_pin_cb
-        #     adc.set_result(tick)
-        #     self._adc_feedback_pin_cb = asyncio.Future()
-        #     
-        # 
-        # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
-
-        self.t_no_inst = False
-        while True:
-            vlast = vnow = self.feedback_volts #prep vars
-            try:
-                while True:
-                    vlast = vnow if vnow is not None else 0
-                    st_inx = self.inx
-                    wait = wait_factor/float(dr_inx)
-                    
-                    #TODO: add feedback interrupt on GPIO7
-                    #-await deferred, in pigpio callback set_result
-                    #tick = await self._adc_feedback_pin_cb
-                    await self.sleep(wait)
-                    
-                    try:
-                        data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
-                    except Exception as e:
-                        print('read i2c issue',e)
-                        continue
-                    
-                    # Convert the data
-                    raw_adc = data[0] * 256 + data[1]
-                    if raw_adc > 32767:
-                        raw_adc -= 65535
-                    self.feedback_volts = vnow = (raw_adc/32767)*VR
-                    self.z_cur = (vnow)*self.dzdvref
-                    
-
-                    if feedback_futr is not None:
-                        feedback_futr.set_result(True)
-                        feedback_futr = None #twas, no more 
-
-                    
-                    Nw = abs(int(self.inx - st_inx))
-
-                    #ok!
-                    self.fail_feedback = False                    
-                    
-                    #stop catching
-                    if self.drive_mode == 'stop':
-                        continue
-
-                    elif Nw < 1:
-                        #no steps, no thank you
-                        if self.t_no_inst is False:
-                            #print(f'no steps')
-                            self.t_no_inst = time.perf_counter()
-                        
-                        elif time.perf_counter() - self.t_no_inst>self.dt_stop_and_wait:
-                            print(f'stopping')
-                            #self.set_mode('stop') #FIXME
-                        
-                        continue #dont add voltage change or check stuck
-                    
-                    self.t_no_inst = False
-                    self.dvds = (vnow-vlast)/((self._last_dir*Nw))
-                    self.coef_2 = (self.coef_2 + self.dvds)/2
-                    self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
-                    self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
-
-                    if self.maybe_stuck:
-                        print(f'CAUTION: maybe stuck: {self.coef_2}')
-
-                    if self.stuck:
-                        #self.set_mode('stop') #FIXME
-                        pass
-
-
-            except Exception as e:
-                self.fail_feedback = True
-                print(f'control error: {e}')       
-                traceback.print_tb(e.__traceback__)
 
     #to handle stepping controls
+    def make_wave(self,pin,dt,dc:float=None,min_dt:int=None,inc=1,dt_span=None):
+        """if dc provided, dt_on=dt*dc and dt_off=dt*(1-dc), otherwise t_on=min_dt and t_off=dt-min_dt
+        use dt_span to determine number of incriments max((dt_span/dt),1)
+        if dt_span not specified a multiplier number of times via inc=10, for 10 waves. 
+        """
+        if min_dt is None:
+            min_dt = self.min_dt
+
+        if dt_span is not None:
+            inc = max((dt_span/dt),1)
+        
+        assert dt > min_dt, f'dt {dt} to small for min_dt {min_dt}'
+
+        if dc is None:
+            wave = [asyncpio.pulse(1<<pin, 0, min_dt)]
+            wave.append(asyncpio.pulse(0, 1<<pin, max(dt-min_dt),1))
+            return wave*inc
+        else:
+            wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),1))]
+            wave.append(asyncpio.pulse(0, 1<<pin, max(int(dt*(1-dc)),1)))
+            return wave*inc            
+
+
     async def step_wave(self,wave,dir=None):
         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
         Nw = int(len(wave)/2)
@@ -717,23 +681,16 @@ class stepper_control:
                         steps = False
                         d_us = int(1E5) #no 
 
-                    #determine timing to meet step goal
-                    dt = max(d_us,self.min_dt*2) #div int by 2
-                    max_step = (self.control_interval/self.dt_st) + 1
-
-                    #increment pulses to handle async gap
-                    inc = min(max(int((1E6*self.dt_st)/d_us),1),max_step)
-
-                    self._step_time = dt
-                    self._step_cint = inc                    
+                    dt = max(d_us,self.min_dt*2) 
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        wave = [asyncpio.pulse(1<<self._step_pin, 0, self.min_dt)]
-                        wave.append(asyncpio.pulse(0, 1<<self._step_pin, dt-self.min_dt))
-                        wave = wave*inc
+                        waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
                         wave = [asyncpio.pulse(0, 0, dt)]
+
+                    self._step_time = dt
+                    self._step_cint = max(len(waves)/2,1)
 
                     await self.step_wave(wave)
                         
@@ -829,13 +786,6 @@ class stepper_control:
             await asyncio.sleep(0) #no clock attempt, just straight to net
 
 
-
-
-
-
-
-
-
 if __name__ == '__main__':
 
     rw = regular_wave()
@@ -849,6 +799,137 @@ if __name__ == '__main__':
 
 
 
+# 
+# @speed_off_then_revert
+# async def calibrate(self,t_on=1000,t_off=9900,inc=1):
+#     ##do some small jitters and estimate the local sensitivity, catch on ends
+#     
+#     print(f'calibrating!')
+#     self._st_cal = time.perf_counter()
+#     
+#     self.reset()
+#     await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
+#     await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)        
+# 
+#     await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
+#     await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
+#     await self.find_extends(t_on=t_on,t_off=t_off,inc=inc)
+#     await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
+# 
+# @speed_off_then_revert
+# async def local_cal(self,t_on=100,t_off=9900,inc=1):
+#     print('local cal...')
+#     #determine local sensitivity
+# 
+#     for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
+#         
+#         print(f'fwd: {upr}')
+#         for step_plus in range(upr):
+#             #change dir if nessicary
+# 
+#             #define wave up for dt, then down for dt,j repeated inc
+#             wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+#             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
+#             wave = wave * inc
+# 
+#             await self.step_wave(wave,dir=1)
+#             await self.sleep(self.control_interval)
+#         
+#         print(f'rv: {lwr}')
+#         for step_minus in range(lwr,0):
+#             #change dir if nessicary
+# 
+#             #define wave up for dt, then down for dt,j repeated inc
+#             wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+#             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
+#             wave = wave * inc
+#             
+#             await self.step_wave(wave,dir=-1)
+#             await self.sleep(self.control_interval)
+#         
+# #drive center
+# @speed_off_then_revert
+# async def find_extends(self,t_on=100,t_off=9900,inc=1):
+#     print('find extents...')
+#     start_coef_100 = self.coef_100
+#     start_coef_10 = self.coef_10
+#     start_coef_2 = self.coef_2
+#     
+#     start_dir = 1
+#     while abs(self.coef_10) > 1E-6:
+#         wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+#         wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
+#         wave = wave * inc
+#         await self.step_wave(wave,dir=start_dir)
+#         await self.sleep(self.control_interval)
+# 
+#     print(f'found upper: {self.inx - 10}')
+#     self.upper_v = self.feedback_volts
+#     self.upper_lim = self.inx - 10
+# 
+#     self.coef_100 = start_coef_100
+#     self.coef_10 = start_coef_10
+#     self.coef_2 = start_coef_2
+# 
+# 
+#     start_dir = -1
+#     while abs(self.coef_10) > 1E-6:
+#         wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+#         wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
+#         wave = wave * inc
+#         await self.step_wave(wave,dir=start_dir)
+#         await self.sleep(self.control_interval)
+# 
+#     print(f'found lower: {self.inx + 10}')
+#     self.lower_lim = self.inx + 10
+#     self.lower_v = self.feedback_volts
+#     self.coef_100 = start_coef_100
+#     self.coef_10 = start_coef_10
+#     self.coef_2 = start_coef_2
+# 
+#     #TODO: write calibration file
+#     #TODO: write the z-index and prep for z offset
+#     self.di_dz = self.upper_lim - self.lower_lim + 20
+#     self.dvref_range = self.upper_v - self.lower_v
+#     #calculated z per 
+#     self.dz_range = self.dz_per_step * self.di_dz
+#     #how much z changes per vref
+#     self.dzdvref = self.dz_range/self.dvref_range  
+#     
+#     #offset defaults to center
+#     #TODO: change reference position via api
+#     self.zi_0 = (self.upper_lim+self.lower_lim)/2 #center
+#     self.vref_0 = (self.upper_v+self.lower_v)/2 #center
+# 
+# 
+# @speed_off_then_revert
+# async def center_head(self,t_on=100,t_off=9900,inc=1,tol=0.01):
+#     print('center head...') 
+#     fv = self.feedback_volts
+#     dv=self.vref_0-fv
+# 
+#     if abs(dv) < tol:
+#         self.set_mode('stop')
+# 
+#     #print(dv,coef_100,inx)
+#     #set direction
+#     est_steps = dv / float(self.coef_100)
+#     if est_steps <= 0:
+#         dir = -1
+#     else:
+#         dir = 1
+# 
+#     #define wave up for dt, then down for dt,j repeated inc
+#     print(dv,self.coef_100,dir)
+#     wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+#     wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
+#     wave = wave * inc
+# 
+#     await self.step_wave(wave,dir=dir)
+#     await self.sleep(self.control_interval)
+#     
+#     self.center_v = self.feedback_volts
+#     self.center_inx = self.inx
 
 
 
