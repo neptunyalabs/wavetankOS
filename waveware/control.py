@@ -515,7 +515,7 @@ class stepper_control:
             self._adc_feedback_pin_cb = asyncio.Future()
             adc.set_result(tick)
 
-        await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+        await self.pi.callback(self._adc_feedback_pin,asyncpio.RISING_EDGE,trigger_read)
 
         while True:
             vlast = vnow = self.feedback_volts #prep vars
