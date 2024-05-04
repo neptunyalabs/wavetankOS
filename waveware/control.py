@@ -129,7 +129,7 @@ class stepper_control:
     def reset(self):
         self.v_cmd = 0
         self.v_sup = 0
-        
+
         self.wave_last = None
         self.wave_next = None
 
@@ -635,7 +635,7 @@ class stepper_control:
 
         await self.pi.write(self._step_pin,0)
         await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
-
+        self.dt_st = 0.005
         while True:
             stc = self.speed_control_mode_changed
             try:        
@@ -687,6 +687,7 @@ class stepper_control:
         self._speed_stopped = False
         self._pause_ongoing = False
         
+        self.dt_sc = 0.005
         self.pwm_speed_base = 1000
         self.pwm_speed_freq = 500
         self.pwm_mid = int(self.pwm_speed_base/2)
