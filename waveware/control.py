@@ -37,7 +37,7 @@ high_thres = 0x8000
 
 
 drive_modes = ['manual','wave','stop','center','cal','local','extents']
-default_mode = 'manual'
+default_mode = 'cal'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
