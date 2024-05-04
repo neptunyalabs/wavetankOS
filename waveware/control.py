@@ -510,13 +510,13 @@ class stepper_control:
     #FEEDBACK
     @property
     def maybe_stuck(self):
-        if abs(self.coef_2) < 1E-5 and self.step_count > 100:
+        if abs(self.coef_2) < 1E-5 and self.step_count > 1000:
             return True
         return False
     
     @property
     def stuck(self):
-        if abs(self.coef_10) < 1E-6 and self.step_count > 100:
+        if abs(self.coef_10) < 1E-6 and self.step_count > 1000:
             return True
         return False
 
