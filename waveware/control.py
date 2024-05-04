@@ -37,7 +37,7 @@ high_thres = 0x8000
 
 
 drive_modes = ['manual','wave','stop','center','cal','local','extents']
-default_mode = 'cal'
+default_mode = 'center'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
@@ -92,7 +92,7 @@ class stepper_control:
     kzp_sup = 1#/T
     kzi_err = 0.1
     
-    min_dt = 25
+    min_dt = 10
 
     adc_addr = 0x48
 
@@ -161,6 +161,8 @@ class stepper_control:
         self.lower_lim = None
         self.vref_0 = (self.upper_v+self.lower_v)/2
 
+        self._step_time = self.min_dt
+        self._step_cint = 1
     #SETUP 
     async def _setup(self):
         await self.pi.connect()
@@ -626,7 +628,7 @@ class stepper_control:
 
     #to handle stepping controls
     async def step_wave(self,wave,dir=None):
-        """places waveform on pin with appropriate callbacks"""
+        """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
 
         if dir is None:
             dir = self._last_dir
@@ -670,8 +672,11 @@ class stepper_control:
         if (abs(self.inx)%10==0):
             vnow = self.feedback_volts
             if vnow is None: vnow = 0
-            DIR = 'FWD' if dir > 0 else 'REV'             
-            print(f'{DIR}:|{self.inx:<4}|{self.v_cmd} |{vnow:3.5f}'+' '.join([f'|{v:10.7f}' if v else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
+            DIR = 'FWD' if dir > 0 else 'REV' 
+            mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
+            vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} |{vnow:3.5f}| {mot_msg}'
+
+            print(vmsg' '.join([f'|{v:10.7f}' if v else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
         
         self.step_count += Nw
         self.inx = self.inx + dir*Nw
@@ -715,6 +720,9 @@ class stepper_control:
 
                     #increment pulses to handle async gap
                     inc = min(max(int((1E6*self.dt_st)/d_us),1),max_step)
+
+                    self._step_time = dt
+                    self._step_cint = inc                    
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
@@ -831,6 +839,23 @@ if __name__ == '__main__':
     sc = stepper_control(4,6,12,7,13,wave=rw)
     sc.setup()
     sc.run() 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # 
 #     async def control_io_steps(self):
