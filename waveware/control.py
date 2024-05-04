@@ -241,11 +241,12 @@ class stepper_control:
 
 
     def is_safe(self):
-        base = any((self._control_mode_fail_parms.values()))
+        #base = any((self._control_mode_fail_parms.values()))
+        base = self._control_mode_fail_parms[self.drive_mode]
         return all([not base,
-                    not self.fail_wave_goal,
-                    not self.fail_feedback])
-                    #not self.stuck
+                    not self.fail_sc,
+                    not self.fail_st,
+                    not self.stuck])
     
     def set_mode(self,new_mode):
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
