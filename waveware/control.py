@@ -141,10 +141,11 @@ class stepper_control:
         self.coef_10 = 0
         self.coef_100 = 0
 
+        tol = 0.5
         self.upper_lim = None
         self.center_inx = 0
-        self.upper_v = None
-        self.lower_v = None        
+        self.upper_v = 3.3-tol
+        self.lower_v = tol     
         self.lower_lim = None        
 
     #SETUP 
@@ -615,6 +616,7 @@ class stepper_control:
         
         if (abs(self.inx)%10==0):
             vnow = self.feedback_volts
+            if vnow is None: vnow = 0
             DIR = 'FWD' if dir > 0 else 'REV'             
             print(f'{DIR}:|{self.inx:<4}| {vnow:3.5f}'+' '.join([f'|{v:10.7f}' for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100)]))
         
