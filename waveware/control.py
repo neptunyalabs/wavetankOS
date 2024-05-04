@@ -354,7 +354,7 @@ class stepper_control:
 
     #CALIBRATE
     @speed_off_then_revert
-    async def calibrate(self,t_on=1000,t_off=9900,inc=1):
+    async def calibrate(self,t_on=1000,t_off=99000,inc=1):
         ##do some small jitters and estimate the local sensitivity, catch on ends
         
         print(f'calibrating!')
