@@ -170,7 +170,7 @@ class stepper_control:
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
         cb = config_bit(pin,fvinx = 4)
-        db = int(f'{dr}00000',2)
+        db = int(f'{dr}00001',2)
         data = [cb,db]
         #do this before reading different pin, 
         print(f'setting adc to: {[bin(d) for d in data]}')
