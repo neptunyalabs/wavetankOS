@@ -256,8 +256,8 @@ class stepper_control:
         base = self._control_mode_fail_parms[self.drive_mode]
         return all([not base,
                     not self.fail_sc,
-                    not self.fail_st,
-                    not self.stuck])
+                    not self.fail_st])
+                    #not self.stuck])
     
     def set_mode(self,new_mode):
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
