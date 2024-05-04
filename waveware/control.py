@@ -27,7 +27,7 @@ def config_bit(pinx,fvinx=4):
     vr = fv_ref[fvinx]
     return int(f'1{dv}{vr}0',2)
 
-wait_factor = 2
+wait_factor = 3
 fv_inx = 4
 dr_inx = 128#860
 dr = dr_ref[dr_inx]
@@ -129,7 +129,7 @@ class stepper_control:
         self.pi = asyncpio.pi()
 
         self._last_dir = 1
-        self.feedback_volts = None
+        self.feedback_volts = 0
         self.fail_feedback = None
         self.reset()
         self.setup_i2c()
@@ -250,6 +250,7 @@ class stepper_control:
         loop.run_until_complete(self._stop())        
 
     async def _stop(self):
+        print(f'stopping!')
         await self.pi.wave_tx_stop()
         await self.pi.wave_clear()
         await self.pi.stop()
@@ -379,6 +380,7 @@ class stepper_control:
         for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
             
             print(f'fwd: {upr}')
+            self._last_dir = 1
             for step_plus in range(upr):
                 #change dir if nessicary
 
@@ -391,6 +393,7 @@ class stepper_control:
                 await self.sleep(self.control_interval)
             
             print(f'rv: {lwr}')
+            self._last_dir = -1
             for step_minus in range(lwr,0):
                 #change dir if nessicary
 
@@ -410,7 +413,7 @@ class stepper_control:
         start_coef_10 = self.coef_10
         start_coef_2 = self.coef_2
         
-        start_dir = 1
+        self._last_dir = 1
         while abs(self.coef_10) > 1E-6:
             wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
@@ -427,7 +430,7 @@ class stepper_control:
         self.coef_2 = start_coef_2
 
 
-        start_dir = -1
+        self._last_dir = -1
         while abs(self.coef_10) > 1E-6:
             wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
@@ -441,6 +444,26 @@ class stepper_control:
         self.coef_100 = start_coef_100
         self.coef_10 = start_coef_10
         self.coef_2 = start_coef_2
+        
+        self.ref_dsdv = self.coef_100
+
+        #TODO: write calibration file
+        #TODO: write the z-index and prep for z offset
+        self.di_dz = self.upper_lim - self.lower_lim + 20
+        self.dvref_range = self.upper_v - self.lower_v
+        #calculated z per 
+        self.dz_range = self.dz_per_step * self.di_dz
+        #how much z changes per vref
+        self.dzdvref = self.dz_range/self.dvref_range  
+        
+        #offset defaults to center
+        #TODO: change reference position via api
+        self.zi_0 = (self.upper_lim+self.lower_lim)/2 #center
+        self.vref_0 = (self.upper_v+self.lower_v)/2 #center
+
+
+
+
 
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
