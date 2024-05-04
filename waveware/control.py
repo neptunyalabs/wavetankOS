@@ -151,7 +151,8 @@ class stepper_control:
         self.center_inx = 0
         self.upper_v = 3.3-tol
         self.lower_v = tol     
-        self.lower_lim = None        
+        self.lower_lim = None
+        self.vref_0 = (self.upper_v+self.lower_v)/2
 
     #SETUP 
     async def _setup(self):
@@ -508,6 +509,7 @@ class stepper_control:
         return False
 
     async def feedback(self,feedback_futr=None):
+        print(f'starting feedback!')
         self.dvds = None
         VR = volt_ref[fv_inx]
         self._adc_feedback_pin_cb = asyncio.Future()
@@ -518,7 +520,7 @@ class stepper_control:
             self._adc_feedback_pin_cb = asyncio.Future()
             
 
-        await self.pi.callback(self._adc_feedback_pin,asyncpio.RISING_EDGE,trigger_read)
+        await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
 
         while True:
             vlast = vnow = self.feedback_volts #prep vars
