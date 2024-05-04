@@ -63,7 +63,7 @@ class test:
 
         if self.wave_last is not None:
             ##create the new wave
-            pad_amount = await self.pi.wave_get_micros()
+            #pad_amount = await self.pi.wave_get_micros()
             
             #TODO: make sure this is a good idea
             #wave = [asyncpio.pulse(0, 0, pad_amount)] + wave
