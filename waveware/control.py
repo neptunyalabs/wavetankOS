@@ -691,12 +691,12 @@ class stepper_control:
                     if steps:
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
-                        wave = [asyncpio.pulse(0, 0, dt)]
+                        waves = [asyncpio.pulse(0, 0, dt)]
 
                     self._step_time = dt
                     self._step_cint = max(len(waves)/2,1)
 
-                    await self.step_wave(wave)
+                    await self.step_wave(waves)
                         
                     self.fail_st = False
                     self.dt_st = time.perf_counter() - self.ct_st
