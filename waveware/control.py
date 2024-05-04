@@ -487,7 +487,7 @@ class stepper_control:
         self.z_err_cuml = z_err*self.kzi_err + self.z_err_cuml*(1-self.kzi_err)
         
         #correct integral for pwm ala velocity
-        self.dv_err = z_err * self.kzp_sup / self.wave.Ts
+        self.dv_err = z_err * self.kzp_sup / self.wave.ts
         self.v_sup = self.v_cmd + self.dv_err
 
         #determine direction
@@ -804,49 +804,7 @@ if __name__ == '__main__':
     rw = regular_wave()
     sc = stepper_control(4,6,12,7,13,wave=rw)
     sc.setup()
-    sc.run()
-
-
-#     async def wave_goal(self):
-#         ###constantly determines
-#         while True:
-#             start_mode = self.mode_changed
-#             if self.drive_mode in ['steps','velpwm']:
-#                 print(f'starting steps control io')
-#                 try: #avoid loop overhead in subloop
-#                     while self.is_safe() and start_mode is self.mode_changed:
-#                         t = time.perf_counter() - self.start
-#                         self.z_t = z = self.wave.z_pos(t)
-#                         self.z_t_1 = z = self.wave.z_pos(t+self.control_interval)
-#                         self.v_t = v= self.wave.z_vel(t)
-#                         self.v_t_1 = v= self.wave.z_vel(t+self.control_interval)
-#                         
-#                         #avg velocity
-#                         #v = self.v_t
-#                         v = (self.v_t + self.v_t_1)/2
-#                         self.v_cmd = min(max(v,-self.max_speed_motor),self.max_speed_motor)
-# 
-#                         #always measure goal pos for error
-#                         
-#                         z = self.z_t
-#                         z_err = z - self.z_cur
-#                         z_err_cuml = z_err*self.kzi_err + z_err_cuml*(1-self.kzi_err)
-#                         
-#                         #correct integral for pwm ala velocity
-#                         self.dv_err = z_err * self.kzp_sup / self.wave.Ts
-#                         self.v_sup = self.v_cmd + self.dv_err
-# 
-#                         #determine direction
-#                         self.dir_mult = 1 if v >= 0 else 0
-#     
-#                         self.fail_wave_goal = False
-#                         await self.sleep(self.control_interval)
-#                     
-#                 except Exception as e:
-#                     self.fail_wave_goal = True
-#                     print(f'control error: {e}')
-# 
-#             await start_mode    
+    sc.run() 
 
 # 
 #     async def control_io_steps(self):
