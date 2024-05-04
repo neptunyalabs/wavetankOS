@@ -172,14 +172,14 @@ class stepper_control:
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
         cb = config_bit(pin,fvinx = 4)
-        db = int(f'{dr}00000',2)
+        db = int(f'{dr}00011',2)
         data = [cb,db]
         #do this before reading different pin, 
         print(f'setting adc to: {[bin(d) for d in data]}')
         self.smbus.write_i2c_block_data(0x48, 0x01, data)
         #setup alert pin!
-        self.smbus.write_i2c_block_data(0x48, 0x02, [0x00,0x00])
-        self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
+        #self.smbus.write_i2c_block_data(0x48, 0x02, [0x00,0x00])
+        #self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
 
     #RUN / OPS
 
