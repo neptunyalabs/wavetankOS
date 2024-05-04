@@ -597,7 +597,7 @@ class stepper_control:
 
         if dc is None:
             wave = [asyncpio.pulse(1<<pin, 0, min_dt)]
-            wave.append(asyncpio.pulse(0, 1<<pin, max(dt-min_dt),1))
+            wave.append(asyncpio.pulse(0, 1<<pin, max(dt-min_dt,1)))
             return wave*inc
         else:
             wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),1))]
