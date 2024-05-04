@@ -710,6 +710,7 @@ class stepper_control:
                 #kill PWM
                 self.fail_st = True
                 print(f'issue in speed step routine {e}')
+                traceback.print_tb(e.__traceback__)
                 await self.pi.write(self._step_pin,0)
 
     async def speed_pwm_control(self):
