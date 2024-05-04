@@ -33,8 +33,8 @@ dr_inx = 860
 dr = dr_ref[dr_inx]
 
 
-drive_modes = ['wave','stop','center','cal','local','extents']
-default_mode = 'wave'
+drive_modes = ['manual','wave','stop','center','cal','local','extents']
+default_mode = 'manual'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
@@ -287,6 +287,9 @@ class stepper_control:
         self.cal_task = self.make_control_mode('cal',self.calibrate)
         self.local_task = self.make_control_mode('local',self.local_cal)
         self.extent_task = self.make_control_mode('extents',self.find_extends)
+        
+        #TODO: interactive
+        #self.manual_task = self.make_control_mode('manual',self.manual_mode)
 
 
 
@@ -315,6 +318,7 @@ class stepper_control:
 
         print(f'control io ending...')
         await self._stop()
+        
 
     #CALIBRATE
     @speed_off_then_revert
