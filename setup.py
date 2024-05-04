@@ -1,4 +1,5 @@
 import os
+import setuptools
 from setuptools import setup
 import pathlib
 import pkg_resources
@@ -54,7 +55,8 @@ def _parse_repos(filename: str) -> typing.List[str]:
 
 # To create new PIP URL Format, dependency_links ignored. Assuming egg in git+VCS source
 exp = r"(?<=#egg=)(?P<module>[\w_]+)$"
-new_dep_fmt = "{module} @ {url_repo}"
+#new_dep_fmt = "{module} @ {url_repo}"
+new_dep_fmt = "{url_repo}"
 
 
 def convert_url_fmt(git_repo):
@@ -64,15 +66,21 @@ def convert_url_fmt(git_repo):
         return new_dep_fmt.format(module=mtch.group(0), url_repo=git_repo)
     else:
         print(f"warning no match found for {git_repo}")
+    return git_repo
 
 
 # Parse Requirements
 install_requires = _parse_requirements("requirements.txt")
-print(install_requires)
+
 new_pip_format = [
     convert_url_fmt(req) for req in _parse_repos("requirements.txt")
 ]
 print(new_pip_format)
+print(f'install requires:')
+print(install_requires)
+print('url format:')
+print(new_pip_format)
+
 install_requires = new_pip_format + install_requires  # add git repos
 
 
@@ -85,9 +93,9 @@ setup(
     license="Neptunya Use Only",
     keywords="Neptunya Core Python Utilites",
     url="https://github.com/neptunya/waveware",
-    packages=["waveware"],
+    packages=setuptools.find_packages(),
     install_requires=install_requires,
-    # dependency_links = dependency_links, DEPRICIATED PIP >19
+    #dependency_links = dependency_links, #DEPRICIATED PIP >19
     include_package_data=True,
     long_description=read("README.md"),
     classifiers=[
@@ -99,7 +107,7 @@ setup(
     ],
     entry_points={
         "console_scripts": ["wavedaq=waveware.fw_main:cli",
-                            "wavedash=waveware.live_dashboard:main"
+                            "wavedash=waveware.live_dashboard:main",
                             "hwstream=waveware.hardware:main"]
     },
 )

@@ -1,5 +1,6 @@
 README.md
 setup.py
+waveware/control.py
 waveware/data_server.py
 waveware/fw_main.py
 waveware/hardware.py

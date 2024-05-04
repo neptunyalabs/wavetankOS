@@ -223,7 +223,7 @@ class stepper_control:
 
         def go(*args,docal=True,**kw):
             nonlocal self, loop
-            print('feedback OK.')
+            print(f'feedback OK. cal = {docal}')
 
             cal_file = os.path.join(control_dir,'wave_cal.json')
             has_file = os.path.exists(cal_file)
@@ -630,6 +630,7 @@ class stepper_control:
     #to handle stepping controls
     async def step_wave(self,wave,dir=None):
         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
+        Nw = int(len(wave)/2)
 
         if dir is None:
             dir = self._last_dir
@@ -638,49 +639,50 @@ class stepper_control:
             await self.pi.write(self._dir_pin,dv)
             self._last_dir = dir
 
-        
-        self.wave_last = self.wave_next #push back
-        #print(dir,len(wave))
-        if self.wave_last is not None:
-            ##create the new wave
-            pad_amount = await self.pi.wave_get_micros()
+        if Nw > 0:
+            self.wave_last = self.wave_next #push back
+            #print(dir,len(wave))
+            if self.wave_last is not None:
+                ##create the new wave
+                pad_amount = await self.pi.wave_get_micros()
+                
+                #TODO: make sure this is a good idea
+                #wave = [asyncpio.pulse(0, 0, pad_amount)] + wave
+                await self.pi.wave_add_generic(wave)
+
+                self.wave_next = await self.pi.wave_create()
+                await self.pi.wave_send_once( self.wave_next)              
+                while self.wave_last == await self.pi.wave_tx_at():
+                    #print(f'waiting...')
+                    await asyncio.sleep(0)
+
+                await self.pi.wave_delete(self.wave_last)
+
+            else:
+                #do it raw
+                ##create the new wave
+                await self.pi.wave_add_generic(wave)
+
+                self.wave_next = await self.pi.wave_create()
+                await self.pi.wave_send_once( self.wave_next)
+                # while self.wave_next == await self.pi.wave_tx_at():
+                #     #print(f'waiting...')
+                #     await asyncio.sleep(0)            
             
-            #TODO: make sure this is a good idea
-            #wave = [asyncpio.pulse(0, 0, pad_amount)] + wave
-            await self.pi.wave_add_generic(wave)
+            if (abs(self.inx)%10==0) :
+                vnow = self.feedback_volts
+                if vnow is None: vnow = 0
+                DIR = 'FWD' if dir > 0 else 'REV' 
+                mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
+                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} |{vnow:3.5f}| {mot_msg}'
 
-            self.wave_next = await self.pi.wave_create()
-            await self.pi.wave_send_once( self.wave_next)              
-            while self.wave_last == await self.pi.wave_tx_at():
-                #print(f'waiting...')
-                await asyncio.sleep(0)
-
-            await self.pi.wave_delete(self.wave_last)
-
+                print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
+            
+            #keep tracks
+            self.step_count += Nw
+            self.inx = self.inx + dir*Nw
         else:
-            #do it raw
-            ##create the new wave
-            await self.pi.wave_add_generic(wave)
-
-            self.wave_next = await self.pi.wave_create()
-            await self.pi.wave_send_once( self.wave_next)
-            # while self.wave_next == await self.pi.wave_tx_at():
-            #     #print(f'waiting...')
-            #     await asyncio.sleep(0)            
-        
-        Nw = max(int(len(wave)/2),1)
-        
-        if (abs(self.inx)%10==0):
-            vnow = self.feedback_volts
-            if vnow is None: vnow = 0
-            DIR = 'FWD' if dir > 0 else 'REV' 
-            mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
-            vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} |{vnow:3.5f}| {mot_msg}'
-
-            print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
-        
-        self.step_count += Nw
-        self.inx = self.inx + dir*Nw
+            await asyncio.sleep(0) #break async context
 
 
     #SPEED CONTROL MODES:

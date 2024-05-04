@@ -12,6 +12,20 @@ Classifier: Topic :: Utilities
 Classifier: Topic :: Networking Framework
 Classifier: Topic :: Distributed Systems
 Classifier: License :: CONFIDENTIAL | SMARTX USE ONLY
+Requires-Dist: requests
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: dash
+Requires-Dist: dash_daq
+Requires-Dist: pigpio
+Requires-Dist: smbus
+Requires-Dist: easydict
+Requires-Dist: asyncpio@ git+https://github.com/neptunyalabs/asyncpio.git
+Requires-Dist: imusensor@ git+https://github.com/niru-5/imusensor.git
+Requires-Dist: adafruit-circuitpython-si7021
+Requires-Dist: adafruit-board-toolkit
+Requires-Dist: aioboto3
+Requires-Dist: expiringdict
 
 # What Is This:
 firmware for the neptunya demo system
