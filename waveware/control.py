@@ -127,6 +127,9 @@ class stepper_control:
         self.setup_i2c()
     
     def reset(self):
+        self.v_cmd = 0
+        self.v_sup = 0
+        
         self.wave_last = None
         self.wave_next = None
 
