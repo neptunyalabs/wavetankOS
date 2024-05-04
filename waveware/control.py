@@ -152,6 +152,9 @@ class stepper_control:
         self.coef_2 = 0
         self.coef_10 = 0
         self.coef_100 = 0
+        self.dvdt_2 = 0
+        self.dvdt_10 = 0
+        self.dvdt_100 = 0        
         self.z_err_cuml = 0
 
         tol = 0.5
