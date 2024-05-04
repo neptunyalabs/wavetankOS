@@ -624,7 +624,7 @@ class stepper_control:
 
         
         self.wave_last = self.wave_next #push back
-
+         print(str(wave[:10])[:1000])
         if self.wave_last is not None:
             ##create the new wave
             pad_amount = await self.pi.wave_get_micros()
@@ -648,6 +648,10 @@ class stepper_control:
 
             self.wave_next = await self.pi.wave_create()
             await self.pi.wave_send_once( self.wave_next)
+             print(str(wave[:10])[:1000])
+            while self.wave_next == await self.pi.wave_tx_at():
+                #print(f'waiting...')
+                await asyncio.sleep(0)            
         
         Nw = max(int(len(wave)/2),1)
         
