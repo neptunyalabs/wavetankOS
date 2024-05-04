@@ -16,6 +16,12 @@ import sys,os,pathlib
 
 control_dir = pathlib.Path(__file__).parent
 
+class MovementError(Exception): pass
+class StuckError(MovementError): pass
+class NoMotion(MovementError): pass
+
+
+
 #ADC stuff
 p_adc = {0:'100',1:'101',2:'110',3:'111'}
 fv_ref = {6:'000',4:'001',2:'010',1:'011'}
@@ -514,6 +520,9 @@ class stepper_control:
         
         self.upper_v = found_top
         self.lower_v = found_btm
+
+        if found_top == found_btm:
+            raise NoMotion()
             
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
