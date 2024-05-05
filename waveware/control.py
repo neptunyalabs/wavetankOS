@@ -282,7 +282,10 @@ class stepper_control:
     #STOPPPING / SAFETY
     def stop(self):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._stop())        
+        if loop.is_running:
+            loop.call_soon(self._stop())
+        else:
+            loop.run_until_complete(self._stop())        
 
     async def _stop(self):
         await self.pi.wave_tx_stop()
