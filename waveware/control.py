@@ -556,8 +556,8 @@ class stepper_control:
                     await self.sleep(wait)
                     print(f'reversing: {last_dir} > {now_dir}')
             
-            #Store cal info
-            cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
+                #Store cal info
+                cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
         
         print(f'got speed cals: {cals} > { getattr(self,"cal_collections",None) }')
 
