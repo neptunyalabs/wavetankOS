@@ -510,7 +510,7 @@ class stepper_control:
             vmove = [vmove]
 
         for vmov in vmove:
-            cal_val = 0
+            cals[vmov] = cal_val = 0 #avoid same variable 
             while found_btm is False or found_top is False:
                 self.v_cmd = vmov * (1 if now_dir > 0 else -1)
                 #print(f'set dir: {now_dir}')
@@ -528,14 +528,13 @@ class stepper_control:
                 dt = (t-tlast)
                 dvdt = dv / dt #change in fbvolts / time
                 #print(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
-                
+                cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
+
                 #do things depending on how much movement there was
-                if abs(dv) > min_res*5:
-                    cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
+                if abs(dv) > min_res*5:    
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
                 elif abs(dv) > min_res:
-                    cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
                     continue #a step occured
 
                 elif maybe_stuck is False:
