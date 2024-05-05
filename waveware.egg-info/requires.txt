@@ -1,3 +1,4 @@
+setuptools==58.2.0
 requests
 numpy
 pandas
@@ -6,6 +7,7 @@ dash_daq
 pigpio
 smbus
 easydict
+RPi.GPIO
 asyncpio@ git+https://github.com/neptunyalabs/asyncpio.git
 imusensor@ git+https://github.com/niru-5/imusensor.git
 adafruit-circuitpython-si7021

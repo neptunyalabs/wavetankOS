@@ -41,7 +41,14 @@ app_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
 
 PLOTS = []
 max_ts = 0
-from waveware.hardware import cache
+from waveware.data import cache
+
+
+# TODO: 1. Wave Measure Plot w/ act position and ultrasonic distance measurements
+# TODO: 4. wave input config settings
+# TODO: 2. ref height / mode selection
+# TODO: 3. pid control variables and cmd speed and feedback voltage
+
 
 def generate_plot(title, id=None):
 
@@ -521,8 +528,8 @@ def main():
     import os
 
     try:
+        import RPi.GPIO as gpio
         ON_RASPI = True
-        from piplates import DAQCplate
     except:
         ON_RASPI = False    
 

@@ -455,6 +455,7 @@ class stepper_control:
                     accel = (vdtnow -vdtlast)/dt #speed
                     self.z_est = self.z_est + vdtnow*dt+0.5*accel*dt**2
 
+                    #
                     self.dvdt = dv / dt
                     self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
                     self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
@@ -486,6 +487,7 @@ class stepper_control:
 
                     #no stuck no problem
                     if not self.maybe_stuck and not self.stuck:
+                        #set the official rate variables for estimates
                         self.coef_2 = self._coef_2
                         self.coef_10 = self._coef_10
                         self.coef_100 = self._coef_100
@@ -542,8 +544,8 @@ class stepper_control:
             self.v_cmd = 0
             self.set_mode('stop')
             return
-        else:
-            print('center head...')
+        #else:
+            #print('center head...')
 
         #print(dv,coef_100,inx)
         #set direction
