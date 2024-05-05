@@ -57,7 +57,7 @@ assert default_speed_mode in speed_modes
 
 class regular_wave:
 
-    def __init__(self,Hs=0.03,Ts=10) -> None:
+    def __init__(self,Hs=0.2,Ts=10) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()
