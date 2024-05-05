@@ -504,7 +504,8 @@ class stepper_control:
         while found_btm is False or found_top is False:
             self.v_cmd = vmove * (1 if now_dir > 0 else -1)
             #print(f'set dir: {now_dir}')
-            sv = cv            
+            
+            sv = cv       
             await self.set_dir(now_dir)
             await self.sleep(0.01)
 
@@ -554,6 +555,7 @@ class stepper_control:
         self.dvref_range = self.upper_v - self.lower_v
         #calculated z per
         #how much z changes per vref
+        print(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
         self.dzdvref = self.dz_range/self.dvref_range  
         
         #offset defaults to center
