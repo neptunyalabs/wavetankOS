@@ -497,7 +497,7 @@ class stepper_control:
         now_dir = self._last_dir
         found_top = False
         found_btm = False
-        cv = sv = self.feedback_volts
+        vstart = cv = sv = self.feedback_volts
         initalized = False
         maybe_stuck = False
         cal_val = False
@@ -526,6 +526,7 @@ class stepper_control:
                 maybe_stuck = (t,cv)
 
             elif t-maybe_stuck[0]>crash_detect:
+                #reset stuck and reverse
                 maybe_stuck = False
 
                 if now_dir > 0:
@@ -543,8 +544,10 @@ class stepper_control:
         self.upper_v = found_top
         self.lower_v = found_btm
 
-        if safe_mode and abs(found_top - found_btm) < min_res*10:
-            raise NoMotion()
+        if abs(found_top - found_btm) < min_res*10:
+            print(f'no motion detected!!!')
+            if safe_mode: raise NoMotion()
+            
             
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
