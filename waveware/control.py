@@ -571,7 +571,8 @@ class stepper_control:
         self.dvref_range = self.upper_v - self.lower_v
         #calculated z per
         #how much z changes per vref
-        self.Kvel = 
+        self.cal_collections = cals
+
         print(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
         self.dzdvref = self.dz_range/self.dvref_range  
         
