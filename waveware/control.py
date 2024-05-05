@@ -245,7 +245,7 @@ class stepper_control:
             has_file = os.path.exists(cal_file)
             if docal and not has_file:
                 print(f'calibrate first...')
-                task = loop.create_task(self.calibrate())
+                task = loop.create_task(self.calibrate(vmove=[0.001,0.01,0.1,1]))
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
                 self.started.set_result(True)
@@ -716,7 +716,7 @@ class stepper_control:
                 if vnow is None: vnow = 0
                 DIR = 'FWD' if dir > 0 else 'REV' 
                 mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
-                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} {self._last_dir} |{vnow:3.5f}| {mot_msg}'
+                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
 
                 print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
             
