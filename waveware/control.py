@@ -510,6 +510,7 @@ class stepper_control:
             cv = self.feedback_volts
             t = time.time()
             last_dir = now_dir
+            print(f'sv: {sv} | {cv}')
             if abs(cv-sv) > min_res:
                 continue #a step occured
             elif maybe_stuck is False:
