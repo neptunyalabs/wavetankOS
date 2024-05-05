@@ -215,12 +215,12 @@ class stepper_control:
     async def exec_cb(self,exc,loop):
         print(f'got exception: {exc}| {loop}')
         await self._stop()
-        sys.exit(1)
+        #sys.exit(1)
 
     async def sig_cb(self,*a,**kw):
         print(f'got signals, killing| {a} {kw}')
         await self._stop()
-        sys.exit(1)
+        #sys.exit(1)
     
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
@@ -298,13 +298,17 @@ class stepper_control:
     async def _stop(self):
         await self.pi.wave_tx_stop()
         await self.pi.wave_clear()
-
+        
+        print(f'setting signas off')
         await self.pi.write(self._step_pin,0)
         await self.pi.write(self._dir_pin,0)
+        await self.pi.set_PWM_dutycycle(self._vpwm_pin,0)
         await self.pi.write(self._vpwm_pin,0)
+        await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
         await self.pi.write(self._tpwm_pin,0)
         await self.sleep(0.25)
         await self.pi.stop()
+        print(f'done with signals')
 
 
 
