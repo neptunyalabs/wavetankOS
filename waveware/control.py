@@ -531,10 +531,10 @@ class stepper_control:
                 cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
 
                 #do things depending on how much movement there was
-                if abs(dv) > min_res*5:    
+                if abs(dv) > min_res*20:    
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
-                elif abs(dv) > min_res*2:
+                elif abs(dv) > min_res*10:
                     continue #a step occured
 
                 elif maybe_stuck is False:
