@@ -56,7 +56,7 @@ assert default_speed_mode in speed_modes
 
 class regular_wave:
 
-    def __init__(self,Hs=1,Ts=3) -> None:
+    def __init__(self,Hs=0.1,Ts=3) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()
@@ -327,6 +327,7 @@ class stepper_control:
             
             except MovementError:
                 self.v_cmd = 0
+                loop.run_until_complete(self.run_stop())
                 self.set_speed_mode('off')
 
             except Exception as e:
@@ -470,8 +471,9 @@ class stepper_control:
                             print(f'CAUTION: maybe stuck: {self.coef_2}')
 
                     elif self.stuck:
-                        #self.set_mode('stop') #FIXME
-                        pass
+                        if not was_stuck:
+                            print('STUCK!')
+                            self.set_mode('stop')
 
 
             except Exception as e:
