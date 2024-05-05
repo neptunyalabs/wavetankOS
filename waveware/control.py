@@ -202,7 +202,7 @@ class stepper_control:
         loop.set_exception_handler(self.exec_cb)
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
             sig = getattr(signal, signame)
-            loop.add_signal_handler(sig self.sig_cb)        
+            loop.add_signal_handler(sig,self.sig_cb)        
         loop.run_until_complete(self._setup())
 
 
