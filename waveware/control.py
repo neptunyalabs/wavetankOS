@@ -519,6 +519,7 @@ class stepper_control:
             vmove = [vmove]
 
         for vmov in vmove:
+            print(f'calibrate at speed: {vmov}')
             found_top = False
             found_btm = False            
             cals[vmov] = cal_val = 0 #avoid same variable 
