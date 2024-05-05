@@ -56,7 +56,7 @@ assert default_speed_mode in speed_modes
 
 class regular_wave:
 
-    def __init__(self,Hs=0.1,Ts=3) -> None:
+    def __init__(self,Hs=0.03,Ts=10) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()
@@ -522,7 +522,7 @@ class stepper_control:
         tlast = t = time.perf_counter()
 
         if vmove is None:
-            vmove=[0.001,0.01,0.1,1]
+            vmove=[0.001,0.01,0.05,0.1]
         elif not isinstance(vmove,(list,tuple)):
             vmove = [vmove]
 
