@@ -296,9 +296,6 @@ class stepper_control:
             loop.run_until_complete(self._stop())        
 
     async def _stop(self):
-        await self.pi.wave_tx_stop()
-        await self.pi.wave_clear()
-
         if not self.speed_off_task.cancelled:
             self.speed_off_task.cancel()
         
@@ -307,6 +304,9 @@ class stepper_control:
 
         if not self.speed_step_task.cancelled:
             self.speed_step_task.cancel()
+
+        await self.pi.wave_tx_stop()
+        await self.pi.wave_clear()            
 
         print(f'setting signas off')
         sp =await self.pi.write(self._step_pin,0)
