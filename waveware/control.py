@@ -42,7 +42,10 @@ min_res = volt_ref[fv_inx]/(2**16/2)
 low_thres = 0x0000 
 high_thres = 0x8000
 
-safe_mode = os.environ.get('USE_SAFE_MODE','true').strip().lower()=='true'
+safe_word =  os.environ.get('USE_SAFE_MODE','true').strip().lower()
+safe_mode = (safe_word=='true')
+if not safe_mode:
+    print(f'SAFE MODE OFF! {safe_word}')
 
 drive_modes = ['manual','wave','cal']#,'stop','center',,'local','extents']
 default_mode = 'cal'
