@@ -204,21 +204,21 @@ class stepper_control:
         self.start = time.perf_counter()
         self.stopped = False        
         loop = asyncio.get_event_loop()
-        g =  lambda s: asyncio.create_task(self.exec_cb(s, loop))
+        g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
         loop.set_exception_handler(g)
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
             sig = getattr(signal, signame)
-            loop.add_signal_handler(sig,lambda s: asyncio.create_task(self.sig_cb(s, loop)))
+            loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
 
     async def exec_cb(self,exc,loop):
-        print(f'got exception: {signal}')
+        print(f'got exception: {exc}| {loop}')
         await self._stop()
         sys.exit(1)
 
-    async def sig_cb(self,signal,loop):
-        print(f'got signals, killing')
+    async def sig_cb(self,*a,**kw):
+        print(f'got signals, killing| {a} {kw}')
         await self._stop()
         sys.exit(1)
     
@@ -412,7 +412,7 @@ class stepper_control:
         while True:
             vlast = vnow = self.feedback_volts #prep vars
             tlast = tnow = time.perf_counter()
-            vdtlast = vdtnow = self.v_cmd
+            vdtlast = vdtnow = self.v_command
             try:
                 while True:
                     tlast = tnow #push back
@@ -433,7 +433,7 @@ class stepper_control:
                         continue
                     
                     # Convert the data
-                    vdtnow = self.v_cmd
+                    vdtnow = self.v_command
                     tnow = time.perf_counter()
                     raw_adc = data[0] * 256 + data[1]
                     if raw_adc > 32767:
@@ -451,7 +451,7 @@ class stepper_control:
                     dv = (vnow-vlast)
                     dt = (tnow-tlast)
                     accel = (vdtnow -vdtlast)/dt #speed
-                    self.z_est = self.z_est + self.v_cmd*dt+0.5*accel*dt**2
+                    self.z_est = self.z_est + vdtnow*dt+0.5*accel*dt**2
 
                     self.dvdt = dv / dt
                     self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
@@ -461,8 +461,6 @@ class stepper_control:
                     #TODO: determine stationary
                     
                     Nw = abs(int(self.inx - st_inx))
-                    #dndt = Nw / dt
-                    #v_cmd = 
 
 
                     #ok!
