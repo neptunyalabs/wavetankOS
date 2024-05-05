@@ -493,7 +493,7 @@ class stepper_control:
         
 
     #Calibrate & Controlled Moves
-    async def calibrate(self,vmove = 0.001, crash_detect=1,wait=0.001):
+    async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
         print('starting calibrate...')
         now_dir = self._last_dir
         found_top = False
@@ -503,7 +503,10 @@ class stepper_control:
         maybe_stuck = False
         cals = {}
         tlast = t = time.perf_counter()
-        if not isinstance(vmove,(list,tuple)):
+
+        if vmove is None:
+            vmove=[0.001,0.01,0.1,1]
+        elif not isinstance(vmove,(list,tuple)):
             vmove = [vmove]
 
         for vmov in vmove:
