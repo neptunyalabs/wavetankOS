@@ -543,6 +543,8 @@ class stepper_control:
     async def set_dir(self,dir=None):
         if dir is None:
             dir = self._last_dir
+        else:
+            self._last_dir = dir
         await self.pi.write(self._dir_pin,1 if dir > 0 else 0)
 
 
