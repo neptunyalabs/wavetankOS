@@ -199,7 +199,7 @@ class stepper_control:
         self.start = time.perf_counter()
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._setup())
-        loop.set_exception_handler(self.exc_cb)
+        loop.set_exception_handler(self.exec_cb)
         loop.add_signal_handler(self.sig_cb)
 
     def exec_cb(self,*args,**kw):
