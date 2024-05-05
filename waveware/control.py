@@ -635,10 +635,17 @@ class stepper_control:
         self.upper_v = found_top if found_top > self.upper_v else self.upper_v
         self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
 
-        if abs(found_top - found_btm) < min_res*10:
+        ded = abs(found_top - found_btm)
+        if ded < min_res*10:
             print(f'no motion detected!!!')
             self.v_cmd = 0
             if safe_mode: raise NoMotion()
+
+        #if significant motion
+        else:
+            self.upper_v = found_top 
+            self.lower_v = found_btm
+
 
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
@@ -853,7 +860,7 @@ class stepper_control:
                         steps = False
                         d_us = int(1E6) #no 
 
-                    dt = max(d_us,self.pulse_dt*2) 
+                    dt = max(d_us,self.min_dt*2) 
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
