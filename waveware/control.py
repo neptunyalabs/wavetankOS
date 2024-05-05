@@ -500,6 +500,7 @@ class stepper_control:
         cv = sv = self.feedback_volts
         initalized = False
         maybe_stuck = False
+        cal_val = False
         while found_btm is False or found_top is False:
             self.v_cmd = vmove * (1 if now_dir > 0 else -1)
             #print(f'set dir: {now_dir}')
@@ -511,18 +512,26 @@ class stepper_control:
             t = time.time()
             last_dir = now_dir
             print(f'sv: {sv} | {cv}')
-            if abs(cv-sv) > min_res:
+            dv = cv-sv
+            
+            #do things depending on how much movement there was
+            if abs(dv) > min_res:
+                maybe_stuck = False #reaffirm
                 continue #a step occured
+
             elif maybe_stuck is False:
                 maybe_stuck = (t,cv)
+
             elif t-maybe_stuck[0]>crash_detect:
                 maybe_stuck = False
+
                 if now_dir > 0:
                     print(f'found top! {cv}')
                     found_top = cv
                 else:
                     print(f'found bottom! {cv}')
                     found_btm = cv
+
                 now_dir = -1 * now_dir
                 await self.set_dir(now_dir)
                 await self.sleep(0.01)
