@@ -508,7 +508,7 @@ class stepper_control:
         for vmov in vmove:
             cal_val = 0
             while found_btm is False or found_top is False:
-                self.v_cmd = vmove * (1 if now_dir > 0 else -1)
+                self.v_cmd = vmov * (1 if now_dir > 0 else -1)
                 #print(f'set dir: {now_dir}')
                 
                 sv = cv 
@@ -579,11 +579,11 @@ class stepper_control:
         #offset defaults to center
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
             
-    async def center(self,vmove=0.005):
-        
-        dv = self.feedback_volts - self.vref_0
-        while abs(dv) > min_res*10:
-            dv = self.feedback_volts - self.vref_0
+    # async def center(self,vmove=0.005):
+    #     
+    #     dv = self.feedback_volts - self.vref_0
+    #     while abs(dv) > min_res*10:
+    #         dv = self.feedback_volts - self.vref_0
 
 
     async def set_dir(self,dir=None):
