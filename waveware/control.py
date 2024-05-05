@@ -296,6 +296,10 @@ class stepper_control:
             loop.run_until_complete(self._stop())        
 
     async def _stop(self):
+
+        self.stopped = True
+        await self.sleep(0.1)
+
         if not self.speed_off_task.cancelled:
             self.speed_off_task.cancel()
         
