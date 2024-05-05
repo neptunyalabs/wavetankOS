@@ -306,7 +306,7 @@ class stepper_control:
         vpt = await self.pi.write(self._vpwm_pin,0)
         vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
         tp = await self.pi.write(self._tpwm_pin,0)
-        await self.sleep(0.25)
+        await self.sleep(10)
         await self.pi.stop()
         print(f'done with signals: {sp} {dp} {pt} {vpt} {vt} {tp}')
 
