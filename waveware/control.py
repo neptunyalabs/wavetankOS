@@ -542,8 +542,8 @@ class stepper_control:
                 await self.sleep(0.01)
                 print(f'reversing: {last_dir} > {now_dir}')
         
-        self.upper_v = found_top
-        self.lower_v = found_btm
+        self.upper_v = found_top if found_top > self.upper_v else self.upper_v
+        self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
 
         if abs(found_top - found_btm) < min_res*10:
             print(f'no motion detected!!!')
@@ -556,7 +556,10 @@ class stepper_control:
         #calculated z per
         #how much z changes per vref
         print(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
-        self.dzdvref = self.dz_range/self.dvref_range  
+        if self.dvref_range != 0:
+            self.dzdvref = self.dz_range/self.dvref_range  
+        else:
+            self.dzdvref = self.dz_range / 
         
         #offset defaults to center
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
