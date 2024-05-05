@@ -42,6 +42,7 @@ min_res = volt_ref[fv_inx]/(2**16/2)
 low_thres = 0x0000 
 high_thres = 0x8000
 
+safe_mode = os.environ.get('USE_SAFE_MODE','true').strip().lower()=='true'
 
 drive_modes = ['manual','wave','cal']#,'stop','center',,'local','extents']
 default_mode = 'cal'
@@ -526,7 +527,7 @@ class stepper_control:
         self.upper_v = found_top
         self.lower_v = found_btm
 
-        if abs(found_top - found_btm) < min_res:
+        if safe_mode and abs(found_top - found_btm) < min_res*10:
             raise NoMotion()
             
         #TODO: write calibration file
