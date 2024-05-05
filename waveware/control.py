@@ -279,7 +279,7 @@ class stepper_control:
 
     #STOPPPING / SAFETY
     def stop(self):
-        loop = loop.get_event_loop()
+        loop = asyncio.get_event_loop()
         loop.run_until_complete(self._stop())        
 
     async def _stop(self):
