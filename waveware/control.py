@@ -506,8 +506,7 @@ class stepper_control:
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
         print('starting calibrate...')
         now_dir = self._last_dir
-        found_top = False
-        found_btm = False
+
         vstart = cv = sv = self.feedback_volts
         initalized = False
         maybe_stuck = False
@@ -520,6 +519,8 @@ class stepper_control:
             vmove = [vmove]
 
         for vmov in vmove:
+            found_top = False
+            found_btm = False            
             cals[vmov] = cal_val = 0 #avoid same variable 
             while found_btm is False or found_top is False:
                 self.v_cmd = vmov * (1 if now_dir > 0 else -1)
@@ -724,7 +725,7 @@ class stepper_control:
                 #     #print(f'waiting...')
                 #     await asyncio.sleep(0)            
             
-            if (abs(self.inx)%10==0) :
+            if (abs(self.inx)%100==0) :
                 vnow = self.feedback_volts
                 if vnow is None: vnow = 0
                 DIR = 'FWD' if dir > 0 else 'REV' 
