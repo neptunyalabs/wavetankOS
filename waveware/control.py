@@ -552,18 +552,6 @@ class stepper_control:
         else:
             self.v_cmd = vmove
 
-        #define wave up for dt, then down for dt,j repeated inc
-        print(dv,self.coef_100,dir)
-        wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-        wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-        wave = wave * inc
-
-        await self.step_wave(wave,dir=dir)
-        await self.sleep(self.control_interval)
-        
-        self.center_v = self.feedback_volts
-        self.center_inx = self.inx
-
 
     #Calibrate & Controlled Moves
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
