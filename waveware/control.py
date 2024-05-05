@@ -548,18 +548,14 @@ class stepper_control:
         if abs(found_top - found_btm) < min_res*10:
             print(f'no motion detected!!!')
             if safe_mode: raise NoMotion()
-            
-            
+
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
         self.dvref_range = self.upper_v - self.lower_v
         #calculated z per
         #how much z changes per vref
         print(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
-        if self.dvref_range != 0:
-            self.dzdvref = self.dz_range/self.dvref_range  
-        else:
-            self.dzdvref = self.dz_range / 
+        self.dzdvref = self.dz_range/self.dvref_range  
         
         #offset defaults to center
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
