@@ -492,7 +492,7 @@ class stepper_control:
         
 
     #Calibrate & Controlled Moves
-    async def calibrate(self,vmove = 0.001, crash_detect=1):
+    async def calibrate(self,vmove = 0.005, crash_detect=1):
         print('starting calibrate...')
         now_dir = self._last_dir
         found_top = False
@@ -511,7 +511,7 @@ class stepper_control:
             cv = self.feedback_volts
             t = time.time()
             last_dir = now_dir
-            print(f'sv: {sv} | {cv}')
+            print(f'sv : {dv} | {maybe_stuck}')
             dv = cv-sv
             
             #do things depending on how much movement there was
