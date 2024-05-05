@@ -759,6 +759,7 @@ class stepper_control:
 
         await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
         self.dt_st = 0.005
+        self.max_wait = 1E5 #0.1s
         while True:
             stc = self.speed_control_mode_changed
             try:        
@@ -851,7 +852,7 @@ class stepper_control:
 #                             self._pause_ongoing = False
 #                             self._speed_stopped = False
 
-                    dc = self.pwm_mid + (v_dmd*self.pwm_speed_k)
+                    dc = max(min(self.pwm_mid + (v_dmd*self.pwm_speed_k),self.pwm_speed_base-1),self.min_dt)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
                     self.fail_sc = False
