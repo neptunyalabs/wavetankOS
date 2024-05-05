@@ -310,6 +310,7 @@ class stepper_control:
             self.speed_step_task.cancel()
 
         await self.sleep(1)
+        await self.pi.wave_tx_stop()
 
         print(f'setting signas off')
         sp =await self.pi.write(self._step_pin,0)
@@ -319,7 +320,7 @@ class stepper_control:
         vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
         tp = await self.pi.write(self._tpwm_pin,0)
         await self.sleep(1)
-        await self.pi.wave_tx_stop()
+        
         await self.pi.wave_clear()            
         await self.sleep(1)
         await self.pi.stop()
