@@ -126,7 +126,8 @@ class stepper_control:
         #self.on_time_us = 25 #us
         self.dz_per_step = self.dz_per_rot / self.steps_per_rot
         self.max_speed_motor = 0.3 #TODO: get better motor constants
-
+                
+        self.stopped = False
         self._dir_pin = dir
         self._step_pin = step
         self._vpwm_pin = speed_pwm
@@ -198,6 +199,7 @@ class stepper_control:
 
     def setup(self):
         self.start = time.perf_counter()
+        self.stopped = False        
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(self.exec_cb)
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
@@ -230,6 +232,7 @@ class stepper_control:
 
     #RUN / OPS
     def run(self):
+        self.stopped = False
         loop = asyncio.get_event_loop()
 
         def check_failure(res):
@@ -281,6 +284,7 @@ class stepper_control:
 
     #STOPPPING / SAFETY
     def stop(self):
+        self.stopped = True
         loop = asyncio.get_event_loop()
         if loop.is_running:
             loop.call_soon(self._stop())
@@ -290,6 +294,12 @@ class stepper_control:
     async def _stop(self):
         await self.pi.wave_tx_stop()
         await self.pi.wave_clear()
+        
+        await self.pi.write(self._step_pin,0)
+        await self.pi.write(self._dir_pin,0)
+        await self.pi.write(self._vpwm_pin,0)
+        await self.pi.write(self._tpwm_pin,0)
+        
         await self.pi.stop()
 
 
@@ -781,16 +791,14 @@ class stepper_control:
     async def step_speed_control(self):
         """uses pigpio waves hardware concepts to drive output"""
         print(f'setting up step speed control')
-        self._speed_stopped = False
-        self._pause_ongoing = False
 
         await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
         self.dt_st = 0.005
         self.max_wait = 1E5 #0.1s
-        while True:
+        while not self.stopped:
             stc = self.speed_control_mode_changed
             try:        
-                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc:
+                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_st = time.perf_counter()
 
                     v_dmd = self.v_cmd
@@ -833,9 +841,6 @@ class stepper_control:
     async def speed_pwm_control(self):
         """uses pigpio hw PWM to control pwm dutycycle"""
         print(f'setting pwm speed control')
-        self._speed_stopped = False
-        self._pause_ongoing = False
-        
         self.dt_sc = 0.005
         self.pwm_speed_base = 1000
         self.pwm_speed_freq = 500
@@ -851,33 +856,16 @@ class stepper_control:
 
         print(f'PWM freq: {a} | range: {b}')
         dc = 0
-        while True:
+        while not self.stopped:
             stc = self.speed_control_mode_changed
             try:
-                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc:
+                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_sc = time.perf_counter()
                     
                     #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
 
                     v_dmd = self.v_cmd
                     last_stopped = self._speed_stopped
-                    #set PWM cycle for velocity using
-#                     if self._speed_stopped and v_dmd == 0:
-#                         await self.pi.write(self._vpwm_pin,self)
-#                         await self.sleep(0.1)
-#                     else:
-#                         
-#                         if v_dmd == 0 or v_dmd is None:
-#                             if self._pause_ongoing is False:
-#                                 self._pause_ongoing = time.perf_counter()
-# 
-#                             elif time.perf_counter()-self._pause_ongoing > 5:
-#                                 print(f'go to zero')
-#                                 self._speed_stopped = True
-# 
-#                         elif v_dmd != 0:
-#                             self._pause_ongoing = False
-#                             self._speed_stopped = False
 
                     dc = max(min(self.pwm_mid + (v_dmd*self.pwm_speed_k),self.pwm_speed_base-1),self.min_dt)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
@@ -902,7 +890,7 @@ class stepper_control:
                 assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
                 await self.pi.write(self._vpwm_pin,0) #start null
                 
-            await self.pi.write(self._vpwm_pin,0)
+        await self.pi.write(self._vpwm_pin,0)
         
         
     async def sleep(self,wait_time,short=True):
