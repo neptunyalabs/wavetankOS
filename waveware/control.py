@@ -819,8 +819,8 @@ class stepper_control:
         assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
         b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
         assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
-        await self.pi.write(self._vpwm_pin,0)
-
+        await self.pi.write(self._vpwm_pin,0) #start null
+        dc = 0
         while True:
             stc = self.speed_control_mode_changed
             try:
@@ -863,7 +863,8 @@ class stepper_control:
             except Exception as e:
                 #kill PWM
                 self.fail_sc = True
-                print(f'issue in pwm speed routine {e}')
+                print(f'issue in pwm speed : {dc} routine {e}')
+                traceback.print_tb(e.__traceback__)
                 await self.pi.write(self._vpwm_pin,0)
             await self.pi.write(self._vpwm_pin,0)
         
