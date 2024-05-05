@@ -798,8 +798,8 @@ class stepper_control:
         if v_cur is None:
             return 0 #wait till feedback
         
-        dvl = (v_cur-self.upper_v)
-        dvu = (self.lower_v-v_cur) 
+        dvl = (self.upper_v-v_cur)
+        dvu = (v_cur-self.lower_v) 
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
             vnew = self.act_max_speed*(1 if vdmd > 0 else -1)
             print(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
