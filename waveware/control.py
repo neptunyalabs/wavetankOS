@@ -820,6 +820,8 @@ class stepper_control:
         b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
         assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
         await self.pi.write(self._vpwm_pin,0) #start null
+
+        print(f'PWM freq: {a} | range: {b}')
         dc = 0
         while True:
             stc = self.speed_control_mode_changed
@@ -830,27 +832,27 @@ class stepper_control:
                     #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
 
                     v_dmd = self.v_cmd
-
+                    last_stopped = self._speed_stopped
                     #set PWM cycle for velocity using
-                    if self._speed_stopped and v_dmd == 0:
-                        await self.pi.write(self._vpwm_pin,0)
-                        await self.sleep(0.1)
-                    else:
-                        
-                        if v_dmd == 0 or v_dmd is None:
-                            if self._pause_ongoing is False:
-                                self._pause_ongoing = time.perf_counter()
+#                     if self._speed_stopped and v_dmd == 0:
+#                         await self.pi.write(self._vpwm_pin,self)
+#                         await self.sleep(0.1)
+#                     else:
+#                         
+#                         if v_dmd == 0 or v_dmd is None:
+#                             if self._pause_ongoing is False:
+#                                 self._pause_ongoing = time.perf_counter()
+# 
+#                             elif time.perf_counter()-self._pause_ongoing > 5:
+#                                 print(f'go to zero')
+#                                 self._speed_stopped = True
+# 
+#                         elif v_dmd != 0:
+#                             self._pause_ongoing = False
+#                             self._speed_stopped = False
 
-                            elif time.perf_counter()-self._pause_ongoing > 5:
-                                print(f'go to zero')
-                                self._speed_stopped = True
-
-                        elif v_dmd != 0:
-                            self._pause_ongoing = False
-                            self._speed_stopped = False
-
-                        dc = self.pwm_mid + (v_dmd*self.pwm_speed_k)
-                        await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
+                    dc = self.pwm_mid + (v_dmd*self.pwm_speed_k)
+                    await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
                     self.fail_sc = False
                     self.dt_sc = time.perf_counter() - self.ct_sc
@@ -865,7 +867,13 @@ class stepper_control:
                 self.fail_sc = True
                 print(f'issue in pwm speed : {dc} routine {e}')
                 traceback.print_tb(e.__traceback__)
-                await self.pi.write(self._vpwm_pin,0)
+                #Set the appropriate pin config
+                a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)
+                assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
+                b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
+                assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
+                await self.pi.write(self._vpwm_pin,0) #start null
+                
             await self.pi.write(self._vpwm_pin,0)
         
         
