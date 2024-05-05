@@ -47,8 +47,8 @@ safe_mode = (safe_word=='true')
 if not safe_mode:
     print(f'SAFE MODE OFF! {safe_word}')
 
-drive_modes = ['manual','wave','cal']#,'stop','center',,'local','extents']
-default_mode = 'cal'
+drive_modes = ['stop','wave','cal']#,'stop','center',,'local','extents']
+default_mode = 'wave'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
@@ -103,7 +103,7 @@ class stepper_control:
     kzp_sup = 1#/T
     kzi_err = 0.1
     
-    min_dt = 10
+    min_dt = 100
     dz_range = 0.3 #meters #TODO: input actual length of lead screw
 
     adc_addr = 0x48
@@ -324,8 +324,14 @@ class stepper_control:
             print(f'mode done! {mode}')
             try:
                 res.result()
+            
+            except MovementError:
+                self.v_cmd = 0
+                self.set_speed_mode('off')
+
             except Exception as e:
                 traceback.print_exception(e)
+
         
         def on_start(*res):
             task = loop.create_task(func)
