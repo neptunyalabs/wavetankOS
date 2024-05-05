@@ -534,7 +534,7 @@ class stepper_control:
                 if abs(dv) > min_res*5:    
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
-                elif abs(dv) > min_res:
+                elif abs(dv) > min_res*2:
                     continue #a step occured
 
                 elif maybe_stuck is False:
