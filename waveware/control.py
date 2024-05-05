@@ -670,7 +670,7 @@ class stepper_control:
             min_dt = self.min_dt
 
         if dt_span is not None:
-            inc = max((dt_span/dt),1)
+            inc = max(int(dt_span/dt),1)
         
         assert dt > min_dt, f'dt {dt} to small for min_dt {min_dt}'
 
