@@ -759,11 +759,6 @@ class stepper_control:
             self.wave_last = self.wave_next #push back
             #print(dir,len(wave))
             if self.wave_last is not None:
-                ##create the new wave
-                pad_amount = await self.pi.wave_get_micros()
-                
-                #TODO: make sure this is a good idea
-                #wave = [asyncpio.pulse(0, 0, pad_amount)] + wave
                 await self.pi.wave_add_generic(wave)
 
                 self.wave_next = await self.pi.wave_create()
@@ -780,10 +775,7 @@ class stepper_control:
                 await self.pi.wave_add_generic(wave)
 
                 self.wave_next = await self.pi.wave_create()
-                await self.pi.wave_send_once( self.wave_next)
-                # while self.wave_next == await self.pi.wave_tx_at():
-                #     #print(f'waiting...')
-                #     await asyncio.sleep(0)            
+                await self.pi.wave_send_once( self.wave_next)           
             
             if (abs(self.inx)%100==0) :
                 vnow = self.feedback_volts
