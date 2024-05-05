@@ -492,7 +492,7 @@ class stepper_control:
         
 
     #Calibrate & Controlled Moves
-    async def calibrate(self,vmove = 0.005, crash_detect=1):
+    async def calibrate(self,vmove = 0.001, crash_detect=1):
         print('starting calibrate...')
         now_dir = self._last_dir
         found_top = False
@@ -500,53 +500,65 @@ class stepper_control:
         vstart = cv = sv = self.feedback_volts
         initalized = False
         maybe_stuck = False
-        cal_val = False
+        cals = {}
         tlast = t = time.perf_counter()
-        while found_btm is False or found_top is False:
-            self.v_cmd = vmove * (1 if now_dir > 0 else -1)
-            #print(f'set dir: {now_dir}')
-            
-            sv = cv 
-            tlast = t
+        if not isinstance(vmove,(list,tuple)):
+            vmove = [vmove]
 
-            await self.set_dir(now_dir)
-            await self.sleep(0.01)
+        for vmov in vmove:
+            cal_val = 0
+            while found_btm is False or found_top is False:
+                self.v_cmd = vmove * (1 if now_dir > 0 else -1)
+                #print(f'set dir: {now_dir}')
+                
+                sv = cv 
+                tlast = t
 
-            cv = self.feedback_volts
-            t = time.perf_counter()
-            last_dir = now_dir
-            dv = cv-sv
-            dt = (t-tlast)
-            dvdt = dv / dt
-            print(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
-            
-            
-            #do things depending on how much movement there was
-            if abs(dv) > min_res*3:
-                maybe_stuck = False #reaffirm when out of error
-                continue #a step occured
-            elif abs(dv) > min_res:
-                continue #a step occured
-
-            elif maybe_stuck is False:
-                maybe_stuck = (t,cv)
-
-            elif t-maybe_stuck[0]>crash_detect:
-                #reset stuck and reverse
-                maybe_stuck = False
-
-                if now_dir > 0:
-                    print(f'found top! {cv}')
-                    found_top = cv
-                else:
-                    print(f'found bottom! {cv}')
-                    found_btm = cv
-
-                now_dir = -1 * now_dir
                 await self.set_dir(now_dir)
                 await self.sleep(0.01)
-                print(f'reversing: {last_dir} > {now_dir}')
+
+                cv = self.feedback_volts
+                t = time.perf_counter()
+                last_dir = now_dir
+                dv = cv-sv
+                dt = (t-tlast)
+                dvdt = dv / dt #change in fbvolts / time
+                print(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
+                
+                
+                #do things depending on how much movement there was
+                if abs(dv) > min_res*3:
+                    cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
+                    maybe_stuck = False #reaffirm when out of error
+                    continue #a step occured
+                elif abs(dv) > min_res:
+                    cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
+                    continue #a step occured
+
+                elif maybe_stuck is False:
+                    maybe_stuck = (t,cv)
+
+                elif t-maybe_stuck[0]>crash_detect:
+                    #reset stuck and reverse
+                    maybe_stuck = False
+
+                    if now_dir > 0:
+                        print(f'found top! {cv}')
+                        found_top = cv
+                    else:
+                        print(f'found bottom! {cv}')
+                        found_btm = cv
+
+                    now_dir = -1 * now_dir
+                    await self.set_dir(now_dir)
+                    await self.sleep(0.01)
+                    print(f'reversing: {last_dir} > {now_dir}')
+            
+            #Store cal info
+            cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
         
+        print(f'got speed cals: {cals}')
+
         self.upper_v = found_top if found_top > self.upper_v else self.upper_v
         self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
 
@@ -559,6 +571,7 @@ class stepper_control:
         self.dvref_range = self.upper_v - self.lower_v
         #calculated z per
         #how much z changes per vref
+        self.Kvel = 
         print(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
         self.dzdvref = self.dz_range/self.dvref_range  
         
@@ -566,7 +579,10 @@ class stepper_control:
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
             
     async def center(self,vmove=0.005):
-
+        
+        dv = self.feedback_volts - self.vref_0
+        while abs(dv) > min_res*10:
+            dv = self.feedback_volts - self.vref_0
 
 
     async def set_dir(self,dir=None):
