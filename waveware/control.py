@@ -813,6 +813,7 @@ class stepper_control:
         dvl = (self.upper_v-v_cur)
         dvu = (v_cur-self.lower_v) 
         Kspd = min(self.act_max_speed,abs(vdmd))
+
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
             vnew = Kspd*(1 if vdmd > 0 else -1)
             #print(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
@@ -863,7 +864,9 @@ class stepper_control:
                     self._step_time = dt
                     self._step_cint = max(len(waves)/2,1)
 
-                    await self.step_wave(waves)
+                    res = await self.step_wave(waves)
+                    if res != 0:
+                        print(f'wave error: {res}')
                         
                     self.fail_st = False
                     self.dt_st = time.perf_counter() - self.ct_st
