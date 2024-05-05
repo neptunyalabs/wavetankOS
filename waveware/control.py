@@ -164,6 +164,9 @@ class stepper_control:
         self.coef_2 = 0
         self.coef_10 = 0
         self.coef_100 = 0
+        self._coef_2 = 0
+        self._coef_10 = 0
+        self._coef_100 = 0        
         self.dvdt_2 = 0
         self.dvdt_10 = 0
         self.dvdt_100 = 0        
@@ -443,18 +446,24 @@ class stepper_control:
                         continue #dont add voltage change or check stuck
                     
                     #increment measure if points exist
+                    was_maybe_stuck,was_stuck = self.maybe_stuck,self.stuck
+                    self.t_no_inst = False
+                    self.dvds = dv/((self._last_dir*Nw))
+                    self._coef_2 = (self._coef_2 + self.dvds)/2
+                    self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
+                    self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
+
+                    #no stuck no problem
                     if not self.maybe_stuck and not self.stuck:
-                        self.t_no_inst = False
-                        self.dvds = dv/((self._last_dir*Nw))
-                        self.coef_2 = (self.coef_2 + self.dvds)/2
-                        self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
-                        self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
+                        self.coef_2 = self._coef_2
+                        self.coef_10 = self._coef_10
+                        self.coef_100 = self._coef_100
+                                            
+                    elif self.maybe_stuck:
+                        if not was_maybe_stuck:
+                            print(f'CAUTION: maybe stuck: {self.coef_2}')
 
-
-                    if self.maybe_stuck:
-                        print(f'CAUTION: maybe stuck: {self.coef_2}')
-
-                    if self.stuck:
+                    elif self.stuck:
                         #self.set_mode('stop') #FIXME
                         pass
 
@@ -638,14 +647,14 @@ class stepper_control:
 
     #FEEDBACK
     @property
-    def maybe_stuck(self):
-        if abs(self.coef_2) < 1E-5 and self.step_count > 1000:
+    def maybe_stuck(self,tol_maybestuck=0.01):
+        if abs(self._coef_2) < tol_maybestuck and self.step_count > 1000:
             return True
         return False
     
     @property
-    def stuck(self):
-        if abs(self.coef_10) < 1E-6 and self.step_count > 1000:
+    def stuck(self,tol_stuck=1E-6):
+        if abs(self._coef_10) < tol_stuck and self.step_count > 1000:
             return True
         return False
 
