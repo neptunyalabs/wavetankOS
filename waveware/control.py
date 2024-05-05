@@ -287,7 +287,7 @@ class stepper_control:
         self.stopped = True
         loop = asyncio.get_event_loop()
         if loop.is_running:
-            loop.call_soon(self._stop())
+            loop.call_soon(self._stop)
         else:
             loop.run_until_complete(self._stop())        
 
