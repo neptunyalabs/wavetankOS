@@ -48,8 +48,8 @@ safe_mode = (safe_word=='true')
 if not safe_mode:
     print(f'SAFE MODE OFF! {safe_word}')
 
-drive_modes = ['stop','wave','cal']#,'stop','center',,'local','extents']
-default_mode = 'wave'
+drive_modes = ['stop','wave','cal','center']
+default_mode = 'center'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
