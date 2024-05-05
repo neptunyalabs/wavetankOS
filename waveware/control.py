@@ -244,8 +244,9 @@ class stepper_control:
             cal_file = os.path.join(control_dir,'wave_cal.json')
             has_file = os.path.exists(cal_file)
             if docal and not has_file:
-                print(f'calibrate first...')
-                task = loop.create_task(self.calibrate(vmove=[0.001,0.01,0.1,1]))
+                vmove=[0.001,0.01,0.1,1]
+                print(f'calibrate first v={vmove}...')
+                task = loop.create_task(self.calibrate(vmove=vmove))
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
                 self.started.set_result(True)
@@ -556,7 +557,7 @@ class stepper_control:
             #Store cal info
             cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
         
-        print(f'got speed cals: {cals}')
+        print(f'got speed cals: {cals} > {getattr(self,'cal_collections')}')
 
         self.upper_v = found_top if found_top > self.upper_v else self.upper_v
         self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
