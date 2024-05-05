@@ -492,7 +492,7 @@ class stepper_control:
         
 
     #Calibrate & Controlled Moves
-    async def calibrate(self,vmove = 0.001, crash_detect=1):
+    async def calibrate(self,vmove = 0.001, crash_detect=1,wait=0.001):
         print('starting calibrate...')
         now_dir = self._last_dir
         found_top = False
@@ -515,7 +515,7 @@ class stepper_control:
                 tlast = t
 
                 await self.set_dir(now_dir)
-                await self.sleep(0.01)
+                await self.sleep(wait)
 
                 cv = self.feedback_volts
                 t = time.perf_counter()
@@ -523,11 +523,10 @@ class stepper_control:
                 dv = cv-sv
                 dt = (t-tlast)
                 dvdt = dv / dt #change in fbvolts / time
-                print(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
-                
+                #print(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
                 
                 #do things depending on how much movement there was
-                if abs(dv) > min_res*3:
+                if abs(dv) > min_res*5:
                     cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
@@ -551,7 +550,7 @@ class stepper_control:
 
                     now_dir = -1 * now_dir
                     await self.set_dir(now_dir)
-                    await self.sleep(0.01)
+                    await self.sleep(wait)
                     print(f'reversing: {last_dir} > {now_dir}')
             
             #Store cal info
