@@ -87,7 +87,7 @@ class stepper_control:
     kzp_sup = 1#/T
     kzi_err = 0.1
     
-    min_dt = 5
+    min_dt = 10
     pulse_dt = 10
     dz_range = 0.3 #meters #TODO: input actual length of lead screw
 
@@ -658,7 +658,7 @@ class stepper_control:
             await self.sleep(0)
 
         print(f'set mode: {default_mode}')
-        await self.set_mode(default_mode)
+        self.set_mode(default_mode)
 
 
     async def set_dir(self,dir=None):
@@ -812,8 +812,9 @@ class stepper_control:
         
         dvl = (self.upper_v-v_cur)
         dvu = (v_cur-self.lower_v) 
+        Kspd = min(self.act_max_speed,abs(vdmd))
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
-            vnew = self.act_max_speed*(1 if vdmd > 0 else -1)
+            vnew = Kspd*(1 if vdmd > 0 else -1)
             #print(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
             vdmd = vnew
             
