@@ -175,6 +175,9 @@ class stepper_control:
         self.z_err_cuml = 0
 
         tol = 0.5
+        self.v_active_tol = 0.1
+        self.act_max_speed = 0.01
+        
         self.dzdvref = 0
         self.z_est = 0
 
@@ -201,22 +204,23 @@ class stepper_control:
         self.start = time.perf_counter()
         self.stopped = False        
         loop = asyncio.get_event_loop()
-        loop.set_exception_handler(self.exec_cb)
+        g =  lambda s: asyncio.create_task(self.exec_cb(s, loop))
+        loop.set_exception_handler(self.g)
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
             sig = getattr(signal, signame)
-            loop.add_signal_handler(sig,self.sig_cb)        
+            loop.add_signal_handler(sig,lambda s: asyncio.create_task(self.sig_cb(s, loop)))
         loop.run_until_complete(self._setup())
 
 
-    def exec_cb(self,*args,**kw):
-        print(f'got exception: {args}')
-        self.stop()
+    async def exec_cb(self,exc,loop):
+        print(f'got exception: {signal}')
+        await self._stop()
         sys.exit(1)
 
-    def sig_cb(self,*args,**kw):
+    async def sig_cb(self,signal,loop):
         print(f'got signals, killing')
-        self.stop()
-        sys.exit(0)
+        await self._stop()
+        sys.exit(1)
     
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
@@ -780,6 +784,17 @@ class stepper_control:
 
 
     #SPEED CONTROL MODES:
+    def v_command(self):
+        """rate limited speed command"""
+        if self.stopped:
+            return 0
+        
+        vdmd = self.v_cmd
+        v_cur = self.feedback_volts
+        if (self.upper_v-v_cur) < self.v_active_tol or
+
+        return vdmd
+    
     async def speed_control_off(self):
         while True:
             stc = self.speed_control_mode_changed
@@ -787,6 +802,7 @@ class stepper_control:
                 await self.sleep(0.1)
 
             await self.speed_control_mode_changed
+
 
     async def step_speed_control(self):
         """uses pigpio waves hardware concepts to drive output"""
@@ -801,7 +817,7 @@ class stepper_control:
                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_st = time.perf_counter()
 
-                    v_dmd = self.v_cmd
+                    v_dmd = self.v_command
 
                     if v_dmd != 0 and self.is_safe():
                         d_us = max( int(1E6 * self.dz_per_step / abs(v_dmd)) , self.min_dt)
@@ -864,7 +880,7 @@ class stepper_control:
                     
                     #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
 
-                    v_dmd = self.v_cmd
+                    v_dmd = self.v_command
 
                     dc = max(min(self.pwm_mid + (v_dmd*self.pwm_speed_k),self.pwm_speed_base-1),self.min_dt)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
