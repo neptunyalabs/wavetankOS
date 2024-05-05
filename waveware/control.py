@@ -205,7 +205,7 @@ class stepper_control:
         self.stopped = False        
         loop = asyncio.get_event_loop()
         g =  lambda s: asyncio.create_task(self.exec_cb(s, loop))
-        loop.set_exception_handler(self.g)
+        loop.set_exception_handler(g)
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
             sig = getattr(signal, signame)
             loop.add_signal_handler(sig,lambda s: asyncio.create_task(self.sig_cb(s, loop)))
