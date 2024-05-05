@@ -763,13 +763,13 @@ class stepper_control:
             self.wave_last = self.wave_next #push back
             #print(dir,len(wave))
             if self.wave_last is not None:
-                await self.pi.wave_add_generic(wave)
-
+                ges = await self.pi.wave_add_generic(wave)
+             
                 self.wave_next = await self.pi.wave_create()
-                await self.pi.wave_send_once( self.wave_next)              
                 while self.wave_last == await self.pi.wave_tx_at():
                     #print(f'waiting...')
                     await asyncio.sleep(0)
+                await self.pi.wave_send_once( self.wave_next)                     
 
                 await self.pi.wave_delete(self.wave_last)
 
@@ -865,8 +865,7 @@ class stepper_control:
                     self._step_cint = max(len(waves)/2,1)
 
                     res = await self.step_wave(waves)
-                    if res != 0:
-                        print(f'wave error: {res}')
+
                         
                     self.fail_st = False
                     self.dt_st = time.perf_counter() - self.ct_st
