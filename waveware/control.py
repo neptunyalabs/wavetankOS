@@ -784,6 +784,7 @@ class stepper_control:
 
 
     #SPEED CONTROL MODES:
+    @property
     def v_command(self):
         """rate limited speed command"""
         if self.stopped:
