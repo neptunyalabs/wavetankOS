@@ -515,8 +515,9 @@ class stepper_control:
             dv = cv-sv
             
             #do things depending on how much movement there was
-            if abs(dv) > min_res*2:
-                maybe_stuck = False #reaffirm
+            if abs(dv) > min_res:
+                if abs(dv) > min_res*2:
+                    maybe_stuck = False #reaffirm when out of error
                 continue #a step occured
 
             elif maybe_stuck is False:
