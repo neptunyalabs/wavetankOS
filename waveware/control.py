@@ -49,14 +49,14 @@ if not safe_mode:
     print(f'SAFE MODE OFF! {safe_word}')
 
 drive_modes = ['stop','wave','cal','center']
-default_mode = 'center'
+default_mode = 'wave'
 
 speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
 assert default_speed_mode in speed_modes
 
 #vmove=[0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.1]
-vmove=vmove_default=[0.01,0.04]
+vmove=vmove_default=[0.00001,0.001,0.01,0.04]
 
 class regular_wave:
 
@@ -543,7 +543,7 @@ class stepper_control:
         if abs(dv) < find_tol:
             self.v_cmd = 0
             self.set_mode('stop')
-            return
+            return False
         #else:
             #print('center head...')
 
@@ -556,6 +556,8 @@ class stepper_control:
             self.v_cmd = vmove
         
         await self.sleep(self.control_interval)
+
+        return self.v_cmd
 
 
     #Calibrate & Controlled Moves
@@ -649,6 +651,13 @@ class stepper_control:
         
         #offset defaults to center
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
+
+        print(f'center before run')
+        while not (await self.center_head()):
+            await self.sleep(0)
+
+        print(f'set mode: {default_mode}')
+        await self.set_mode(default_mode)
 
 
     async def set_dir(self,dir=None):

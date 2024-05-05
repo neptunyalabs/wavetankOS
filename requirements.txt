@@ -16,19 +16,17 @@ dash_daq
 pigpio #gpio fast
 smbus #i2c
 easydict
+RPi.GPIO
 asyncpio @ git+https://github.com/neptunyalabs/asyncpio.git#egg=asyncpio
 imusensor @  git+https://github.com/niru-5/imusensor.git#egg=imusensor
 adafruit-circuitpython-si7021
 adafruit-board-toolkit
 
-#pi-plates
-#RPi.GPIO
-
 
 
 #boto3
 aioboto3
-#aiobotocore
-#expiring-dict
+aiobotocore
+
 expiringdict
 
