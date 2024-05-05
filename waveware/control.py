@@ -791,7 +791,10 @@ class stepper_control:
         
         vdmd = self.v_cmd
         v_cur = self.feedback_volts
-        if (self.upper_v-v_cur) < self.v_active_tol or
+        dvl = (v_cur-self.upper_v)
+        dvu = (self.upper_v-v_cur) 
+        if dvl < self.v_active_tol or dvu < self.v_active_tol:
+            vdmd = self.act_max_speed*(1 if vdmd > 0 else -1)
 
         return vdmd
     
