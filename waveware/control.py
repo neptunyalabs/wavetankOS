@@ -783,7 +783,7 @@ class stepper_control:
                 if vnow is None: vnow = 0
                 DIR = 'FWD' if dir > 0 else 'REV' 
                 mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
-                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
+                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_command}<>{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
 
                 print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
             
