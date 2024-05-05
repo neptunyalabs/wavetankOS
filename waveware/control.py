@@ -207,10 +207,12 @@ class stepper_control:
 
 
     def exec_cb(self,*args,**kw):
-        print(args,kw)
+        print(f'got exception: {args}')
+        self.stop()
 
     def sig_cb(self,*args,**kw):
-        print(args,kw)
+        print(f'got signals, killing')
+        self.stop()
     
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
