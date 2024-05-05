@@ -489,6 +489,7 @@ class stepper_control:
 
     #Calibrate & Controlled Moves
     async def calibrate(self,vmove = 0.001, crash_detect=1):
+        print('starting calibrate...')
         now_dir = self._last_dir
         found_top = False
         found_btm = False
