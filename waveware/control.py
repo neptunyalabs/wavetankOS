@@ -56,7 +56,7 @@ default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower
 assert default_speed_mode in speed_modes
 
 #vmove=[0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.1]
-vmove=vmove_default=[0.01,0.05]
+vmove=vmove_default=[0.01,0.04]
 
 class regular_wave:
 
@@ -76,27 +76,7 @@ class regular_wave:
     def z_vel(self,t):
         return self.a*self.omg*cos(self.omg*t)
     
-# def speed_off_then_revert(f):
-# 
-#     async def fme(self,*args,**kwargs):
-#         #out = await f(self,*args,**kwargs)
-#         #return out
-#         cur_speed_mode = self.speed_control_mode
-#         if cur_speed_mode == 'off':
-#             out = await f(self,*args,**kwargs)
-#             return out
-#         
-#         self.set_speed_mode('off')
-#         try:
-#             out = await f(self,*args,**kwargs)
-#         except Exception as e:
-#             print(f'error in {f.__name__} {e}')
-#             out = e
-# 
-#         self.set_speed_mode(cur_speed_mode)
-#         return out
-#     
-#     return fme     
+
 
 class stepper_control:
     steps_per_rot = 360/1.8
@@ -405,7 +385,7 @@ class stepper_control:
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
         
         self.stop_task = self.make_control_mode('stop',self.run_stop)
-        # self.center_task = self.make_control_mode('center',self.center_head)
+        self.center_task = self.make_control_mode('center',self.center_head)
         self.cal_task = self.make_control_mode('cal',self.calibrate)
         # self.local_task = self.make_control_mode('local',self.local_cal)
         # self.extent_task = self.make_control_mode('extents',self.find_extends)
@@ -560,7 +540,38 @@ class stepper_control:
 
         print(f'control io ending...')
         await self._stop()
+
+    #Center        
+    async def center_head(self,vmove=0.01,find_tol = 0.025):
+        print('center head...') 
+        fv = self.feedback_volts
+        dv=self.vref_0-fv
+
+        if abs(dv) < find_tol:
+            self.v_cmd = 0
+            self.set_mode('stop')
+            return
+
+        #print(dv,coef_100,inx)
+        #set direction
+        est_steps = dv / float(self.coef_100)
+        if est_steps <= 0:
+            self.v_cmd = vmove * -1
+        else:
+            self.v_cmd = vmove
+
+        #define wave up for dt, then down for dt,j repeated inc
+        print(dv,self.coef_100,dir)
+        wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
+        wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
+        wave = wave * inc
+
+        await self.step_wave(wave,dir=dir)
+        await self.sleep(self.control_interval)
         
+        self.center_v = self.feedback_volts
+        self.center_inx = self.inx
+
 
     #Calibrate & Controlled Moves
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
@@ -956,143 +967,30 @@ if __name__ == '__main__':
 
 
 
+
+
+
+# def speed_off_then_revert(f):
 # 
-# @speed_off_then_revert
-# async def calibrate(self,t_on=1000,t_off=9900,inc=1):
-#     ##do some small jitters and estimate the local sensitivity, catch on ends
-#     
-#     print(f'calibrating!')
-#     self._st_cal = time.perf_counter()
-#     
-#     self.reset()
-#     await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
-#     await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)        
-# 
-#     await self.local_cal(t_on=t_on,t_off=t_off,inc=inc)
-#     await self.center_head(t_on=t_on,t_off=t_off,inc=inc)
-#     await self.find_extends(t_on=t_on,t_off=t_off,inc=inc)
-#     await self.center_head(t_on=t_on,t_off=t_off,inc=inc)       
-# 
-# @speed_off_then_revert
-# async def local_cal(self,t_on=100,t_off=9900,inc=1):
-#     print('local cal...')
-#     #determine local sensitivity
-# 
-#     for upr,lwr in [[1,-1],[10,-10],[100,-100]]:
+#     async def fme(self,*args,**kwargs):
+#         #out = await f(self,*args,**kwargs)
+#         #return out
+#         cur_speed_mode = self.speed_control_mode
+#         if cur_speed_mode == 'off':
+#             out = await f(self,*args,**kwargs)
+#             return out
 #         
-#         print(f'fwd: {upr}')
-#         for step_plus in range(upr):
-#             #change dir if nessicary
+#         self.set_speed_mode('off')
+#         try:
+#             out = await f(self,*args,**kwargs)
+#         except Exception as e:
+#             print(f'error in {f.__name__} {e}')
+#             out = e
 # 
-#             #define wave up for dt, then down for dt,j repeated inc
-#             wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-#             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-#             wave = wave * inc
-# 
-#             await self.step_wave(wave,dir=1)
-#             await self.sleep(self.control_interval)
-#         
-#         print(f'rv: {lwr}')
-#         for step_minus in range(lwr,0):
-#             #change dir if nessicary
-# 
-#             #define wave up for dt, then down for dt,j repeated inc
-#             wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-#             wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-#             wave = wave * inc
-#             
-#             await self.step_wave(wave,dir=-1)
-#             await self.sleep(self.control_interval)
-#         
-# #drive center
-# @speed_off_then_revert
-# async def find_extends(self,t_on=100,t_off=9900,inc=1):
-#     print('find extents...')
-#     start_coef_100 = self.coef_100
-#     start_coef_10 = self.coef_10
-#     start_coef_2 = self.coef_2
+#         self.set_speed_mode(cur_speed_mode)
+#         return out
 #     
-#     start_dir = 1
-#     while abs(self.coef_10) > 1E-6:
-#         wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-#         wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-#         wave = wave * inc
-#         await self.step_wave(wave,dir=start_dir)
-#         await self.sleep(self.control_interval)
-# 
-#     print(f'found upper: {self.inx - 10}')
-#     self.upper_v = self.feedback_volts
-#     self.upper_lim = self.inx - 10
-# 
-#     self.coef_100 = start_coef_100
-#     self.coef_10 = start_coef_10
-#     self.coef_2 = start_coef_2
-# 
-# 
-#     start_dir = -1
-#     while abs(self.coef_10) > 1E-6:
-#         wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-#         wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-#         wave = wave * inc
-#         await self.step_wave(wave,dir=start_dir)
-#         await self.sleep(self.control_interval)
-# 
-#     print(f'found lower: {self.inx + 10}')
-#     self.lower_lim = self.inx + 10
-#     self.lower_v = self.feedback_volts
-#     self.coef_100 = start_coef_100
-#     self.coef_10 = start_coef_10
-#     self.coef_2 = start_coef_2
-# 
-#     #TODO: write calibration file
-#     #TODO: write the z-index and prep for z offset
-#     self.di_dz = self.upper_lim - self.lower_lim + 20
-#     self.dvref_range = self.upper_v - self.lower_v
-#     #calculated z per 
-#     self.dz_range = self.dz_per_step * self.di_dz
-#     #how much z changes per vref
-#     self.dzdvref = self.dz_range/self.dvref_range  
-#     
-#     #offset defaults to center
-#     #TODO: change reference position via api
-#     self.zi_0 = (self.upper_lim+self.lower_lim)/2 #center
-#     self.vref_0 = (self.upper_v+self.lower_v)/2 #center
-# 
-# 
-# @speed_off_then_revert
-# async def center_head(self,t_on=100,t_off=9900,inc=1,tol=0.01):
-#     print('center head...') 
-#     fv = self.feedback_volts
-#     dv=self.vref_0-fv
-# 
-#     if abs(dv) < tol:
-#         self.set_mode('stop')
-# 
-#     #print(dv,coef_100,inx)
-#     #set direction
-#     est_steps = dv / float(self.coef_100)
-#     if est_steps <= 0:
-#         dir = -1
-#     else:
-#         dir = 1
-# 
-#     #define wave up for dt, then down for dt,j repeated inc
-#     print(dv,self.coef_100,dir)
-#     wave = [asyncpio.pulse(1<<self._step_pin, 0, t_on)]
-#     wave.append(asyncpio.pulse(0, 1<<self._step_pin, t_off))
-#     wave = wave * inc
-# 
-#     await self.step_wave(wave,dir=dir)
-#     await self.sleep(self.control_interval)
-#     
-#     self.center_v = self.feedback_volts
-#     self.center_inx = self.inx
-
-
-
-
-
-
+#     return fme     
 
 
 
