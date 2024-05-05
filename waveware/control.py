@@ -55,6 +55,9 @@ speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
 assert default_speed_mode in speed_modes
 
+#vmove=[0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.1]
+vmove=vmove_default=[0.01,0.05]
+
 class regular_wave:
 
     def __init__(self,Hs=0.2,Ts=10) -> None:
@@ -269,7 +272,6 @@ class stepper_control:
             cal_file = os.path.join(control_dir,'wave_cal.json')
             has_file = os.path.exists(cal_file)
             if docal and not has_file:
-                vmove=[0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.1]
                 print(f'calibrate first v={vmove}...')
                 task = loop.create_task(self.calibrate(vmove=vmove))
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
@@ -572,7 +574,7 @@ class stepper_control:
         tlast = t = time.perf_counter()
 
         if vmove is None:
-            vmove=[0.001,0.01,0.05,0.1]
+            vmove=vmove_default
         elif not isinstance(vmove,(list,tuple)):
             vmove = [vmove]
 
