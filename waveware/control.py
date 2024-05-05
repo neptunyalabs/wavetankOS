@@ -8,6 +8,7 @@ from math import cos,sin
 import asyncio
 import time
 import traceback
+import signal
 
 import smbus
 import time
@@ -199,7 +200,9 @@ class stepper_control:
         self.start = time.perf_counter()
         loop = asyncio.get_event_loop()
         loop.set_exception_handler(self.exec_cb)
-        loop.add_signal_handler(self.sig_cb)        
+        for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
+            sig = getattr(signal, signame)
+            loop.add_signal_handler(sig self.sig_cb)        
         loop.run_until_complete(self._setup())
 
 
