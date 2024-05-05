@@ -535,7 +535,6 @@ class stepper_control:
 
     #Center        
     async def center_head(self,vmove=0.01,find_tol = 0.025):
-        print('center head...') 
         fv = self.feedback_volts
         dv=self.vref_0-fv
 
@@ -543,6 +542,8 @@ class stepper_control:
             self.v_cmd = 0
             self.set_mode('stop')
             return
+        else:
+            print('center head...')
 
         #print(dv,coef_100,inx)
         #set direction
@@ -551,6 +552,8 @@ class stepper_control:
             self.v_cmd = vmove * -1
         else:
             self.v_cmd = vmove
+        
+        await self.sleep(self.control_interval)
 
 
     #Calibrate & Controlled Moves
@@ -644,12 +647,6 @@ class stepper_control:
         
         #offset defaults to center
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
-            
-    # async def center(self,vmove=0.005):
-    #     
-    #     dv = self.feedback_volts - self.vref_0
-    #     while abs(dv) > min_res*10:
-    #         dv = self.feedback_volts - self.vref_0
 
 
     async def set_dir(self,dir=None):
