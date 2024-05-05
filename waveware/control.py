@@ -557,7 +557,7 @@ class stepper_control:
             #Store cal info
             cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
         
-        print(f'got speed cals: {cals} > {getattr(self,'cal_collections')}')
+        print(f'got speed cals: {cals} > { getattr(self,"cal_collections") }')
 
         self.upper_v = found_top if found_top > self.upper_v else self.upper_v
         self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
