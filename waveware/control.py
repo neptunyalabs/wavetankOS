@@ -294,7 +294,7 @@ class stepper_control:
     async def _stop(self):
         await self.pi.wave_tx_stop()
         await self.pi.wave_clear()
-        
+
         await self.pi.write(self._step_pin,0)
         await self.pi.write(self._dir_pin,0)
         await self.pi.write(self._vpwm_pin,0)
@@ -865,7 +865,6 @@ class stepper_control:
                     #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
 
                     v_dmd = self.v_cmd
-                    last_stopped = self._speed_stopped
 
                     dc = max(min(self.pwm_mid + (v_dmd*self.pwm_speed_k),self.pwm_speed_base-1),self.min_dt)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
