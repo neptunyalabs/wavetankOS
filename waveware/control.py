@@ -586,6 +586,7 @@ class stepper_control:
 
         if abs(found_top - found_btm) < min_res*10:
             print(f'no motion detected!!!')
+            self.v_cmd = 0
             if safe_mode: raise NoMotion()
 
         #TODO: write calibration file
