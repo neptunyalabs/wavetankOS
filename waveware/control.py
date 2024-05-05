@@ -215,12 +215,12 @@ class stepper_control:
     # async def exec_cb(self,exc,loop):
     #     print(f'got exception: {exc}| {loop}')
     #     await self._stop()
-    #     #sys.exit(1)
+    #     #sys.exit(1) #os.kill(os.getpid(), signal.SIGKILL)
 
     async def sig_cb(self,*a,**kw):
         print(f'got signals, killing| {a} {kw}')
         await self._stop()
-        #sys.exit(1)
+        os.kill(os.getpid(), signal.SIGKILL)
     
     def setup_i2c(self,pin = 0):
         self.smbus = smbus.SMBus(1)        
