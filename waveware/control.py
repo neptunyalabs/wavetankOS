@@ -503,10 +503,10 @@ class stepper_control:
         while found_btm is False or found_top is False:
             self.v_cmd = vmove * (1 if now_dir > 0 else -1)
             #print(f'set dir: {now_dir}')
-            
+            sv = cv            
             await self.set_dir(now_dir)
-            await self.sleep(1E-3)
-            sv = cv
+            await self.sleep(0.01)
+
             cv = self.feedback_volts
             t = time.time()
             last_dir = now_dir
@@ -524,7 +524,7 @@ class stepper_control:
                     found_btm = cv
                 now_dir = -1 * now_dir
                 await self.set_dir(now_dir)
-                await self.sleep(1E-3)
+                await self.sleep(0.01)
                 print(f'reversing: {last_dir} > {now_dir}')
         
         self.upper_v = found_top
