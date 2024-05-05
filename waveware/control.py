@@ -87,7 +87,8 @@ class stepper_control:
     kzp_sup = 1#/T
     kzi_err = 0.1
     
-    min_dt = 100
+    min_dt = 5
+    pulse_dt = 10
     dz_range = 0.3 #meters #TODO: input actual length of lead screw
 
     adc_addr = 0x48
@@ -728,20 +729,22 @@ class stepper_control:
         if dt_span not specified a multiplier number of times via inc=10, for 10 waves. 
         """
         if min_dt is None:
-            min_dt = self.min_dt
+            mdt = self.pulse_dt
+            mindt = self.min_dt
 
         if dt_span is not None:
             inc = max(int(dt_span/dt),1)
         
-        assert dt > min_dt, f'dt {dt} to small for min_dt {min_dt}'
+        assert dt > mdt, f'dt {dt} to small for min_dt {mdt}'
 
         if dc is None:
-            wave = [asyncpio.pulse(1<<pin, 0, min_dt)]
-            wave.append(asyncpio.pulse(0, 1<<pin, max(dt-min_dt,1)))
+            wave = [asyncpio.pulse(1<<pin, 0, mdt)]
+            wave.append(asyncpio.pulse(0, 1<<pin, max(dt-mdt,mindt)))
             return wave*inc
         else:
-            wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),1))]
-            wave.append(asyncpio.pulse(0, 1<<pin, max(int(dt*(1-dc)),1)))
+            #duty cycle
+            wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),mindt))]
+            wave.append(asyncpio.pulse(0, 1<<pin, max(int(dt*(1-dc)),mindt)))
             return wave*inc            
 
 
@@ -846,9 +849,9 @@ class stepper_control:
                         steps = True
                     else:
                         steps = False
-                        d_us = int(1E5) #no 
+                        d_us = int(1E6) #no 
 
-                    dt = max(d_us,self.min_dt*2) 
+                    dt = max(d_us,self.pulse_dt*2) 
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
