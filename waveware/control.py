@@ -73,27 +73,27 @@ class regular_wave:
     def z_vel(self,t):
         return self.a*self.omg*cos(self.omg*t)
     
-def speed_off_then_revert(f):
-
-    async def fme(self,*args,**kwargs):
-        #out = await f(self,*args,**kwargs)
-        #return out
-        cur_speed_mode = self.speed_control_mode
-        if cur_speed_mode == 'off':
-            out = await f(self,*args,**kwargs)
-            return out
-        
-        self.set_speed_mode('off')
-        try:
-            out = await f(self,*args,**kwargs)
-        except Exception as e:
-            print(f'error in {f.__name__} {e}')
-            out = e
-
-        self.set_speed_mode(cur_speed_mode)
-        return out
-    
-    return fme     
+# def speed_off_then_revert(f):
+# 
+#     async def fme(self,*args,**kwargs):
+#         #out = await f(self,*args,**kwargs)
+#         #return out
+#         cur_speed_mode = self.speed_control_mode
+#         if cur_speed_mode == 'off':
+#             out = await f(self,*args,**kwargs)
+#             return out
+#         
+#         self.set_speed_mode('off')
+#         try:
+#             out = await f(self,*args,**kwargs)
+#         except Exception as e:
+#             print(f'error in {f.__name__} {e}')
+#             out = e
+# 
+#         self.set_speed_mode(cur_speed_mode)
+#         return out
+#     
+#     return fme     
 
 class stepper_control:
     steps_per_rot = 360/1.8
@@ -789,7 +789,11 @@ class stepper_control:
             return 0
         
         vdmd = self.v_cmd
+        
         v_cur = self.feedback_volts
+        if v_cur is None:
+            return 0 #wait till feedback
+        
         dvl = (v_cur-self.upper_v)
         dvu = (self.upper_v-v_cur) 
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
