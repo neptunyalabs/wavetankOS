@@ -204,18 +204,18 @@ class stepper_control:
         self.start = time.perf_counter()
         self.stopped = False        
         loop = asyncio.get_event_loop()
-        g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
-        loop.set_exception_handler(g)
+        #g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
+        #loop.set_exception_handler(g)
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
             sig = getattr(signal, signame)
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
 
-    async def exec_cb(self,exc,loop):
-        print(f'got exception: {exc}| {loop}')
-        await self._stop()
-        #sys.exit(1)
+    # async def exec_cb(self,exc,loop):
+    #     print(f'got exception: {exc}| {loop}')
+    #     await self._stop()
+    #     #sys.exit(1)
 
     async def sig_cb(self,*a,**kw):
         print(f'got signals, killing| {a} {kw}')
