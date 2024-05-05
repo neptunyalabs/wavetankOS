@@ -802,6 +802,8 @@ class stepper_control:
         dvu = (self.upper_v-v_cur) 
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
             vdmd = self.act_max_speed*(1 if vdmd > 0 else -1)
+            print(f'limiting speed! {v_cur} > {vdmd}')
+            
 
         return vdmd
     
