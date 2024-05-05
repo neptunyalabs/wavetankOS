@@ -443,11 +443,12 @@ class stepper_control:
                         continue #dont add voltage change or check stuck
                     
                     #increment measure if points exist
-                    self.t_no_inst = False
-                    self.dvds = dv/((self._last_dir*Nw))
-                    self.coef_2 = (self.coef_2 + self.dvds)/2
-                    self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
-                    self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
+                    if not self.maybe_stuck and not self.stuck:
+                        self.t_no_inst = False
+                        self.dvds = dv/((self._last_dir*Nw))
+                        self.coef_2 = (self.coef_2 + self.dvds)/2
+                        self.coef_10 = (self.coef_10*0.9 + self.dvds*0.1)
+                        self.coef_100 = (self.coef_100*0.99 + self.dvds*0.01)
 
 
                     if self.maybe_stuck:
