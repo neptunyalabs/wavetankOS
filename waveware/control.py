@@ -303,7 +303,7 @@ class stepper_control:
         await self.pi.write(self._dir_pin,0)
         await self.pi.write(self._vpwm_pin,0)
         await self.pi.write(self._tpwm_pin,0)
-        
+        await self.sleep(0.25)
         await self.pi.stop()
 
 
