@@ -865,15 +865,16 @@ class stepper_control:
                     await self.pi.wave_add_generic(wave)
                     self.wave_next = await self.pi.wave_create()                
                     await self.pi.wave_send_once( self.wave_next)
+                
+                    while self.wave_last == await self.pi.wave_tx_at():
+                        #print(f'waiting...')
+                        await asyncio.sleep(0)                    
                 except Exception as e:
                     print(f'wave create error: {e}')
                     while await self.pi.wave_tx_busy():
                         await asyncio.sleep(0) #break async context
                     await self.pi.wave_clear()                    
 
-                while self.wave_last == await self.pi.wave_tx_at():
-                    #print(f'waiting...')
-                    await asyncio.sleep(0)
                 None
                 try:
                     await self.pi.wave_delete(self.wave_last)
