@@ -553,7 +553,12 @@ class stepper_control:
 
         #print(dv,coef_100,inx)
         #set direction
-        est_steps = dv / float(self.coef_100)
+        if self.coef_100 == 0:
+            est_steps = dv / float(self.coef_100)
+        else:
+            #this will only happen when uninitialized
+            est_steps = int((dv/abs(dv)+0.1)) #add small bias to counter int rounding
+
         if est_steps <= 0:
             self.v_cmd = vmove * -1
         else:
