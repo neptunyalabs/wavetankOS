@@ -571,8 +571,14 @@ class stepper_control:
 
         vstart = cv = sv = self.feedback_volts
 
+
         print(f'center before run')
+        self.coef_100 = 0.01 #initial value
+        flipped = False
         while not (await self.center_head()):
+            if self.stuck and not flipped:
+                flipped = True
+                await self.set_dir(dir=self._last_dir*-1)
             await self.sleep(0)
 
         print(f'set mode: {default_mode}')
