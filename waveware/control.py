@@ -60,7 +60,7 @@ vmove=vmove_default=[0.01,0.04]
 
 class regular_wave:
 
-    def __init__(self,Hs=0.02,Ts=3) -> None:
+    def __init__(self,Hs=0.01,Ts=5) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()
@@ -84,7 +84,7 @@ class stepper_control:
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
-    kzp_sup = 0.001#/T
+    kzp_sup = 0.0#/T
     kzi_err = 0.1
     
     min_dt = 25
@@ -109,6 +109,8 @@ class stepper_control:
         self.dz_per_rot = conf.get('dz_per_rot',dz_per_rot)
         #self.on_time_us = 25 #us
         self.dz_per_step = self.dz_per_rot / self.steps_per_rot
+
+
         self.max_speed_motor = 0.3 #TODO: get better motor constants
                 
         self.stopped = False
@@ -799,7 +801,7 @@ class stepper_control:
             mindt = self.min_dt
 
         if dt_span is not None:
-            inc = max(int(dt_span/dt),1)
+            inc = min(max(int(dt_span/dt),1),2000)
         
         assert dt > mindt, f'dt {dt} to small for min_dt {mdt}'
 
