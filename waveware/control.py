@@ -227,7 +227,7 @@ class stepper_control:
             try:
                 res.result()
             except Exception as e:
-                print(f'speed drive failure: {e}|\n{}')
+                print(f'speed drive failure: {e}')
                 traceback.print_tb(e.__traceback__)
 
         self.speed_control_mode = default_speed_mode
