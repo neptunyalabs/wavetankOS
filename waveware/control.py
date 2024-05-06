@@ -575,7 +575,7 @@ class stepper_control:
         print(f'center before run')
         self.coef_100 = 0.01 #initial value
         flipped = False
-        while not (await self.center_head()):
+        while (await self.center_head()) != False:
             if self.stuck and flipped is False:
                 flipped = True
                 print('reverse!!')
@@ -675,7 +675,7 @@ class stepper_control:
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
 
         print(f'center before run')
-        while not (await self.center_head()):
+        while (await self.center_head()) != False:
             await self.sleep(0)
 
         print(f'set mode: {default_mode}')
