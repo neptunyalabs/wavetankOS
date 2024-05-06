@@ -730,12 +730,12 @@ class stepper_control:
 
 
     #to handle stepping controls
-    def make_wave(self,pin,dt,dc:float=None,min_dt:int=None,inc=1,dt_span=None):
+    def make_wave(self,pin,dt,dc:float=None,mindt:int=None,inc=1,dt_span=None):
         """if dc provided, dt_on=dt*dc and dt_off=dt*(1-dc), otherwise t_on=min_dt and t_off=dt-min_dt
         use dt_span to determine number of incriments max((dt_span/dt),1)
         if dt_span not specified a multiplier number of times via inc=10, for 10 waves. 
         """
-        if min_dt is None:
+        if mindt is None:
             mdt = self.pulse_dt
             mindt = self.min_dt
 
@@ -753,6 +753,7 @@ class stepper_control:
             return wave*inc
         else:
             #duty cycle
+            print('dc',dc)
             wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),mindt))]
             wave.append(asyncpio.pulse(0, 1<<pin, max(int(dt*(1-dc)),mindt)))
             return wave*inc            
@@ -861,12 +862,13 @@ class stepper_control:
                         steps = True
                     else:
                         steps = False
-                        d_us = int(1E6) #no 
+                        d_us = int(1E5) #no 
 
                     dt = max(d_us,self.min_dt*2) 
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
+                        print(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
                         waves = [asyncpio.pulse(0, 0, dt)]
