@@ -745,7 +745,7 @@ class stepper_control:
         #v = self.v_t
         v = (self.v_t + self.v_t_1)/2
         v = min(max(v,-self.max_speed_motor),self.max_speed_motor)
-
+        v_cmd = v
         #always measure goal pos for error
         
         z = self.z_t
@@ -754,11 +754,11 @@ class stepper_control:
         
         #correct integral for pwm ala velocity
         self.dv_err = z_err * self.kzp_sup / self.wave.ts
-        self.v_sup = self.v_cmd + self.dv_err
+        self.v_sup =v_cmd + self.dv_err
 
         vref = self.feedback_volts
         #if int(self.inx)%10==0:
-        print(self.z_cur,z,'|',self.v_cmd,self.v_sup,self.dv_err)
+        print(self.z_cur,z,'|',v_cmd,self.v_sup,self.dv_err)
 
         #determine direction
         ld = self._last_dir
