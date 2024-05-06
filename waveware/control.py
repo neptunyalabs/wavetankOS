@@ -818,7 +818,7 @@ class stepper_control:
         return False
     
     @property
-    def stuck(self,tol_stuck=1E-6):
+    def stuck(self,tol_stuck=1E-5):
         if abs(self._coef_10) < tol_stuck and self.step_count > 1000:
             return True
         return False
