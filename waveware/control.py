@@ -549,13 +549,13 @@ class stepper_control:
         await self._stop()
 
     #Center        
-    async def center_head(self,vmove=0.01,find_tol = 0.025):
+    async def center_head(self,vmove=0.01,find_tol = 0.025,set_mode=False):
         fv = self.feedback_volts
         dv=self.vref_0-fv
 
         if abs(dv) < find_tol:
             self.v_cmd = 0
-            self.set_mode('stop')
+            if set_mode: self.set_mode('stop')
             return False
         #else:
             #print('center head...')
@@ -591,6 +591,7 @@ class stepper_control:
         print('centering on start!')
         await self.center_head_program()
         self.started.set_result(True)
+        self.set_mode(default_mode)
 
     #Calibrate & Controlled Moves
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
