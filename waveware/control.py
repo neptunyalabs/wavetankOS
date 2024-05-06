@@ -572,7 +572,7 @@ class stepper_control:
     #Calibrate & Controlled Moves
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
         print('starting calibrate...')
-        now_dir = self._last_dir
+        
 
         vstart = cv = sv = self.feedback_volts
 
@@ -609,6 +609,7 @@ class stepper_control:
             vmove = [vmove]
 
         for vmov in vmove:
+            now_dir = self._last_dir
             print(f'calibrate at speed: {vmov}')
             found_top = False
             found_btm = False            
