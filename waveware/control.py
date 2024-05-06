@@ -264,7 +264,8 @@ class stepper_control:
             else:
                 if has_file: 
                     self.load_cal_file()
-                task.create_task(self.center_start)
+                loop = asyncio.get_running_loop()
+                center_start = loop.create_task(self.center_start())
 
         self.first_feedback.add_done_callback(go)
 
