@@ -10,6 +10,7 @@ import time
 import traceback
 import signal
 
+import json
 import smbus
 import time
 import sys,os,pathlib
@@ -173,7 +174,7 @@ class stepper_control:
 
         self._step_time = self.min_dt
         self._step_cint = 1
-        self.z_cur_vcal = 0 #TODO: rest call for this
+        self.z_cur_vcal = 0 #TODO: rest call to set this
 
     #SETUP 
     async def _setup(self):
@@ -261,6 +262,7 @@ class stepper_control:
                 task = loop.create_task(self.calibrate(vmove=vmove))
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
+                if has_file: self.load_cal_file()
                 self.started.set_result(True)
 
         self.first_feedback.add_done_callback(go)
@@ -718,8 +720,22 @@ class stepper_control:
         #TODO: add reset callback for this
         self.z_cur_vcal = self.feedback_volts
 
+        self.save_cal_file()
+
         print(f'set mode: {default_mode}')
         self.set_mode(default_mode)
+
+    def save_cal_file(self,**kw):
+        data = {'coef_2':self.coef_2,'coef_10':self.coef_10,'coef_100':self.coef_100,'upper_v':self.upper_v,'lower_v':self.lower_v,'z_cur_vcal':self.z_cur_vcal,'vref_0':self.vref_0,'dzdvref':self.dzdvref,'dvref_range':self.dvref_range,**kw}
+        print(f'saving cal data! {data}')
+        with os.open(os.path.join(control_dir,'wave_cal.json'),'w') as fp:
+            fp.write(json.dumps(data))
+
+    def load_cal_file(self):
+        with os.open(os.path.join(control_dir,'wave_cal.json'),'r') as fp:
+            data = json.loads(fp.read())
+        print(f'loading cal file!: {data}')            
+        self.__dict__.update(data) #youre welcome
 
 
     async def set_dir(self,dir=None):
