@@ -578,7 +578,7 @@ class stepper_control:
 
 
         print(f'center before run')
-        self.coef_100 = -0.01 #initial value
+        self.coef_100 = 0.01 #initial value
         flipped = False
         while (await self.center_head()) != False:
             if self.stuck and flipped is False:
@@ -621,22 +621,22 @@ class stepper_control:
                 cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
 
                 #do things depending on how much movement there was
-                if abs(dv) > min_res*10:    
+                if abs(dv) >= min_res*5:    
                     if maybe_stuck is not False:
                         print(f'unstuck2')                   
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
-                elif abs(dv) >= min_res*3:
+                elif abs(dv) >= min_res*2:
                     if maybe_stuck is not False:
                         print(f'unstuck1')
                     maybe_stuck = False
                     continue #a step occured
 
-                elif abs(dv) >= min_res:
-                    continue #a step occured                
+                elif abs(dv) > min_res:
+                    continue #hysterisis         
 
                 elif maybe_stuck is False:
-                    print(f'maybe stuck!!!')
+                    print(f'maybe stuck {cv} | {dvdt} !!!')
                     maybe_stuck = (t,cv)
 
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
