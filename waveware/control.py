@@ -628,7 +628,7 @@ class stepper_control:
                 elif maybe_stuck is False:
                     maybe_stuck = (t,cv)
 
-                elif t-maybe_stuck[0]>crash_detect*max(0.01/vmov):
+                elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov)):
                     #reset stuck and reverse
                     maybe_stuck = False
 
