@@ -650,15 +650,15 @@ class stepper_control:
         self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
 
         ded = abs(found_top - found_btm)
-        if ded < min_res*10:
+        if ded < 0.1:
             print(f'no motion detected!!!')
             self.v_cmd = 0
             if safe_mode: raise NoMotion()
 
         #if significant motion
         else:
-            self.upper_v = found_top 
-            self.lower_v = found_btm
+            self.upper_v = found_top if found_top < self.upper_v else self.upper_v
+            self.lower_v = found_btm if found_btm > self.lower_v else self.lower_v
 
 
         #TODO: write calibration file
