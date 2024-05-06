@@ -587,6 +587,7 @@ class stepper_control:
             await self.sleep(0)    
 
     async def center_start(self):
+        print('centering on start!')
         await self.center_head_program()
         self.started.set_result(True)
 
