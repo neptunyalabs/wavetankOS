@@ -806,7 +806,10 @@ class stepper_control:
             self.step_count += Nw
             self.inx = self.inx + dir*Nw
         else:
-            await asyncio.sleep(0) #break async context
+            while await self.pi.wave_tx_busy():
+                await asyncio.sleep(0) #break async context
+            await self.pi.wave_clear()
+            
 
 
     #SPEED CONTROL MODES:
