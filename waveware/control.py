@@ -622,9 +622,13 @@ class stepper_control:
 
                 #do things depending on how much movement there was
                 if abs(dv) > min_res*5:    
-                   maybe_stuck = False #reaffirm when out of error
-                   continue #a step occured
-                elif abs(dv) = min_res:
+                    if maybe_stuck is not False:
+                        print(f'unstuck2')                   
+                    maybe_stuck = False #reaffirm when out of error
+                    continue #a step occured
+                elif abs(dv) >= min_res:
+                    if maybe_stuck is not False:
+                        print(f'unstuck1')
                     maybe_stuck = False
                     continue #a step occured
 
