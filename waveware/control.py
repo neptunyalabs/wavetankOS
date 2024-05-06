@@ -648,7 +648,7 @@ class stepper_control:
                     continue #a step occured
 
                 elif test_val > 0 or self.v_cmd == 0:
-                    if maybe_stuck is not False:
+                    #if maybe_stuck is not False:
                         #print(f'unstuck0| {test_val} {dv}')                    
                     #maybe_stuck = False
                     continue #hysterisis 
@@ -751,7 +751,7 @@ class stepper_control:
         self.v_sup = self.v_cmd + self.dv_err
 
         vref = self.feedback_volts
-        if int(self.inx)%10:
+        if int(self.inx)%10==0:
             print(vref,z,self.v_sup,self.dv_err,self.z_err_cuml)
 
         #determine direction
