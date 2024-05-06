@@ -801,7 +801,7 @@ class stepper_control:
             mindt = self.min_dt
 
         if dt_span is not None:
-            inc = min(max(int(dt_span/dt),1),2000)
+            inc = min(max(int(dt_span/dt),1),2000) #socket limit otherwise
         
         assert dt > mindt, f'dt {dt} to small for min_dt {mdt}'
 
