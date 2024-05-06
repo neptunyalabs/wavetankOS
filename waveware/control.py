@@ -636,13 +636,13 @@ class stepper_control:
                 #do things depending on how much movement there was
                 test_val = max(dv*now_dir,0)
                 if test_val >= min_res*5 or self.v_cmd == 0:    
-                    if maybe_stuck is not False:
+                    #if maybe_stuck is not False:
                         #print(f'unstuck2 | {test_val} {dv}')                   
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
 
                 elif test_val >= min_res*2:
-                    if maybe_stuck is not False:
+                    #if maybe_stuck is not False:
                         #print(f'unstuck1 | {test_val} {dv}')
                     #maybe_stuck = False
                     continue #a step occured
