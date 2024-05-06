@@ -765,7 +765,7 @@ class stepper_control:
         #always measure goal pos for error
         
         z = self.z_t
-        z_err = self.z_cur-z
+        z_err = z-self.z_cur
         self.z_err_cuml = z_err*self.kzi_err + self.z_err_cuml*(1-self.kzi_err)
         
         #correct integral for pwm ala velocity
