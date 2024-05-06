@@ -742,7 +742,7 @@ class stepper_control:
         if dt_span is not None:
             inc = max(int(dt_span/dt),1)
         
-        assert dt > mdt, f'dt {dt} to small for min_dt {mdt}'
+        assert dt > mindt, f'dt {dt} to small for min_dt {mdt}'
 
         if dc is None:
             toff = dt-mdt
