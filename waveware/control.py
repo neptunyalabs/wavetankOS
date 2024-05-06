@@ -80,7 +80,7 @@ class regular_wave:
 
 class stepper_control:
     steps_per_rot = 360/1.8
-    dz_per_rot = 0.01
+    dz_per_rot = 0.0001 #rate commad
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
@@ -871,7 +871,7 @@ class stepper_control:
                         print(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
-                        waves = [asyncpio.pulse(0, 0, dt)]
+                        waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
                     self._step_time = dt
                     self._step_cint = max(len(waves)/2,1)
