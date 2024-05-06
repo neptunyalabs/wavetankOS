@@ -171,7 +171,7 @@ class stepper_control:
 
         self._step_time = self.min_dt
         self._step_cint = 1
-        self.z_cur_cal = 0 #TODO: rest call for this
+        self.z_cur_vcal = 0 #TODO: rest call for this
 
     #SETUP 
     async def _setup(self):
