@@ -562,7 +562,7 @@ class stepper_control:
             est_steps = dv / float(self.coef_100)
         else:
             #this will only happen when uninitialized
-            est_steps = int((dv/abs(dv)+0.1)) #add small bias to counter int rounding
+            est_steps = int((dv/abs(dv)+0.1)) #add small bias to counter int rounding so will be 1 in magnitude
 
         if est_steps <= 0:
             self.v_cmd = vmove * -1
@@ -572,6 +572,16 @@ class stepper_control:
         await self.sleep(self.control_interval)
 
         return self.v_cmd
+    
+    async def center_head_program(self):
+        print(f'centering')
+        flipped = False
+        while (await self.center_head()) != False:
+            if self.stuck and flipped is False:
+                flipped = True
+                print('reverse!!')
+                await self.set_dir(dir=self._last_dir*-1)            
+            await self.sleep(0)    
 
 
     #Calibrate & Controlled Moves
@@ -595,13 +605,8 @@ class stepper_control:
                 await self.sleep(1)
         
         #Center
-        flipped = False
-        while (await self.center_head()) != False:
-            if self.stuck and flipped is False:
-                flipped = True
-                print('reverse!!')
-                await self.set_dir(dir=self._last_dir*-1)
-            await self.sleep(0)
+        
+        await self.center_head_program()
 
         maybe_stuck = False
         cals = {}
@@ -714,8 +719,7 @@ class stepper_control:
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
 
         print(f'center before run')
-        while (await self.center_head()) != False:
-            await self.sleep(0)
+        await self.center_head_routine()
 
         #TODO: add reset callback for this
         self.z_cur_vcal = self.feedback_volts
@@ -736,6 +740,13 @@ class stepper_control:
             data = json.loads(fp.read())
         print(f'loading cal file!: {data}')            
         self.__dict__.update(data) #youre welcome
+
+        #center now!
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.center_head_program())
+
+
+
 
 
     async def set_dir(self,dir=None):
