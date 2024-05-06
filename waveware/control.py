@@ -750,6 +750,10 @@ class stepper_control:
         self.dv_err = z_err * self.kzp_sup / self.wave.ts
         self.v_sup = self.v_cmd + self.dv_err
 
+        vref = self.feedback_volts
+        if int(self.inx)%10:
+            print(vref,z,self.v_sup,self.dv_err,self.z_err_cuml)
+
         #determine direction
         ld = self._last_dir
         self.dir_mult = 1 if v >= 0 else 0
@@ -843,7 +847,7 @@ class stepper_control:
                 self.wave_next = await self.pi.wave_create()
                 await self.pi.wave_send_once( self.wave_next)           
             
-            if (abs(self.inx)%100==0) :
+            if (abs(int(self.inx))%100==0) :
                 vnow = self.feedback_volts
                 if vnow is None: vnow = 0
                 DIR = 'FWD' if dir > 0 else 'REV' 
