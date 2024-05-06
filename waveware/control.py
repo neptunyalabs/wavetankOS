@@ -835,19 +835,25 @@ class stepper_control:
             self.wave_last = self.wave_next #push back
             #print(dir,len(wave))
             if self.wave_last is not None:
+                
+                sttime = await self.pi.wave_get_micros()
+                
+                if sttime > self.min_dt:
+                    millis = int(sttime/1000)
+                    if millis > 10:
+                        sttime = 10000 #10ms remaining
+                        await self.sleep(max((millis-10)/1000,0.01))
+                    wave = [asyncpio.pulse(0, 0, sttime)] + wave
+                
+                await self.pi.wave_add_generic(wave)
+                self.wave_next = await self.pi.wave_create()                
+                await self.pi.wave_send_once( self.wave_next)
 
                 while self.wave_last == await self.pi.wave_tx_at():
                     #print(f'waiting...')
                     await asyncio.sleep(0)
 
                 await self.pi.wave_delete(self.wave_last)
-                await self.pi.wave_add_generic(wave)
-                self.wave_next = await self.pi.wave_create()                
-                await self.pi.wave_send_once( self.wave_next)
-                
-                millis = int(await self.pi.wave_get_micros()/1000)
-                if millis > 2:
-                    await self.sleep(max((millis-2)/1000,0.002))
 
             else:
                 #do it raw
