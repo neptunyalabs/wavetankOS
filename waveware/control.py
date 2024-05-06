@@ -645,7 +645,7 @@ class stepper_control:
                 elif test_val >= min_res*2:
                     if maybe_stuck is not False:
                         print(f'unstuck1 | {test_val} {dv}')
-                    maybe_stuck = False
+                    #maybe_stuck = False
                     continue #a step occured
 
                 elif test_val > 0 or self.v_cmd == 0:
