@@ -84,7 +84,7 @@ class stepper_control:
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
-    kzp_sup = 0.01#/T
+    kzp_sup = 0.05#/T
     kzi_err = 0.1
     
     min_dt = 25
@@ -579,14 +579,14 @@ class stepper_control:
 
         #### Alternate locally to build guesses
         for v in [0.001,0.01,0.05]:
-            for d in [1,1]:
-                await self.set_dir(dir=self._last_dir*-1)
+            for d in [1,-1]:
+                await self.set_dir(dir=d)
                 self.v_cmd = v
-                await self.sleep(0.01)
+                await self.sleep(0.1)
 
         for v in [0.001,0.01,0.05]:
-            for d in [1,1]:
-                await self.set_dir(dir=self._last_dir*-1)
+            for d in [1,-1]:
+                await self.set_dir(dir=d)
                 self.v_cmd = v
                 await self.sleep(1)
         
@@ -756,7 +756,7 @@ class stepper_control:
 
         vref = self.feedback_volts
         #if int(self.inx)%10==0:
-        print(self.z_cur,z,self.v_sup,self.v_cmd)
+        print(self.z_cur,z,'|',self.v_cmd,self.v_sup,self.dv_err)
 
         #determine direction
         ld = self._last_dir
