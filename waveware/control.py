@@ -227,7 +227,8 @@ class stepper_control:
             try:
                 res.result()
             except Exception as e:
-                print(f'speed drive failure: {e}|\n{e.__traceback__}')
+                print(f'speed drive failure: {e}|\n{}')
+                traceback.print_tb(e.__traceback__)
 
         self.speed_control_mode = default_speed_mode
         self.mode_changed = asyncio.Future()
