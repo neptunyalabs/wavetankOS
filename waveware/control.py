@@ -745,8 +745,11 @@ class stepper_control:
         assert dt > mdt, f'dt {dt} to small for min_dt {mdt}'
 
         if dc is None:
-            wave = [asyncpio.pulse(1<<pin, 0, mdt)]
-            wave.append(asyncpio.pulse(0, 1<<pin, max(dt-mdt,mindt)))
+            toff = dt-mdt
+            ton = mdt
+            print(ton,toff)
+            wave = [asyncpio.pulse(1<<pin, 0, ton)]
+            wave.append(asyncpio.pulse(0, 1<<pin, max(toff,mindt)))
             return wave*inc
         else:
             #duty cycle
@@ -819,9 +822,9 @@ class stepper_control:
         
         dvl = (self.upper_v-v_cur)
         dvu = (v_cur-self.lower_v) 
-        Kspd = min(self.act_max_speed,abs(vdmd))
-
+        
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
+            Kspd = min(self.act_max_speed,abs(vdmd))
             vnew = Kspd*(1 if vdmd > 0 else -1)
             #print(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
             vdmd = vnew
