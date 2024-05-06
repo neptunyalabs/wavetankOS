@@ -632,6 +632,9 @@ class stepper_control:
                     maybe_stuck = False
                     continue #a step occured
 
+                elif abs(dv) >= min_res:
+                    continue #a step occured                
+
                 elif maybe_stuck is False:
                     print(f'maybe stuck!!!')
                     maybe_stuck = (t,cv)
