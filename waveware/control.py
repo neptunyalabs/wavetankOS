@@ -88,7 +88,7 @@ class stepper_control:
     kzi_err = 0.1
     
     min_dt = 10
-    pulse_dt = 100
+    pulse_dt = 10
     dz_range = 0.3 #meters #TODO: input actual length of lead screw
 
     adc_addr = 0x48
@@ -779,7 +779,7 @@ class stepper_control:
                     await asyncio.sleep(0)
                 ges = await self.pi.wave_add_generic(wave)
 
-                self.wave_next = await self.pi.wave_create()
+                self.wave_next = await self.pi.wave_create_and_pad(25)
                 if self.wave_next != self.wave_last:
                     await self.pi.wave_delete(self.wave_last)
                 await self.pi.wave_send_once( self.wave_next)
@@ -791,7 +791,7 @@ class stepper_control:
                 ##create the new wave
                 await self.pi.wave_add_generic(wave)
 
-                self.wave_next = await self.pi.wave_create()
+                self.wave_next = await self.pi.wave_create_and_pad(25)
                 await self.pi.wave_send_once( self.wave_next)           
             
             if (abs(self.inx)%100==0) :
