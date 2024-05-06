@@ -76,11 +76,11 @@ class regular_wave:
     def z_vel(self,t):
         return self.a*self.omg*cos(self.omg*t)
     
-
+steps_per_rot = 360/1.8
+dz_per_rot = 0.0001 #rate commad
 
 class stepper_control:
-    steps_per_rot = 360/1.8
-    dz_per_rot = 0.0001 #rate commad
+
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
@@ -105,8 +105,8 @@ class stepper_control:
         self.set_mode('cal')# #always start in calibration mode
 
         self.wave = conf.get('wave',regular_wave())
-        self.steps_per_rot = conf.get('steps_per_rot',360/1.8)
-        self.dz_per_rot = conf.get('dz_per_rot',0.01)
+        self.steps_per_rot = conf.get('steps_per_rot',steps_per_rot)
+        self.dz_per_rot = conf.get('dz_per_rot',dz_per_rot)
         #self.on_time_us = 25 #us
         self.dz_per_step = self.dz_per_rot / self.steps_per_rot
         self.max_speed_motor = 0.3 #TODO: get better motor constants
