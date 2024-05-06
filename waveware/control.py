@@ -875,7 +875,7 @@ class stepper_control:
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        print(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
+                        #print(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
