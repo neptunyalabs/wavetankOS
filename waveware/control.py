@@ -755,8 +755,8 @@ class stepper_control:
         self.v_sup = self.v_cmd + self.dv_err
 
         vref = self.feedback_volts
-        if int(self.inx)%10==0:
-            print(vref,z,self.v_sup,self.dv_err,self.z_err_cuml)
+        #if int(self.inx)%10==0:
+        print(vref,z,self.v_sup,self.dv_err,self.z_err_cuml)
 
         #determine direction
         ld = self._last_dir
@@ -765,8 +765,8 @@ class stepper_control:
         if ld != self._last_dir:
             await self.set_dir(self._last_dir)
         
-        #self.v_cmd = self.v_sup #TODO: validate this for position holding
-        self.v_cmd = v
+        self.v_cmd = self.v_sup #TODO: validate this for position holding
+        #self.v_cmd = v
         await self.sleep(self.control_interval)
 
     async def run_stop(self):
