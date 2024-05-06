@@ -570,7 +570,15 @@ class stepper_control:
         now_dir = self._last_dir
 
         vstart = cv = sv = self.feedback_volts
-        initalized = False
+
+        print(f'center before run')
+        while not (await self.center_head()):
+            await self.sleep(0)
+
+        print(f'set mode: {default_mode}')
+        self.set_mode(default_mode)
+
+
         maybe_stuck = False
         cals = {}
         tlast = t = time.perf_counter()
@@ -608,7 +616,7 @@ class stepper_control:
                 if abs(dv) > min_res*10:    
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
-                elif abs(dv) > min_res:
+                elif abs(dv) > min_res*2:
                     continue #a step occured
 
                 elif maybe_stuck is False:
