@@ -576,14 +576,11 @@ class stepper_control:
         self.coef_100 = 0.01 #initial value
         flipped = False
         while not (await self.center_head()):
-            if self.stuck and not flipped:
+            if self.stuck and flipped is False:
                 flipped = True
+                print('reverse!!')
                 await self.set_dir(dir=self._last_dir*-1)
             await self.sleep(0)
-
-        print(f'set mode: {default_mode}')
-        self.set_mode(default_mode)
-
 
         maybe_stuck = False
         cals = {}
@@ -628,7 +625,7 @@ class stepper_control:
                 elif maybe_stuck is False:
                     maybe_stuck = (t,cv)
 
-                elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov)):
+                elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
                     #reset stuck and reverse
                     maybe_stuck = False
 
