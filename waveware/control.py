@@ -728,11 +728,11 @@ class stepper_control:
     def save_cal_file(self,**kw):
         data = {'coef_2':self.coef_2,'coef_10':self.coef_10,'coef_100':self.coef_100,'upper_v':self.upper_v,'lower_v':self.lower_v,'z_cur_vcal':self.z_cur_vcal,'vref_0':self.vref_0,'dzdvref':self.dzdvref,'dvref_range':self.dvref_range,**kw}
         print(f'saving cal data! {data}')
-        with os.open(os.path.join(control_dir,'wave_cal.json'),'w') as fp:
+        with open(os.path.join(control_dir,'wave_cal.json'),'w') as fp:
             fp.write(json.dumps(data))
 
     def load_cal_file(self):
-        with os.open(os.path.join(control_dir,'wave_cal.json'),'r') as fp:
+        with open(os.path.join(control_dir,'wave_cal.json'),'r') as fp:
             data = json.loads(fp.read())
         print(f'loading cal file!: {data}')            
         self.__dict__.update(data) #youre welcome
