@@ -777,13 +777,14 @@ class stepper_control:
             #print(dir,len(wave))
             if self.wave_last is not None:
             
+                await self.pi.wave_add_generic(wave)
+                self.wave_next = await self.pi.wave_create()
+
                 while self.wave_last == await self.pi.wave_tx_at():
                     #print(f'waiting...')
                     await asyncio.sleep(0)
                 await self.pi.wave_delete(self.wave_last)
-                await self.pi.wave_add_generic(wave)
-                self.wave_next = await self.pi.wave_create()
-                await self.pi.wave_send_once( self.wave_next)                
+                await self.pi.wave_send_once( self.wave_next)                            
 
             else:
                 #do it raw
