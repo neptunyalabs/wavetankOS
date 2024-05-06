@@ -78,7 +78,7 @@ class regular_wave:
         return self.a*self.omg*cos(self.omg*t)
     
 steps_per_rot = 360/1.8
-dz_per_rot = 0.001 #rate commad
+dz_per_rot = 0.005 #rate commad
 
 class stepper_control:
 
