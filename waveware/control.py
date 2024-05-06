@@ -673,6 +673,8 @@ class stepper_control:
                     await self.set_dir(now_dir)
                     await self.sleep(wait)
                     print(f'reversing: {last_dir} > {now_dir}')
+
+                await self.sleep(self.control_interval)
             
                 #Store cal info
                 cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
