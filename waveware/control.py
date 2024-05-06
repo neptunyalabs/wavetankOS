@@ -780,9 +780,10 @@ class stepper_control:
                 while self.wave_last == await self.pi.wave_tx_at():
                     #print(f'waiting...')
                     await asyncio.sleep(0)
-                await self.pi.wave_send_once( self.wave_next)                     
-
                 await self.pi.wave_delete(self.wave_last)
+                await self.pi.wave_send_once( self.wave_next)
+
+                
 
             else:
                 #do it raw
