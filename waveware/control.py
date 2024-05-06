@@ -60,7 +60,7 @@ vmove=vmove_default=[0.01,0.04]
 
 class regular_wave:
 
-    def __init__(self,Hs=0.02,Ts=10) -> None:
+    def __init__(self,Hs=0.02,Ts=3) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()
@@ -572,7 +572,6 @@ class stepper_control:
     #Calibrate & Controlled Moves
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
         print('starting calibrate...')
-        
 
         vstart = cv = sv = self.feedback_volts
 
@@ -638,24 +637,24 @@ class stepper_control:
                 test_val = max(dv*now_dir,0)
                 if test_val >= min_res*5:    
                     if maybe_stuck is not False:
-                        print(f'unstuck2 | {test_val} {dv}')                   
+                        #print(f'unstuck2 | {test_val} {dv}')                   
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
 
                 elif test_val >= min_res*2:
                     if maybe_stuck is not False:
-                        print(f'unstuck1 | {test_val} {dv}')
+                        #print(f'unstuck1 | {test_val} {dv}')
                     #maybe_stuck = False
                     continue #a step occured
 
                 elif test_val > 0 or self.v_cmd == 0:
                     if maybe_stuck is not False:
-                        print(f'unstuck0| {test_val} {dv}')                    
+                        #print(f'unstuck0| {test_val} {dv}')                    
                     #maybe_stuck = False
                     continue #hysterisis 
 
                 elif maybe_stuck is False:
-                    print(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
+                    #print(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
                     maybe_stuck = (t,cv)
 
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
