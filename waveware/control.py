@@ -742,8 +742,9 @@ class stepper_control:
         self.__dict__.update(data) #youre welcome
 
         #center now!
-        #loop = asyncio.get_running_loop()
-        asyncio.wait(self.center_head_program())
+        loop = asyncio.get_running_loop()
+        center_task = loop.create_task(self.center_head_program())
+        asyncio.wait(center_task)
 
 
 
