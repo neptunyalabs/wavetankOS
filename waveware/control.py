@@ -631,10 +631,10 @@ class stepper_control:
 
                     if now_dir > 0:
                         print(f'found top! {cv}')
-                        found_top = cv
+                        found_top = cv if cv > self.upper_v else self.upper_v
                     else:
                         print(f'found bottom! {cv}')
-                        found_btm = cv
+                        found_btm = cv if cv > self.lower_v else self.lower_v
 
                     now_dir = -1 * now_dir
                     await self.set_dir(now_dir)
@@ -659,7 +659,7 @@ class stepper_control:
         else:
             self.upper_v = found_top if found_top < self.upper_v else self.upper_v
             self.lower_v = found_btm if found_btm > self.lower_v else self.lower_v
-
+    
 
         #TODO: write calibration file
         #TODO: write the z-index and prep for z offset
