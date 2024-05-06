@@ -84,7 +84,7 @@ class stepper_control:
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
-    kzp_sup = 0.05#/T
+    kzp_sup = 0.001#/T
     kzi_err = 0.1
     
     min_dt = 25
