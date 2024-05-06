@@ -225,19 +225,23 @@ app.layout = html.Div(
                             [
                             # Station 1
                             html.H6("READOUT:",className="graph__title"),
-                            readout_card("Pt 1"),
-                            readout_card("Ps 1"),
-                            readout_card("Velocity 1"),
-                            readout_card("Alpha 1"),
-                            # station 2
-                            readout_card("Pt 2"),
-                            readout_card("Ps 2"),
-                            readout_card("Velocity 2"),
-                            readout_card("Alpha 2"),
+                            readout_card("z_wave1"),
+                            readout_card("z_wave2"),
+                            readout_card("z_wave3"),
+                            readout_card("z_wave4"),
+                            readout_card("z_maker"),\
+                            readout_card("z_maker_cmd"),
+                            readout_card("vz_maker"),\
+                            readout_card("vz_maker_cmd"),
+                            readout_card("z_echo1"),
+                            readout_card("z_echo2"),
+                            readout_card("z_echo3"),
+                            readout_card("z_echo4"),
                             ]
                         ),
 
                         # Sensor Input
+                        #TODO: rename as above
                         html.Div(
                             [
                                 html.H6("INPUT:",className="graph__title"),

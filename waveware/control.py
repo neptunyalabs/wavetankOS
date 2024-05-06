@@ -578,7 +578,7 @@ class stepper_control:
 
 
         print(f'center before run')
-        self.coef_100 = 0.01 #initial value
+        self.coef_100 = -0.01 #initial value
         flipped = False
         while (await self.center_head()) != False:
             if self.stuck and flipped is False:
@@ -624,7 +624,8 @@ class stepper_control:
                 if abs(dv) > min_res*5:    
                    maybe_stuck = False #reaffirm when out of error
                    continue #a step occured
-                elif abs(dv) > min_res:
+                elif abs(dv) = min_res:
+                    maybe_stuck = False
                     continue #a step occured
 
                 elif maybe_stuck is False:
