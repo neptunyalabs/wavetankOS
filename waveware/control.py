@@ -645,6 +645,9 @@ class stepper_control:
                     continue #a step occured
 
                 elif abs(dv) > 0 or self.v_cmd == 0:
+                    if maybe_stuck is not False:
+                        print(f'unstuck0')                    
+                    maybe_stuck = False
                     continue #hysterisis 
 
                 elif maybe_stuck is False:
