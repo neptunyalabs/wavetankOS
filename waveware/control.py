@@ -842,6 +842,10 @@ class stepper_control:
                 await self.pi.wave_add_generic(wave)
                 self.wave_next = await self.pi.wave_create()                
                 await self.pi.wave_send_once( self.wave_next)
+                
+                millis = int(await self.pi.wave_get_micros()/1000)
+                if millis > 2:
+                    await self.sleep(max((millis-2)/1000,0.002))
 
             else:
                 #do it raw
