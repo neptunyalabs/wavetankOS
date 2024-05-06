@@ -231,7 +231,7 @@ app.layout = html.Div(
                                     min=1,
                                     max=10,
                                     value=10,
-                                    step=None,
+                                    step=0.1,
                                 ),
                                 input_card(
                                     "Hs",
@@ -241,7 +241,7 @@ app.layout = html.Div(
                                     max=0.2,
                                     value=0,
                                     marks=None,
-                                    step=None,
+                                    step=0.01,
                                 ),
                                 input_card(
                                     "Z-ref",
@@ -250,7 +250,7 @@ app.layout = html.Div(
                                     min=0,
                                     max=100,
                                     value=0,
-                                    step=None,
+                                    step=1,
                                 ),                               
                             ]
                         ),                

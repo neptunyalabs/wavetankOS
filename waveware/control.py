@@ -105,6 +105,7 @@ class stepper_control:
         self.mode_changed = asyncio.Future()
         self.set_mode('cal')# #always start in calibration mode
 
+        self.force_cal =  conf.get('force_cal',False)
         self.wave = conf.get('wave',regular_wave())
         self.steps_per_rot = conf.get('steps_per_rot',steps_per_rot)
         self.dz_per_rot = conf.get('dz_per_rot',dz_per_rot)
@@ -257,7 +258,7 @@ class stepper_control:
 
             cal_file = os.path.join(control_dir,'wave_cal.json')
             has_file = os.path.exists(cal_file)
-            if docal and not has_file:
+            if (docal and not has_file) or (docal and self.force_cal):
                 print(f'calibrate first v={vmove}...')
                 task = loop.create_task(self.calibrate(vmove=vmove))
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
@@ -1081,7 +1082,7 @@ class stepper_control:
 if __name__ == '__main__':
 
     rw = regular_wave()
-    sc = stepper_control(4,6,12,7,13,wave=rw)
+    sc = stepper_control(4,6,12,7,13,wave=rw,force_cal='-fc' in sys.argv)
     sc.setup()
     sc.run() 
 
