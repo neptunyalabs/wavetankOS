@@ -633,7 +633,10 @@ class stepper_control:
                     continue #a step occured
 
                 elif abs(dv) > min_res:
-                    continue #hysterisis         
+                    continue #hysterisis 
+
+                elif self.v_cmd = 0:
+                    continue        
 
                 elif maybe_stuck is False:
                     print(f'maybe stuck {cv} | {dvdt} !!!')
