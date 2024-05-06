@@ -633,25 +633,27 @@ class stepper_control:
                 cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
 
                 #do things depending on how much movement there was
-                if abs(dv) >= min_res*5:    
+                test_val = max(dv*now_dir,0)
+                if test_val >= min_res*5:    
                     if maybe_stuck is not False:
-                        print(f'unstuck2')                   
+                        print(f'unstuck2 | {test_val} {dv}')                   
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
-                elif abs(dv) >= min_res*2:
+
+                elif test_val >= min_res*2:
                     if maybe_stuck is not False:
-                        print(f'unstuck1')
+                        print(f'unstuck1 | {test_val} {dv}')
                     maybe_stuck = False
                     continue #a step occured
 
-                elif abs(dv) > 0 or self.v_cmd == 0:
+                elif test_val > 0 or self.v_cmd == 0:
                     if maybe_stuck is not False:
-                        print(f'unstuck0')                    
+                        print(f'unstuck0| {test_val} {dv}')                    
                     maybe_stuck = False
                     continue #hysterisis 
 
                 elif maybe_stuck is False:
-                    print(f'maybe stuck {cv} {sv} | {dvdt} !!!')
+                    print(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
                     maybe_stuck = (t,cv)
 
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
