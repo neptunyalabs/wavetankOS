@@ -776,15 +776,15 @@ class stepper_control:
             self.wave_last = self.wave_next #push back
             #print(dir,len(wave))
             if self.wave_last is not None:
-                
-                ges = await self.pi.wave_add_generic(wave)
-                self.wave_next = await self.pi.wave_create()
-                await self.pi.wave_delete(self.wave_last)
-                await self.pi.wave_send_once( self.wave_next)                
+                await self.pi.wave_add_generic(wave)
 
+                self.wave_next = await self.pi.wave_create()
+                await self.pi.wave_send_once( self.wave_next)              
                 while self.wave_last == await self.pi.wave_tx_at():
                     #print(f'waiting...')
                     await asyncio.sleep(0)
+
+                await self.pi.wave_delete(self.wave_last)
 
             else:
                 #do it raw
@@ -799,7 +799,7 @@ class stepper_control:
                 if vnow is None: vnow = 0
                 DIR = 'FWD' if dir > 0 else 'REV' 
                 mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
-                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_command}<>{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
+                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
 
                 print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
             
