@@ -223,16 +223,50 @@ app.layout = html.Div(
                         input_card("Test", id="title-in", type="text"),
                         html.Div(
                             [
+                                html.H6("INPUT:",className="graph__title"),
+                                input_card(
+                                    "Ts",
+                                    id="wave-ts",
+                                    type="number",
+                                    min=1,
+                                    max=10,
+                                    value=10,
+                                    step=None,
+                                ),
+                                input_card(
+                                    "Hs",
+                                    id="wave-hs",
+                                    type="number",
+                                    min=0,
+                                    max=0.2,
+                                    value=0,
+                                    marks=None,
+                                    step=None,
+                                ),
+                                input_card(
+                                    "Z-ref",
+                                    id="sen2-x",
+                                    type="number",
+                                    min=0,
+                                    max=100,
+                                    value=0,
+                                    step=None,
+                                ),                               
+                            ]
+                        ),                
+
+                        html.Div(
+                            [
                             # Station 1
                             html.H6("READOUT:",className="graph__title"),
                             readout_card("z_wave1"),
                             readout_card("z_wave2"),
                             readout_card("z_wave3"),
                             readout_card("z_wave4"),
-                            readout_card("z_maker"),\
-                            readout_card("z_maker_cmd"),
-                            readout_card("vz_maker"),\
-                            readout_card("vz_maker_cmd"),
+                            readout_card("zw"),\
+                            readout_card("zw_cmd"),
+                            readout_card("vzw"),\
+                            readout_card("vzw_cmd"),
                             readout_card("z_echo1"),
                             readout_card("z_echo2"),
                             readout_card("z_echo3"),
@@ -241,67 +275,6 @@ app.layout = html.Div(
                         ),
 
                         # Sensor Input
-                        #TODO: rename as above
-                        html.Div(
-                            [
-                                html.H6("INPUT:",className="graph__title"),
-                                input_card(
-                                    "Sen 1 X (mm)",
-                                    id="sen1-x",
-                                    type="number",
-                                    min=0,
-                                    max=25,
-                                    value=0,
-                                    step=1,
-                                ),
-                                input_card(
-                                    "Sen 1 Rot (deg)",
-                                    id="sen1-rot",
-                                    type="number",
-                                    min=0,
-                                    max=90,
-                                    value=0,
-                                    step=10,
-                                ),
-                                input_card(
-                                    "Sen 2 X (mm)",
-                                    id="sen2-x",
-                                    type="number",
-                                    min=0,
-                                    max=25,
-                                    value=0,
-                                    step=1,
-                                ),
-                                input_card(
-                                    "Sen 2 Rot (deg)",
-                                    id="sen2-rot",
-                                    type="number",
-                                    min=0,
-                                    max=90,
-                                    value=0,
-                                    step=10,
-                                ),
-                                input_card(
-                                    "Air Throttle",
-                                    id="air-pla",
-                                    type="number",
-                                    min=0,
-                                    max=8,
-                                    step=1,
-                                    value=0,
-                                ),
-                                input_card(
-                                    "Water Throttle",
-                                    id="water-pla",
-                                    type="number",
-                                    min=0,
-                                    max=10,
-                                    step=1,
-                                    value=0,
-                                ),                                
-                            ]
-                        ),                
-
                         html.Div(
                             [
                                 html.H6("OUTPUT:",className="graph__title"),
