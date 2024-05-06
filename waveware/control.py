@@ -323,7 +323,9 @@ class stepper_control:
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
-            print(f'same drive mode: {new_mode}')
+            #print(f'same drive mode: {new_mode}')
+            if new_mode == 'stop'
+                self.v_cmd = 0
             return
         
         self.drive_mode = new_mode
