@@ -756,7 +756,7 @@ class stepper_control:
 
         vref = self.feedback_volts
         #if int(self.inx)%10==0:
-        print(vref,z,self.v_sup,self.dv_err,self.z_err_cuml)
+        print(self.z_cur,z,self.v_sup,self.v_cmd)
 
         #determine direction
         ld = self._last_dir
