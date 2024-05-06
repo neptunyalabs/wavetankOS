@@ -628,6 +628,7 @@ class stepper_control:
                     continue #a step occured
 
                 elif maybe_stuck is False:
+                    print(f'maybe stuck!!!')
                     maybe_stuck = (t,cv)
 
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
