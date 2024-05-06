@@ -602,13 +602,13 @@ class stepper_control:
 
 
         #### Alternate locally to build guesses
-        for v in [0.001,0.01,0.05]:
+        for v in [0.0001,0.001,0.01]:
             for d in [1,-1]:
                 await self.set_dir(dir=d)
                 self.v_cmd = v
                 await self.sleep(0.1)
 
-        for v in [0.001,0.01,0.05]:
+        for v in [0.0001,0.001,0.01]:
             for d in [1,-1]:
                 await self.set_dir(dir=d)
                 self.v_cmd = v
