@@ -926,7 +926,7 @@ class stepper_control:
 
                     v_dmd = self.v_command
 
-                    dc = max(min(self.pwm_mid + (v_dmd*self.pwm_speed_k),self.pwm_speed_base-1),self.min_dt)
+                    dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),self.pwm_speed_base-1),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
                     self.fail_sc = False
