@@ -751,13 +751,13 @@ class stepper_control:
             ton = mdt
             #print(ton,toff)
             wave = [asyncpio.pulse(1<<pin, 0, ton)]
-            wave.append(asyncpio.pulse(0, 1<<pin, max(toff,mindt)))
+            wave.append(asyncpio.pulse(0, 1<<pin, max(toff,mdt)))
             return wave*inc
         else:
             #duty cycle
             #print('dc',dc)
-            wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),mindt))]
-            wave.append(asyncpio.pulse(0, 1<<pin, max(int(dt*(1-dc)),mindt)))
+            wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),mdt))]
+            wave.append(asyncpio.pulse(0, 1<<pin, max(int(dt*(1-dc)),mdt)))
             return wave*inc            
 
 
