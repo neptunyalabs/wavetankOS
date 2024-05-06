@@ -608,8 +608,9 @@ class stepper_control:
         elif not isinstance(vmove,(list,tuple)):
             vmove = [vmove]
 
+        now_dir = self._last_dir
         for vmov in vmove:
-            now_dir = self._last_dir
+            
             print(f'calibrate at speed: {vmov}')
             found_top = False
             found_btm = False            
