@@ -262,8 +262,9 @@ class stepper_control:
                 task = loop.create_task(self.calibrate(vmove=vmove))
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
-                if has_file: self.load_cal_file()
-                self.started.set_result(True)
+                if has_file: 
+                    self.load_cal_file()
+                task.create_task(self.center_start)
 
         self.first_feedback.add_done_callback(go)
 
@@ -274,6 +275,8 @@ class stepper_control:
             self.stop()
         finally:
             loop.close()
+
+
 
     #STOPPPING / SAFETY
     def stop(self):
@@ -583,6 +586,9 @@ class stepper_control:
                 await self.set_dir(dir=self._last_dir*-1)            
             await self.sleep(0)    
 
+    async def center_start(self):
+        await self.center_head_program()
+        self.started.set_result(True)
 
     #Calibrate & Controlled Moves
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
@@ -719,7 +725,7 @@ class stepper_control:
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
 
         print(f'center before run')
-        await self.center_head_routine()
+        await self.center_head_program()
 
         #TODO: add reset callback for this
         self.z_cur_vcal = self.feedback_volts
@@ -741,10 +747,6 @@ class stepper_control:
         print(f'loading cal file!: {data}')            
         self.__dict__.update(data) #youre welcome
 
-        #center now!
-        loop = asyncio.get_running_loop()
-        center_task = loop.create_task(self.center_head_program())
-        asyncio.wait(center_task)
 
 
 
