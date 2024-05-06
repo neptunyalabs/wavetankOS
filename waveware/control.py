@@ -324,7 +324,7 @@ class stepper_control:
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
             #print(f'same drive mode: {new_mode}')
-            if new_mode == 'stop'
+            if new_mode == 'stop':
                 self.v_cmd = 0
             return
         
