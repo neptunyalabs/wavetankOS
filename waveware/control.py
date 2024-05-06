@@ -84,7 +84,7 @@ class stepper_control:
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
-    kzp_sup = 1#/T
+    kzp_sup = 0.01#/T
     kzi_err = 0.1
     
     min_dt = 25
@@ -171,6 +171,7 @@ class stepper_control:
 
         self._step_time = self.min_dt
         self._step_cint = 1
+        self.z_cur_cal = 0 #TODO: rest call for this
 
     #SETUP 
     async def _setup(self):
@@ -446,7 +447,7 @@ class stepper_control:
                         raw_adc -= 65535
 
                     self.feedback_volts = vnow = (raw_adc/32767)*VR
-                    self.z_cur = (vnow)*self.dzdvref
+                    self.z_cur = (vnow- self.z_cur_vcal)*self.dzdvref 
                     
 
                     if feedback_futr is not None:
@@ -641,7 +642,7 @@ class stepper_control:
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
 
-                elif test_val >= min_res*2:
+                #elif test_val >= min_res*2:
                     #if maybe_stuck is not False:
                         #print(f'unstuck1 | {test_val} {dv}')
                     #maybe_stuck = False
@@ -711,6 +712,9 @@ class stepper_control:
         print(f'center before run')
         while (await self.center_head()) != False:
             await self.sleep(0)
+
+        #TODO: add reset callback for this
+        self.z_cur_vcal = self.feedback_volts
 
         print(f'set mode: {default_mode}')
         self.set_mode(default_mode)
