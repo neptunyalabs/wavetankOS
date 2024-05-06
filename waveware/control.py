@@ -88,7 +88,7 @@ class stepper_control:
     kzi_err = 0.1
     
     min_dt = 10
-    pulse_dt = 10
+    pulse_dt = 25
     dz_range = 0.3 #meters #TODO: input actual length of lead screw
 
     adc_addr = 0x48
