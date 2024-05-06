@@ -577,8 +577,20 @@ class stepper_control:
         vstart = cv = sv = self.feedback_volts
 
 
-        print(f'center before run')
-        self.coef_100 = 0.01 #initial value
+        #### Alternate locally to build guesses
+        for v in [0.001,0.01,0.05]:
+            for d in [1,1]:
+                await self.set_dir(dir=self._last_dir*-1)
+                self.v_cmd = v
+                await self.sleep(0.01)
+
+        for v in [0.001,0.01,0.05]:
+            for d in [1,1]:
+                await self.set_dir(dir=self._last_dir*-1)
+                self.v_cmd = v
+                await self.sleep(1)
+        
+        #Center
         flipped = False
         while (await self.center_head()) != False:
             if self.stuck and flipped is False:
