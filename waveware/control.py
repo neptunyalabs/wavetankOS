@@ -756,7 +756,7 @@ class stepper_control:
         self.dir_mult = 1 if v >= 0 else 0
         self._last_dir = 1 if v >= 0 else -1
         if ld != self._last_dir:
-            self.set_dir(self._last_dir)
+            await self.set_dir(self._last_dir)
         
         #self.v_cmd = self.v_sup #TODO: validate this for position holding
         self.v_cmd = v
