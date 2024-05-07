@@ -1,4 +1,4 @@
-# from piplates import DAQC
+# from piplates import DACC
 
 import datetime
 
@@ -203,7 +203,7 @@ app.layout = html.Div(
                 html.Div(
                     [
                         html.H6(
-                            "DAQ ON/OFF",
+                            "DAC ON/OFF",
                             id="daq_msg",
                             style={"text-align": "center"},
                         ),
@@ -436,10 +436,10 @@ def turn_on_off_daq(on):
     print(f"setting {on}.")
     if on:
         requests.get(f"http://localhost:8777/turn_on")
-        return "DAQ ON"
+        return "DAC ON"
     else:
         requests.get(f"http://localhost:8777/turn_off")
-        return "DAQ OFF"
+        return "DAC OFF"
 
 @app.callback(
     Output("title-in-input","value"),
@@ -510,9 +510,9 @@ def main():
     except:
         ON_RASPI = False    
 
-    # os.environ["PORT"] = str(8080)
     try:
-        app.run_server(debug=not ON_RASPI,host='0.0.0.0' if ON_RASPI else '127.0.0.1')
+        srv_host = '0.0.0.0' if ON_RASPI else '127.0.0.1'
+        app.run_server(debug=not ON_RASPI,host=srv_host)
 
     except KeyboardInterrupt:
         sys.exit()
@@ -522,6 +522,61 @@ if __name__ == "__main__":
 
 
     main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #         html.Div(id='live-update-text'),
 #         dcc.Graph(id='live-update-graph'), #TODO: define timeseries
 #

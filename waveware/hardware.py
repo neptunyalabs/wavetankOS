@@ -52,11 +52,12 @@ import smbus
 pigpio.exceptions = True
 ON_RASPI = True
 
-
 import datetime
 import time
 import logging
 import json,os
+
+from waveware.control import wave_control
 
 
 # BUCKET CONFIG
@@ -109,13 +110,7 @@ class hardware_control:
     mpu_addr: hex = 0x68#0x69 #3.3v
     si07_addr: hex = 0x40
     # #motor control
-    # en_pin: int = None
-    # a_ch: int = None
-    # b_ch: int = None
-    # hlfb_pin: int = None    
-    # hlfb_mode: int = 'ppr'
-    # drive_mode: int = 'pos_input'
-    # drive_modes: int = ['pos_input','2pos']
+    control = None
 
     #config flags
     active = False
@@ -129,7 +124,7 @@ class hardware_control:
     cache: ExpiringDict
 
     #TODO: pins_def
-    def  __init__(self,encoder_ch:list,echo_ch:list,winlen = 1000,enc_conf = None):
+    def  __init__(self,encoder_ch:list,echo_ch:list,dir_pin:int,step_pin:int,speedpwm_pin:int,fb_pin:int,hlfb_pin:int,torque_fbpin:int,winlen = 1000,enc_conf = None,cntl_conf=None):
         self.start_time = time.time()
         self.is_fake_init = lambda: True if (time.time() - self.start_time) <  FAKE_INIT_TIME else False
 
@@ -151,6 +146,18 @@ class hardware_control:
             assert len(enc_conf) == len(self.encoder_pins), f'encoder conf mismatch'
             self.encoder_conf = enc_conf
 
+        self._dir_pin = dir_pin
+        self._step_pin = step_pin
+        self._speedpwm_pin = speedpwm_pin
+        self._fb_pin = fb_pin
+        self._hlfb_pin = hlfb_pin
+        self._torque_fbpin = torque_fbpin
+
+        if cntl_conf is None: 
+            cntl_conf = {} #empty
+
+        self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._fb_pin,self._hlfb_pin,self._torque_fbpin,**cntl_conf)
+
     #Run / Setup
     #Setup & Shutdown
     def setup(self):
@@ -158,6 +165,8 @@ class hardware_control:
         loop.run_until_complete(self._setup_hardware())    
 
         self.setup_i2c()
+
+        self.control.setup_i2c(smbus=self.smbus)
     
     def setup_i2c(self):
         if not PLOT_STREAM: print(f'setup i2c')
@@ -174,23 +183,9 @@ class hardware_control:
         self.imu.setGyroRange("GyroRangeSelect250DPS")
 
         #TODO: save calibration data
-        #imu.loadCalibDataFromFile("/home/pi/calib_real_bolder.json")
+        #imu.saveCalibDataToFile("/home/neptunya/mpu_calib.json")
+        #imu.loadCalibDataFromFile("/home/neptunya/mpu_calib.json")
         self.setup_adc()
-
-    #TODO: data handling between 
-    # def setup_adc(self):
-    #     if not PLOT_STREAM: print(f'setting up ADC')
-    #     data = [0x84,0x83]
-    #     self.smbus.write_i2c_block_data(0x48, 0x01, data)
-    #     time.sleep(0.1)
-
-    # def _read_adc(self):
-    #     # ADS1115 address, 0x48(72)
-    #     # Read data back from 0x00(00), 2 bytes
-    #     # raw_adc MSB, raw_adc LSB
-    #     adc = {}
-    #     adc[0] = 
-        
         
     def _get_adc(self,ch:int)->float:
         data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
@@ -211,6 +206,10 @@ class hardware_control:
         self.temp_task = loop.create_task(self.temp_task())
         self.print_task = loop.create_task(self.print_data())
         
+        time.sleep(0.1) 
+        #TODO: check everything ok
+        self.control.setup_control()
+
         try:
             loop.run_forever()
         except KeyboardInterrupt as e:
@@ -413,34 +412,19 @@ class hardware_control:
                 
                 await asyncio.sleep(intvl)
             except Exception as e:
-                print(e)
-
-    # @property
-    # def relative_humidity(self) -> float:
-    #     """The measured relative humidity in percent."""
-    #     self.start_measurement(HUMIDITY)
-    #     value = self._data()
-    #     self._measurement = 0
-    #     return min(100.0, value * 125.0 / 65536.0 - 6.0)                
-
-# def _crc(data: bytearray) -> int:
-#     crc = 0
-#     for byte in data:
-#         crc ^= byte
-#         for _ in range(8):
-#             if crc & 0x80:
-#                 crc <<= 1
-#                 crc ^= 0x131
-#             else:
-#                 crc <<= 1
-#     return crc    
+                print(e)   
 
 def main():
+    from waveware.control import regular_wave
+    import sys
+    
     encoder_pins = [(9,10)]
     encoder_sens = [{'sens':0.005*4}]
     echo_pins = [18]
 
-    hw = hardware_control(encoder_pins,echo_pins)
+    rw = regular_wave()
+    control_conf = dict(wave=rw,force_cal='-fc' in sys.argv)
+    hw = hardware_control(encoder_pins,echo_pins,dir_pin=4,step_pin=6,speedpwm_pin=12,fb_pin=7,hlfb_pin=13,**control_conf)
     hw.setup()
     hw.run()
 
@@ -462,47 +446,47 @@ if __name__ == '__main__':
     
 
 #     #Data Recording
-#     async def push_data(self):
-#         """Periodically looks for new data to upload 1/3 of window time"""
-#         while True:
+# async def push_data(self):
+#     """Periodically looks for new data to upload 1/3 of window time"""
+#     while True:
 # 
-#             try:
+#         try:
 # 
-#                 if self.active and self.unprocessed:
+#             if self.active and self.unprocessed:
 # 
-#                     data_rows = {}
-#                     data_set = {
-#                         "data": data_rows,
-#                         "num": len(self.unprocessed),
-#                         "test": self.labels['title'],
-#                     }
-#                     #add items from deque
-#                     while self.unprocessed:
-#                         row_ts = self.unprocessed.pop()
-#                         if row_ts in self.cache:
-#                             row = self.cache[row_ts]
-#                             if row:
-#                                 data_rows[row_ts] = row
+#                 data_rows = {}
+#                 data_set = {
+#                     "data": data_rows,
+#                     "num": len(self.unprocessed),
+#                     "test": self.labels['title'],
+#                 }
+#                 #add items from deque
+#                 while self.unprocessed:
+#                     row_ts = self.unprocessed.pop()
+#                     if row_ts in self.cache:
+#                         row = self.cache[row_ts]
+#                         if row:
+#                             data_rows[row_ts] = row
 # 
-#                     # Finally try writing the data
-#                     if data_rows:
-#                         log.info(f"writing to S3")
-#                         await self.write_s3(data_set)
-#                     else:
-#                         log.info(f"no data, skpping s3 write")
-#                     # Finally Wait Some Time
-#                     await asyncio.sleep(self.window / 3.0)
-# 
-#                 elif self.active:
-#                     log.info(f"no data")
-#                     await asyncio.sleep(self.window / 3.0)
+#                 # Finally try writing the data
+#                 if data_rows:
+#                     log.info(f"writing to S3")
+#                     await self.write_s3(data_set)
 #                 else:
-#                     log.info(f"not active")
-#                     await asyncio.sleep(self.window / 3.0)
+#                     log.info(f"no data, skpping s3 write")
+#                 # Finally Wait Some Time
+#                 await asyncio.sleep(self.window / 3.0)
 # 
-#             except Exception as e:
-#                 log.error(str(e), exc_info=1)
+#             elif self.active:
+#                 log.info(f"no data")
+#                 await asyncio.sleep(self.window / 3.0)
+#             else:
+#                 log.info(f"not active")
+#                 await asyncio.sleep(self.window / 3.0)
 # 
+#         except Exception as e:
+#             log.error(str(e), exc_info=1)
+# # 
 # 
 #     async def write_s3(self,data: dict,title=None):
 #         """writes the dictionary to the bucket

@@ -1,4 +1,4 @@
-# from piplates import DAQC
+# from piplates import DACC
 
 import datetime
 import asyncio
@@ -88,7 +88,7 @@ async def set_labels(request,hw):
 async def get_current(request,hw):
     if hw.last_time and hw.last_time in hw.cache:
         return web.Response(body=json.dumps(hw.cache[hw.last_time]))
-    return web.Response(text='no data, turn on DAQ')
+    return web.Response(text='no data, turn on DAC')
 
 async def get_data(request,hw):
     """
@@ -104,4 +104,4 @@ async def get_data(request,hw):
         else:
             return web.Response(body=json.dumps(hw.cache)) 
 
-    return web.Response(text='no data, turn on DAQ')
+    return web.Response(text='no data, turn on DAC')

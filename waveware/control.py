@@ -80,7 +80,7 @@ class regular_wave:
 steps_per_rot = 360/1.8
 dz_per_rot = 0.01 #rate commad
 
-class stepper_control:
+class wave_control:
 
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
@@ -134,8 +134,7 @@ class stepper_control:
         self.feedback_volts = None
         self.fail_feedback = None
         self.reset()
-        self.setup_control()
-        self.setup_i2c()
+
         
     
     def reset(self):
@@ -211,8 +210,10 @@ class stepper_control:
         await self._stop()
         os.kill(os.getpid(), signal.SIGKILL)
     
-    def setup_i2c(self,pin = 0):
-        self.smbus = smbus.SMBus(1)        
+    def setup_i2c(self,pin = 0,smbus=None):
+        if smbus is None:
+            self.smbus = smbus.SMBus(1)
+
         cb = config_bit(pin,fvinx = 4)
         db = int(f'{dr}00011',2)
         data = [cb,db]
@@ -1081,8 +1082,8 @@ class stepper_control:
 
 if __name__ == '__main__':
 
-    rw = regular_wave()
-    sc = stepper_control(4,6,12,7,13,wave=rw,force_cal='-fc' in sys.argv)
+    
+    sc = wave_control(4,6,12,7,13,wave=rw,force_cal='-fc' in sys.argv)
     sc.setup()
     sc.run() 
 
