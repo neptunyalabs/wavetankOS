@@ -196,10 +196,6 @@ class hardware_control:
                 raw_adc -= 65535
         return raw_adc / 32767.
 
-
-
-
-
     def run(self):
         loop = asyncio.get_event_loop()
         self.imu_read_task = loop.create_task(self.imu_task())

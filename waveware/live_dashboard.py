@@ -45,10 +45,10 @@ from waveware.data import cache
 
 
 # TODO: 1. Wave Measure Plot w/ act position and ultrasonic distance measurements
-# TODO: 4. wave input config settings
 # TODO: 2. ref height / mode selection
 # TODO: 3. pid control variables and cmd speed and feedback voltage
-
+# TODO: 4. wave input config settings
+# TODO: 5. add range limit slider for bounds
 
 def generate_plot(title, id=None):
 
@@ -175,7 +175,7 @@ app.layout = html.Div(
                     [
                         html.H4(TITLE, className="app__header__title"),
                         html.P(
-                            "This Dashboard Displays current values from the neptunya demo system, when turned ON",
+                            "This Dashboard Displays current values from the neptunya demo system, when DAC turned ON",
                             className="app__header__title--grey",
                         ),
                     ],

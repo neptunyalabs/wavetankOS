@@ -1082,7 +1082,7 @@ class wave_control:
 
 if __name__ == '__main__':
 
-    
+    rw = regular_wave()
     sc = wave_control(4,6,12,7,13,wave=rw,force_cal='-fc' in sys.argv)
     sc.setup()
     sc.run() 
