@@ -24,10 +24,11 @@ from waveware.hardware import LABEL_DEFAULT
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("dash")
 
-def make_web_app(hw):
+def make_app(hw):
     app = web.Application()
     #function making function (should scope internally to lambda inst)
     hwfi = lambda f,*a,**kw: lambda req: f(req,*a,**kw)
+    log.info(f'creating web server')
     app.add_routes(
         [
             web.get("/", hwfi(check,hw)),
@@ -57,6 +58,7 @@ def make_web_app(hw):
             web.post('/control/set_bounds',hwfi(set_z_bounds,hw))
         ]
     )
+    log.info(f'creating web server')
     return web.AppRunner(app)
     
 #Data Quality Methods
@@ -194,7 +196,7 @@ async def push_data(hw):
                 # Finally try writing the data
                 if data_rows:
                     log.info(f"writing to S3")
-                    await hw.write_s3(data_set)
+                    await write_s3(hw,data_set)
                 else:
                     log.info(f"no data, skpping s3 write")
                 # Finally Wait Some Time
@@ -215,7 +217,9 @@ async def write_s3(hw,data: dict,title=None):
     :param data: a dictionary to write as json
     :param : default='data', use to log actions ect
     """
-    if ON_RASPI:
+    from waveware.config import aws_profile,bucket,folder
+
+    if ON_RASPI or folder=='TEST':
         up_time = datetime.datetime.now(tz=datetime.timezone.utc)
         data["upload_time"] = str(up_time)
         date = up_time.date()
@@ -226,8 +230,8 @@ async def write_s3(hw,data: dict,title=None):
             #data
             key = f"{folder}/{hw.labels['title']}/{date}/data_{time}.json"
 
-        session = get_session()
-        async with session.create_client('s3',region_name='us-east-1',config='wavetank') as client:
+        session = aiobotocore.session.AioSession(profile=aws_profile)
+        async with session.create_client('s3',region_name='us-east-1') as client:
 
             resp = await client.put_object(
                 Bucket=bucket, Key=key, Body=json.dumps(data)
@@ -235,4 +239,4 @@ async def write_s3(hw,data: dict,title=None):
             log.info(f"success writing {key}")
             log.debug(f"got s3 resp: {resp}")
     else:
-        log.info("mock writing s3...")
+        log.info(f"mock writing s3...: {aws_profile}|{title}|{len(data)}")

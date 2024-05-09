@@ -3,3 +3,6 @@ __pycache__/*
 sandbox/*.zip
 .DS_Store
 build/*
+*.db
+data_cache
+data_cache/*

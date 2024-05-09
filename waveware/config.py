@@ -10,7 +10,14 @@ import pigpio
 import sys
 
 from math import cos,sin
+from decimal import Decimal
+from waveware.data import *
 
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("conf")
+
+mm_accuracy_enc = Decimal('1e-3')
+mm_accuracy_ech = Decimal('1e-4')
 
 try:
     import RPi.GPIO as gpio
@@ -30,17 +37,23 @@ def to_test_time(timestamp):
 def to_date(timestamp):
     return to_test_time(timestamp).date()
 
-aws_profile = os.environ.get('AWS_PROFILE','wavetank')
+if 'AWS_PROFILE' not in os.environ:
+    os.environ['AWS_PROFILE'] = aws_profile = 'wavetank'
+else:
+    aws_profile = os.environ.get('AWS_PROFILE','wavetank')
+
 bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
 folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
 PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
+
+
+log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}')
 
 path = pathlib.Path(__file__)
 fdir = path.parent
 cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
 
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("data")
+
 
 #PINS
 encoder_pins = [(17,18),(27,22),(23,24),(25,5)]

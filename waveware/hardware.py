@@ -39,7 +39,6 @@ import threading
 import struct
 
 from collections import deque
-from expiringdict import ExpiringDict
 
 from imusensor.MPU9250 import MPU9250
 import sys
@@ -55,7 +54,9 @@ import logging
 import json,os
 import random
 
+
 from waveware.control import wave_control
+from waveware.data import *
 from waveware.config import *
 
 
@@ -106,9 +107,9 @@ class hardware_control:
 
     #config flags
     active = False
-    poll_rate = 1.0 / 100
-    poll_temp = 60
-    window = 60.0
+    poll_rate = poll_rate
+    poll_temp = poll_temp
+    window = window
     
     #Data Storage
     buffer: asyncio.Queue
@@ -118,8 +119,10 @@ class hardware_control:
 
     #TODO: pins_def
     def  __init__(self,encoder_ch:list,echo_ch:list,dir_pin:int,step_pin:int,speedpwm_pin:int,adc_alert_pin:int,hlfb_pin:int,motor_en_pin:int,echo_trig_pin:int,torque_pwm_pin:int,winlen = 1000,enc_conf = None,cntl_conf=None):
-        self.start_time = time.time()
-        self.is_fake_init = lambda: True if (time.time() - self.start_time) <  FAKE_INIT_TIME else False
+        self.start_time = time.perf_counter()
+        self.last_time = None
+
+        self.is_fake_init = lambda: True if (time.perf_counter() - self.start_time) <  FAKE_INIT_TIME else False
 
         self.default_labels = LABEL_DEFAULT
         self.labels = self.default_labels.copy()
@@ -127,7 +130,9 @@ class hardware_control:
         #data storage
         self.buffer = asyncio.Queue(winlen)
         self.unprocessed = deque([], maxlen=winlen)
-        self.cache = ExpiringDict(max_len=self.window * 2 / self.poll_rate, max_age_seconds=self.window * 2)
+        
+        #TODO: move to global
+        self.cache = memcache
 
         self.i2c_lock = threading.Lock()
 
@@ -186,32 +191,24 @@ class hardware_control:
         #await self.setup_adc_sensors()        
     
     def setup_i2c(self):
-        print(f'setup i2c')
+        log.info(f'setup i2c')
         self.smbus = smbus.SMBus(1)
 
         #MPU
-        print(f'setup mpu9250')
+        log.info(f'setup mpu9250')
         self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
-        print(f'mpu9250 begin')
+        log.info(f'mpu9250 begin')
         self.imu.begin()
-        print(f'mpu9250 config')
+        log.info(f'mpu9250 config')
         self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
         self.imu.setAccelRange("AccelRangeSelect2G")
         self.imu.setGyroRange("GyroRangeSelect250DPS")
 
-
-        if os.path.exists(f"{fdir}/mpu_calib.json"):
-            self.imu.loadCalibDataFromFile(f"{fdir}/mpu_calib.json")
+        self.mpu_cal_file = f"{fdir}/mpu_calib.json"
+        if os.path.exists(self.mpu_cal_file):
+            log.info(f'loading calibration file!: {self.mpu_cal_file}')
+            self.imu.loadCalibDataFromFile(self.mpu_cal_file)
         self.setup_adc()
-        
-    def _get_adc(self,ch:int)->float:
-        data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
-        # Convert the data
-        raw_adc = data[0] * 256 + data[1]
-
-        if raw_adc > 32767:
-                raw_adc -= 65535
-        return raw_adc / 32767.
 
     def run(self):
         loop = asyncio.get_event_loop()
@@ -251,7 +248,7 @@ class hardware_control:
         self.imu.caliberateAccelerometer()
         self.imu.caliberateGyro()
         self.imu.caliberateMagPrecise()
-        self.imu.saveCalibDataToFile(f"{fdir}/mpu_calib.json")
+        self.imu.saveCalibDataToFile(self.mpu_cal_file)
 
     async def mpu_calibration_process(self):
         loop = asyncio.get_event_loop()
@@ -267,15 +264,15 @@ class hardware_control:
                 loop.call_later(w,self.reset_stdin)
             await task
         except Exception as e:
-            print('issue with mpu cal: {e}')
+            log.info('issue with mpu cal: {e}')
         
         if hasattr(self,'_old_stdin'):
             self.reset_std_in()
 
         self.active_mpu_cal = False
         
-        print(f'saving calibration file')
-        self.imu.saveCalibDataToFile(f"{fdir}/mpu_calib.json")
+        log.info(f'saving calibration file')
+        self.imu.saveCalibDataToFile(self.mpu_cal_file)
 
     def reset_stdin(self):
         self.wt.write('go\r\n'.encode())
@@ -291,18 +288,18 @@ class hardware_control:
         sys.stdin = self.rd #this is what calibrateAccelerometer for input!
 
     def reset_std_in(self):
-        print('reset stdin')
+        log.info('reset stdin')
         sys.stdin = self._old_stdin
         del self._old_stdin
 
     async def imu_task(self):
-        print(f'starting imu task')
+        log.info(f'starting imu task')
         while ON_RASPI:
             try:
                 await asyncio.to_thread(self._read_imu)
                 await asyncio.sleep(self.poll_rate)
             except Exception as e:
-                print(f'imu error: {e}')
+                log.info(f'imu error: {e}')
 
     def _read_imu(self):
         """blocking call use in thread"""
@@ -321,16 +318,16 @@ class hardware_control:
 
     #TEMP Sensors
     async def temp_task(self):
-        print(f'starting temp task')
+        log.info(f'starting temp task')
         while ON_RASPI:
             try:
                 await asyncio.to_thread(self._read_temp)
                 await asyncio.sleep(self.poll_temp)
             except Exception as e:
-                print(f'temp error: {e}')
+                log.info(f'temp error: {e}')
 
     def _read_temp(self) -> None:
-        print(f'read temp')
+        log.info(f'read temp')
         #signal to read
         try:
             with self.i2c_lock:
@@ -347,7 +344,7 @@ class hardware_control:
                 self.sound_conv = self.speed_of_sound *1000 / 2000000 #2x
 
         except Exception as e:
-            print(e)
+            log.info(e)
 
 
     #Encoders
@@ -356,7 +353,7 @@ class hardware_control:
         self.cbA = []
         self.cbB = []
         for i,(apin,bpin) in enumerate(self.encoder_pins):
-            print(f'setting up encoder {i} on A:{apin} B:{bpin}')
+            log.info(f'setting up encoder {i} on A:{apin} B:{bpin}')
             await self.pi.set_mode(apin, pigpio.INPUT)
             await self.pi.set_mode(bpin, pigpio.INPUT)
 
@@ -407,7 +404,7 @@ class hardware_control:
         self._cb_rise = []
         self._cb_fall = []
         for echo_pin in self.echo_pins:
-            print(f'starting ecno sensors on pin {echo_pin}')
+            log.info(f'starting ecno sensors on pin {echo_pin}')
 
             self.last[echo_pin] = {'dt':0,'rise':None}
 
@@ -440,7 +437,7 @@ class hardware_control:
         return 0
 
     def output_data(self,add_bias=True):
-        out = {}
+        out = {'timestamp':time.perf_counter()}
         if ON_RASPI:
             out.update(self.record) #these are latest from I2C
 
@@ -454,7 +451,7 @@ class hardware_control:
 
         else:
             #FAKENESS
-            out = { 'e1':0.1*(0.5-random.random()) + 0.2,
+            mock_sensors ={ 'e1':0.1*(0.5-random.random()) + 0.2,
                     'e2':0.1*(0.5-random.random()) + 0.2,
                     'e3':0.1*(0.5-random.random()) + 0.2,
                     'e4':0.1*(0.5-random.random()) + 0.2,
@@ -463,10 +460,11 @@ class hardware_control:
                     'z3':10*(0.5-random.random()),
                     'z4':10*(0.5-random.random()),
                     }
+            out.update(mock_sensors)
             #echo ts
-            now = time.time()
+            now = time.perf_counter()
             for i,echo_pin in enumerate(self.echo_pins):
-                out[f'e{i}_ts'] = now - self.poll_rate*random.random()
+                out[f'e{i}_ts'] = now - 0.1*random.random()
 
             #they call it a bias for a reason :)
             for k,v in FAKE_BIAS.items():
@@ -475,6 +473,12 @@ class hardware_control:
 
         #Add control info
         out['z_wave'] = self.control.z_cur
+        out['z_cmd'] = self.control.z_cmd
+        out['z_cur'] = self.control.v_cur
+        out['v_cmd'] = self.control.v_command
+        out['v_cur'] = self.control.v_cur
+        out['v_wave'] = self.control.v_wave
+
         out['wave_fb_volt'] = self.control.feedback_volts
         out['coef_2'] = self.control.coef_2
         out['coef_10'] = self.control.coef_10
@@ -497,31 +501,32 @@ class hardware_control:
         while True:
             try:
                 if PLOT_STREAM:
-                    print(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
+                    log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
-                    print({k:f'{v:3.3f}' for k,v in self.output_data().items() if isinstance(v,(float,int))})
+                    log.info({k:f'{v:3.3f}' for k,v in self.output_data().items() if isinstance(v,(float,int))})
                 
                 await asyncio.sleep(intvl)
             except Exception as e:
-                print(e)
+                log.info(e)
 
     async def process_data(self):
         """a simple function to provide efficient calculation of variables out of a queue before writing to S3"""
         while True:
             try:
-                #swap refs with namespace fancyness
-                last = locals().get('new',None)
+                # #swap refs with namespace fancyness
+                # last = locals().get('new',None)
 
                 new = await self.buffer.get()
-
                 ts = new["timestamp"]
                 #no replace data
                 good_lab ={k:v for k,v in self.labels.items() if k not in new}
                 new.update(**good_lab)
 
                 self.last_time = ts
-                #This saves the data
+                #This saves the data #TODO: sort out disk/exp memory data
                 self.cache[ts] = new
+                # if cache:
+                #     cache[ts] = new
                 self.unprocessed.append(ts) 
 
             except Exception as e:
@@ -533,7 +538,7 @@ class hardware_control:
         inttime = 0
         while True:
             try:
-                ts = time.time()
+                ts = time.perf_counter()
                 if self.active:
                     #get the current record
                     data = self.output_data()
@@ -550,11 +555,11 @@ class hardware_control:
     async def mark_zero(self):
         """average zeros over a second"""
         mark_zero = {}
-        lt = st = time.time()
+        lt = st = time.perf_counter()
         bs = {}
-        while (ct:=time.time() - st) < 1:
+        while (ct:=time.perf_counter() - st) < 1:
             d = self.output_data(add_bias=False)
-            tm = time.time()
+            tm = time.perf_counter()
             dt = tm-lt
             lt = tm
             a = dt/ct

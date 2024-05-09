@@ -13,4 +13,5 @@ imusensor@ git+https://github.com/niru-5/imusensor.git
 adafruit-circuitpython-si7021
 adafruit-board-toolkit
 aioboto3
+aiobotocore
 expiringdict

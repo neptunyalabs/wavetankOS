@@ -17,9 +17,11 @@ import numpy as np
 import pandas as pd
 pd.options.plotting.backend = "plotly"
 
-print(sys.executable)
+log.info(sys.executable)
 import logging
 import requests
+
+from decimal import *
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("dashboard")
@@ -41,8 +43,18 @@ app_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
 
 PLOTS = []
 max_ts = 0
-from waveware.config import cache
 
+
+#parameter groupings
+z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
+z_sensors = [f'z{i+1}' for i in range(4)]
+e_sensors = [f'e{i+1}' for i in range(4)]
+
+wave_drive_modes = ['off','center','wave']
+wave_inputs = ['ts','hs','z_ref','z_upper','z_lower']
+
+all_sys_vars = z_wave_parms+z_sensors+e_sensors #output only
+all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
 
 # TODO: 1. Wave Measure Plot w/ act position and ultrasonic distance measurements
 # TODO: 2. ref height / mode selection
@@ -117,8 +129,12 @@ def input_card(name, id="", type="number", **kwargs):
     return div
 
 
-def readout_card(name, id="", val=0.0):
+def readout_card(name, id=None, val=0.0):
     mark = name.lower().replace(" ",'-')
+
+    if id is None:
+        id=""
+
     div = html.Div(
         [
             html.Div(
@@ -258,19 +274,23 @@ app.layout = html.Div(
                         html.Div(
                             [
                             # Station 1
-                            html.H6("READOUT:",className="graph__title"),
-                            readout_card("z_wave1"),
-                            readout_card("z_wave2"),
-                            readout_card("z_wave3"),
-                            readout_card("z_wave4"),
-                            readout_card("zw"),\
-                            readout_card("zw_cmd"),
-                            readout_card("vzw"),\
-                            readout_card("vzw_cmd"),
-                            readout_card("z_echo1"),
-                            readout_card("z_echo2"),
-                            readout_card("z_echo3"),
-                            readout_card("z_echo4"),
+                            html.H6("Wave Gen Control:",className="graph__title"),
+                            readout_card("z_cur"),
+                            readout_card("z_cmd"),
+                            readout_card("z_wave"),
+                            readout_card("v_cur"),
+                            readout_card("v_cmd"),
+                            readout_card("v_wave"),                        
+                            html.H6("Encoder Z 1-4:",className="graph__title"),
+                            readout_card("z1"),
+                            readout_card("z2"),
+                            readout_card("z3"),
+                            readout_card("z4"),
+                            html.H6("Echo Sensor Z 1-4:",className="graph__title"),
+                            readout_card("e1"),
+                            readout_card("e2"),
+                            readout_card("e3"),
+                            readout_card("e4"),
                             ]
                         ),
 
@@ -321,15 +341,13 @@ app.layout = html.Div(
             )
 def update_graphs(n,on):
     """first ask for new data then update the graphs"""
-    print(f'update graphs {on}')
-    begin = time.time()
+    log.info(f'update graphs {on}')
+    begin = time.perf_counter()
     if on:
         try:
-            global cache
-            
-            if cache:
+            if memcache:
                 #we got data so lets do the query
-                max_ts = max(list(cache.keys()))
+                max_ts = max(list(memcache.keys()))
                 new_data = requests.get(f"http://localhost:8777/getdata?after={max_ts}")
             else:
                 #no data, so ask for the full blast. yeet
@@ -339,16 +357,17 @@ def update_graphs(n,on):
 
             #Apply away
             if new_data.status_code == 200:
-                #print(f'got response {new_data}')
+                #log.info(f'got response {new_data}')
                 data = new_data.json()
-                #print(f'got len data {len(data)}')
+                #add data to cache
                 for ts,data in data.items():
-                    cache[float(ts)] = data
+                    memcache[float(ts)] = data
             else:
-                print(f'got bad response: {new_data}')
+                log.info(f'got bad response: {new_data}')
 
-            tm = time.time()        
-            df = pd.DataFrame.from_dict(list(cache.values()))
+            tm = time.perf_counter()        
+            df = pd.DataFrame.from_dict(list(memcache.values()))
+            #adjust to present
             df['timestamp']=df['timestamp']-tm
 
             fig_pr = px.scatter(df,x='timestamp',y=['p1t','p1s','p2t','p2s'])#trendline='lowess',trendline_options=dict(frac=1./10.))
@@ -384,42 +403,32 @@ def update_graphs(n,on):
                 "gridcolor":"white"
                 })
                     
-            #print(f'returning 3 graphs {time.time()-begin}')
+            log.info(f'returning 3 graphs {time.perf_counter()-begin}')
             return [fig_pr,fig_speed,fig_alph]
         
         except Exception as e:
             log.error(e,exc_info=1)
-            print(e)
+            log.info(e)
     
     raise dash.exceptions.PreventUpdate
 
 
-
+#all_sys_vars get update in order by data
 @app.callback(
-    [
-    Output('pt-1-display',"value"),
-    Output('ps-1-display',"value"),
-    Output('velocity-1-display',"value"),
-    Output('alpha-1-display',"value"),
-
-    Output('pt-2-display',"value"),
-    Output('ps-2-display',"value"),
-    Output('velocity-2-display',"value"),
-    Output('alpha-2-display',"value"),
-    ],
+    [Output(f'{parm}-display',"value") for parm in all_sys_vars],
     Input("num-raw-update","n_intervals"),
     State("daq_on_off","on")
     )
 
 def update_readout(n,on):
     if on:
-        print(f'update readout: {on}')
+        log.info(f'update readout: {on}')
         try:
             new_data = requests.get(f"http://localhost:8777/getcurrent")
             data = new_data.json()
             if data:
-                data= [data['p1t']/1000,data['p1s']/1000,data['V1'],data['alpha1'],data['p2t']/1000,data['p2s']/1000,data['V2'],data['alpha2']]
-                return ['{:0.2f}'.format(max(v,0)) for v in data]
+                data= [float(Decimal(data[k]).quantize(mm_accuracy_ech)) if k in e_sensors else float(Decimal(data[k]).quantize(mm_accuracy_enc)) for k in all_sys_vars]
+                return data
 
             raise dash.exceptions.PreventUpdate
 
@@ -429,11 +438,9 @@ def update_readout(n,on):
     raise dash.exceptions.PreventUpdate
 
 
-
-
 @app.callback(Output("daq_msg", "children"), Input("daq_on_off", "on"))
 def turn_on_off_daq(on):
-    print(f"setting {on}.")
+    log.info(f"setting {on}.")
     if on:
         requests.get(f"http://localhost:8777/turn_on")
         return "DAC ON"
@@ -441,61 +448,64 @@ def turn_on_off_daq(on):
         requests.get(f"http://localhost:8777/turn_off")
         return "DAC OFF"
 
-@app.callback(
-    Output("title-in-input","value"),
-    Output("sen1-x-input","value"),
-    Output("sen1-rot-input","value"),
-    Output("sen2-x-input","value"),    
-    Output("sen2-rot-input","value"),
-    Output("air-pla-input","value"),
-    Output("water-pla-input","value"),
-    Input("reset-btn","n_clicks"),
-    )
-def reset_labels(btn):
-    out = requests.get(f"http://localhost:8777/reset_labels")
-    data = out.json()
+#TODO: setup inputs callbacks
+# @app.callback(
+#     Output("title-in-input","value"),
+#     Output("sen1-x-input","value"),
+#     Output("sen1-rot-input","value"),
+#     Output("sen2-x-input","value"),    
+#     Output("sen2-rot-input","value"),
+#     Output("air-pla-input","value"),
+#     Output("water-pla-input","value"),
+#     Input("reset-btn","n_clicks"),
+#     )
+# def reset_labels(btn):
+#     out = requests.get(f"http://localhost:8777/reset_labels")
+#     data = out.json()
+# 
+#     return [data['title'],data['sen1-x'],data['sen1-rot'],data['sen2-x'],data['sen2-rot'],data['air-pla'],data['water-pla']]
 
-    return [data['title'],data['sen1-x'],data['sen1-rot'],data['sen2-x'],data['sen2-rot'],data['air-pla'],data['water-pla']]
+#TODO: set meta parms and/or edit table here (outy ect)
+# @app.callback(
+#     Output("hidden-div",'children'),
+#     Input("set-btn","n_clicks"),
+#     State("title-in-input","value"),
+#     prevent_initial_call=True
+#     )
+# def set_labels(btn,title,sen1x,sen1rot,sen2x,sen2rot,airpla,waterpla):
+#     
+#     resp = requests.get(f"http://localhost:8777/set_labels?title={title}&sen1-x={sen1x}&sen1-rot={sen1rot}&sen2-x={sen2x}&sen2-rot={sen2rot}&air-pla={airpla}&water-pla={waterpla}")
+# 
+#     out = resp.text
+# 
+#     return out
 
-@app.callback(
-    Output("hidden-div",'children'),
-    Input("set-btn","n_clicks"),
-    State("title-in-input","value"),
-    State("sen1-x-input","value"),
-    State("sen1-rot-input","value"),
-    State("sen2-x-input","value"),    
-    State("sen2-rot-input","value"),
-    State("air-pla-input","value"),
-    State("water-pla-input","value"),
-    prevent_initial_call=True
-    )
-def set_labels(btn,title,sen1x,sen1rot,sen2x,sen2rot,airpla,waterpla):
-    
-    resp = requests.get(f"http://localhost:8777/set_labels?title={title}&sen1-x={sen1x}&sen1-rot={sen1rot}&sen2-x={sen2x}&sen2-rot={sen2rot}&air-pla={airpla}&water-pla={waterpla}")
+#TODO: add note functionality 
+# @app.callback(
+#     Output('outy','children'),
+#     Input("calibrate-btn","n_clicks"),
+#     State('outy','children'),
+# )
+# def calibrate(btn,msg):
+#     """requests calibrate and prints the response:"""
+#     # if msg:
+#     #     log.info(msg)
+#     #     msg = [ html.P(v) for v in msg.replace('<p>','').split('</p>') ]
+#     # else:
+#     #    msg = []
+#     resp = requests.get('http://localhost:8777/calibrate')
+# 
+#     msg = html.Div([html.P(resp.text)])
+# 
+#     return msg
 
-    out = resp.text
-
-    return out
-
-@app.callback(
-    Output('outy','children'),
-    Input("calibrate-btn","n_clicks"),
-    State('outy','children'),
-)
-def calibrate(btn,msg):
-    """requests calibrate and prints the response:"""
-    # if msg:
-    #     print(msg)
-    #     msg = [ html.P(v) for v in msg.replace('<p>','').split('</p>') ]
-    # else:
-    #    msg = []
-    resp = requests.get('http://localhost:8777/calibrate')
-
-    msg = html.Div([html.P(resp.text)])
-
-    return msg
-    
-
+#TODO: replace states  
+# State("sen1-x-input","value"),
+# State("sen1-rot-input","value"),
+# State("sen2-x-input","value"),    
+# State("sen2-rot-input","value"),
+# State("air-pla-input","value"),
+# State("water-pla-input","value"),
 
 
 

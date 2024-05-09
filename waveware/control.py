@@ -50,7 +50,7 @@ high_thres = 0x8000
 safe_word =  os.environ.get('USE_SAFE_MODE','true').strip().lower()
 safe_mode = (safe_word=='true')
 if not safe_mode:
-    print(f'SAFE MODE OFF! {safe_word}')
+    log.info(f'SAFE MODE OFF! {safe_word}')
 
 drive_modes = ['stop','wave','cal','center']
 default_mode = 'wave'
@@ -110,26 +110,39 @@ class wave_control:
         self._tpwm_pin = torque_pwm
         self._adc_feedback_pin = fb_an_pin
         self._hlfb = hlfb
+        
         #TODO: setup high/low interrupt on hlfb for ppr or torque / speed ect
         
+        self.reset()
+
+        
+    
+    def reset(self):
         #fail setupso
         self._control_modes = {}
         self._control_mode_fail_parms = {}
 
         self.pi = asyncpio.pi()
 
+        self.speed_control_mode = default_speed_mode
+        self.mode_changed = None
+        self.speed_control_mode_changed = None
+        self.first_feedback = None
+
         self._last_dir = 1
         self.feedback_volts = None
         self.fail_feedback = None
-        self.reset()
 
-        
-    
-    def reset(self):
         self.fail_st = False
         self.fail_sc = False
         self.v_cmd =v= 0
+        self.v_cur =v= 0
         self.v_sup = 0
+        self.v_wave = 0
+        self.z_cmd = 0
+        self.z_cur = 0
+        self.dzdvref = 0
+        self.z_est = 0        
         self.dir_mult = 1 if v >= 0 else 0
         self._last_dir = 1 if v >= 0 else -1
 
@@ -153,9 +166,7 @@ class wave_control:
         self.v_active_tol = 0.1
         self.act_max_speed = 0.01
         
-        self.dzdvref = 0
-        self.z_est = 0
-        self.z_cur = 0
+
 
         self.upper_v = 3.3-tol
         self.lower_v = tol     
@@ -201,7 +212,7 @@ class wave_control:
             try:
                 res.result()
             except Exception as e:
-                print(f'speed drive failure: {e}')
+                log.info(f'speed drive failure: {e}')
                 traceback.print_tb(e.__traceback__)
 
         self.speed_control_mode = default_speed_mode
@@ -223,12 +234,12 @@ class wave_control:
 
         def go(*args,docal=True,**kw):
             nonlocal self, loop
-            print(f'feedback OK. cal = {docal}')
+            log.info(f'feedback OK. cal = {docal}')
 
             cal_file = os.path.join(control_dir,'wave_cal.json')
             has_file = os.path.exists(cal_file)
             if (docal and not has_file) or (docal and self.force_cal):
-                print(f'calibrate first v={vmove}...')
+                log.info(f'calibrate first v={vmove}...')
                 task = loop.create_task(self.calibrate(vmove=vmove))
                 task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
             else:
@@ -243,7 +254,7 @@ class wave_control:
         try:
             loop.run_forever()
         except KeyboardInterrupt as e:
-            print("Caught keyboard interrupt. Canceling tasks...")
+            log.info("Caught keyboard interrupt. Canceling tasks...")
             self.stop()
             sys.exit(0)
         finally:
@@ -278,24 +289,24 @@ class wave_control:
         try:
             await self.pi.wave_tx_stop()
         except Exception as e:
-            print('pigpio wavestop error: {e}')
+            log.info('pigpio wavestop error: {e}')
 
         #Set PWM Drive off
-        print(f'setting pwm off')
+        log.info(f'setting pwm off')
         try:
             pt = await self.pi.set_PWM_dutycycle(self._vpwm_pin,0)
             vpt = await self.pi.write(self._vpwm_pin,0)
             vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
             tp = await self.pi.write(self._tpwm_pin,0)
         except Exception as e:
-            print(f'exception turning off pwm: {e}')      
+            log.info(f'exception turning off pwm: {e}')      
 
-        print(f'setting steps off')
+        log.info(f'setting steps off')
         try:
             sp =await self.pi.write(self._step_pin,0)
             dp = await self.pi.write(self._dir_pin,0)
         except Exception as e:
-            print(f'exception turning off steps: {e}')             
+            log.info(f'exception turning off steps: {e}')             
 
 
         await self.sleep(0.1)
@@ -303,25 +314,25 @@ class wave_control:
         try:
             await self.pi.wave_clear()
         except Exception as e:
-            print('pigpio close error: {e}')
+            log.info('pigpio close error: {e}')
 
         await self.sleep(0.1)
         await self.pi.stop()
-        print(f'done with signals: {sp} {dp} {pt} {vpt} {vt} {tp}')
+        log.info(f'done with signals: {sp} {dp} {pt} {vpt} {vt} {tp}')
 
 
 
     # async def exec_cb(self,exc,loop):
-    #     print(f'got exception: {exc}| {loop}')
+    #     log.info(f'got exception: {exc}| {loop}')
     #     await self._stop()
     #     #sys.exit(1) #os.kill(os.getpid(), signal.SIGKILL)
 
     async def sig_cb(self,*a,**kw):
-        print(f'got signals, killing| {a} {kw}')
+        log.info(f'got signals, killing| {a} {kw}')
         try:
             await self._stop()
         except Exception as e:
-            print(f'fail in stop: {e}')
+            log.info(f'fail in stop: {e}')
         os.kill(os.getpid(), signal.SIGKILL)
     
     def setup_i2c(self,cv_inx = 0,smbus=None,lock=None):
@@ -339,7 +350,7 @@ class wave_control:
         db = int(f'{dr}00011',2)
         data = [cb,db]
         #do this before reading different pin, 
-        print(f'setting adc to: {[bin(d) for d in data]}')
+        log.info(f'setting adc to: {[bin(d) for d in data]}')
         with self.i2c_lock:
             self.smbus.write_i2c_block_data(0x48, 0x01, data)
         #setup alert pin!
@@ -358,13 +369,13 @@ class wave_control:
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
-            #print(f'same drive mode: {new_mode}')
+            #log.info(f'same drive mode: {new_mode}')
             if new_mode == 'stop':
                 self.v_cmd = 0
             return
         
         self.drive_mode = new_mode
-        print(f'setting mode: {self.drive_mode}')
+        log.info(f'setting mode: {self.drive_mode}')
         if hasattr(self,'mode_changed'):
             self.mode_changed.set_result(new_mode)
         self.mode_changed = asyncio.Future()
@@ -373,11 +384,11 @@ class wave_control:
         assert new_mode in speed_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.speed_control_mode:
-            print(f'same speed mode: {new_mode}')
+            log.info(f'same speed mode: {new_mode}')
             return
         
         self.speed_control_mode = new_mode
-        print(f'setting speed mode: {self.speed_control_mode}')
+        log.info(f'setting speed mode: {self.speed_control_mode}')
         if hasattr(self,'speed_control_mode_changed'):
             self.speed_control_mode_changed.set_result(new_mode)
         self.speed_control_mode_changed = asyncio.Future()        
@@ -393,7 +404,7 @@ class wave_control:
         self._control_mode_fail_parms[mode] = False
 
         def _fail_control(res):
-            print(f'mode done! {mode}')
+            log.info(f'mode done! {mode}')
             try:
                 res.result()
             
@@ -415,7 +426,7 @@ class wave_control:
 
 
     def setup_control(self):
-        print('starting...')
+        log.info('starting...')
         loop = asyncio.get_event_loop()
         self.set_mode(default_mode)
         self.started = asyncio.Future()
@@ -433,7 +444,7 @@ class wave_control:
     
     #FEEDBACK & CONTROL TASKS
     async def feedback(self,feedback_futr=None):
-        print(f'starting feedback!')
+        log.info(f'starting feedback!')
         self.dvds = None
         VR = volt_ref[fv_inx]
         
@@ -447,14 +458,15 @@ class wave_control:
         #     
         # 
         # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+        tlast = tnow = time.perf_counter()
+        self.z_cur = self.wave.z_pos(tnow)
+        self.v_wave = self.wave.z_vel(tnow)
+        vdtlast = vdtnow = self.v_command
+        vlast = vnow = self.feedback_volts #prep vars
 
         self.t_no_inst = False
         while ON_RASPI:
-            vlast = vnow = self.feedback_volts #prep vars
-            tlast = tnow = time.perf_counter()
-            vdtlast = vdtnow = self.v_command
-
-            
+                  
             try:
                 while True:
                     tlast = tnow #push back
@@ -477,7 +489,6 @@ class wave_control:
 
                         self.feedback_volts = vnow = (raw_adc/32767)*VR
                         self.z_cur = (vnow - self.zero_fb_volts)*self.dzdvref
-                        
 
                         if feedback_futr is not None:
                             feedback_futr.set_result(True)
@@ -486,7 +497,7 @@ class wave_control:
                         self.fail_feedback = False
 
                     except Exception as e:
-                        print('read i2c issue',e)
+                        log.info('read i2c issue',e)
                         continue
                     
                     # Convert the data
@@ -498,15 +509,11 @@ class wave_control:
 
             except Exception as e:
                 self.fail_feedback = True
-                print(f'control error: {e}')       
+                log.info(f'control error: {e}')       
                 traceback.print_tb(e.__traceback__)
 
         #this is mock data
         while not ON_RASPI:
-            vlast = vnow = self.feedback_volts #prep vars
-            tlast = tnow = time.perf_counter()
-            vdtlast = vdtnow = self.v_command
-
             
             try:
                 while True:
@@ -520,9 +527,7 @@ class wave_control:
                     #-await deferred, in pigpio callback set_result
                     #tick = await self._adc_feedback_pin_cb
                     await self.sleep(wait)
-                    
-                    tnow = time.perf_counter()
-                    self.z_cur = self.wave.z_pos(tnow)
+                    self.z_cur = self.z_cmd
                     self.feedback_volts = (self.z_cur*self.dzdvref)+ self.zero_fb_volts
 
                     if feedback_futr is not None:
@@ -540,7 +545,7 @@ class wave_control:
 
             except Exception as e:
                 self.fail_feedback = True
-                print(f'control error: {e}')       
+                log.info(f'control error: {e}')       
                 traceback.print_tb(e.__traceback__)            
 
     def calc_rates(self,vdtnow,tnow,**kw):
@@ -559,6 +564,9 @@ class wave_control:
         self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
         self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
         self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
+
+        #measured
+        self.v_cur = self.dvdt*self.dzdvref
 
         #TODO: determine stationary
         
@@ -589,24 +597,24 @@ class wave_control:
                                 
         elif self.maybe_stuck:
             if not was_maybe_stuck:
-                print(f'CAUTION: maybe stuck: {self.coef_2}')
+                log.info(f'CAUTION: maybe stuck: {self.coef_2}')
 
         elif self.stuck:
             if not was_stuck:
-                print('STUCK!')
+                log.info('STUCK!')
                 self.set_mode('stop')
 
 
     #CONTROL MODES
     async def control_mode(self,loop_function:callable,mode_name:str):
         """runs an async function that sets v_cmd for the speed control systems"""
-        print(f'creating control {mode_name}|{loop_function.__name__}...')
+        log.info(f'creating control {mode_name}|{loop_function.__name__}...')
         
         while self.is_safe():
             start_mode = self.mode_changed
 
             if (isinstance(mode_name,str) and self.drive_mode == mode_name) or (isinstance(mode_name,(list,tuple)) and self.drive_mode in mode_name):
-                print(f'starting control {mode_name}|{loop_function.__name__}...')
+                log.info(f'starting control {mode_name}|{loop_function.__name__}...')
                 try: #avoid loop overhead in subloop
                     while self.is_safe() and start_mode is self.mode_changed:
                         await loop_function()
@@ -614,14 +622,14 @@ class wave_control:
                         
                 except Exception as e:
                     self._control_mode_fail_parms[mode_name] = True
-                    print(f'control {mode_name}|{loop_function.__name__} error: {e}')
+                    log.info(f'control {mode_name}|{loop_function.__name__} error: {e}')
                     task = asyncio.current_task()
                     task.print_stack()
             
             #if your not the active loop wait until the mode has changed to check again. Only one mode can run at a time
             await self.mode_changed
 
-        print(f'control io ending...')
+        log.info(f'control io ending...')
         await self._stop()
 
     #Center        
@@ -634,9 +642,9 @@ class wave_control:
             if set_mode: self.set_mode('stop')
             return False
         #else:
-            #print('center head...')
+            #log.info('center head...')
 
-        #print(dv,coef_100,inx)
+        #log.info(dv,coef_100,inx)
         #set direction
         if self.coef_100 == 0:
             est_steps = dv / float(self.coef_100)
@@ -654,24 +662,24 @@ class wave_control:
         return self.v_cmd
     
     async def center_head_program(self):
-        print(f'centering')
+        log.info(f'centering')
         flipped = False
         while (await self.center_head()) != False:
             if self.stuck and flipped is False:
                 flipped = True
-                print('reverse!!')
+                log.info('reverse!!')
                 await self.set_dir(dir=self._last_dir*-1)            
             await self.sleep(0)    
 
     async def center_start(self,go_to_mode=None):
-        print('centering on start!')
+        log.info('centering on start!')
         await self.center_head_program()
         self.started.set_result(True)
         if go_to_mode is not None:
             self.set_mode(go_to_mode)
 
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
-        print('starting calibrate...')
+        log.info('starting calibrate...')
 
         vstart = cv = sv = self.feedback_volts
 
@@ -705,13 +713,13 @@ class wave_control:
         found_set = False
         for vmov in vmove:
             
-            print(f'calibrate at speed: {vmov}')
+            log.info(f'calibrate at speed: {vmov}')
             found_top = False
             found_btm = False            
             cals[vmov] = cal_val = 0 #avoid same variable 
             while found_btm is False or found_top is False:
                 self.v_cmd = vmov * (1 if now_dir > 0 else -1)
-                #print(f'set dir: {now_dir}')
+                #log.info(f'set dir: {now_dir}')
                 
                 sv = cv 
                 tlast = t
@@ -725,31 +733,31 @@ class wave_control:
                 dv = cv-sv
                 dt = (t-tlast)
                 dvdt = dv / dt #change in fbvolts / time
-                #print(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
+                #log.info(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
                 cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
 
                 #do things depending on how much movement there was
                 test_val = max(dv*now_dir,0)
                 if test_val >= min_res*5 or self.v_cmd == 0:    
                     #if maybe_stuck is not False:
-                        #print(f'unstuck2 | {test_val} {dv}')                   
+                        #log.info(f'unstuck2 | {test_val} {dv}')                   
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
 
                 #elif test_val >= min_res*2:
                     #if maybe_stuck is not False:
-                        #print(f'unstuck1 | {test_val} {dv}')
+                        #log.info(f'unstuck1 | {test_val} {dv}')
                     #maybe_stuck = False
                     continue #a step occured
 
                 elif test_val > 0:
                     #if maybe_stuck is not False:
-                        #print(f'unstuck0| {test_val} {dv}')                    
+                        #log.info(f'unstuck0| {test_val} {dv}')                    
                     #maybe_stuck = False
                     continue #hysterisis 
 
                 elif maybe_stuck is False:
-                    #print(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
+                    #log.info(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
                     maybe_stuck = (t,cv)
 
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
@@ -758,23 +766,23 @@ class wave_control:
                     
                     #max values, expansiveness
                     if now_dir > 0:
-                        print(f'found top! {cv}')
+                        log.info(f'found top! {cv}')
                         found_top = cv if cv < self.upper_v else self.upper_v
                     else:
-                        print(f'found bottom! {cv}')
+                        log.info(f'found bottom! {cv}')
                         found_btm = cv if cv > self.lower_v else self.lower_v
 
                     now_dir = -1 * now_dir
                     await self.set_dir(now_dir)
                     await self.sleep(wait)
-                    print(f'reversing: {last_dir} > {now_dir}')
+                    log.info(f'reversing: {last_dir} > {now_dir}')
 
                 await self.sleep(self.control_interval)
             
                 #Store cal info
                 cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
         
-        print(f'got speed cals: {cals} > { getattr(self,"cal_collections",None) }')
+        log.info(f'got speed cals: {cals} > { getattr(self,"cal_collections",None) }')
 
         #min values
         self.upper_v = found_top if found_top > self.upper_v else self.upper_v
@@ -782,7 +790,7 @@ class wave_control:
 
         ded = abs(found_top - found_btm)
         if ded < 0.1:
-            print(f'no motion detected!!!')
+            log.info(f'no motion detected!!!')
             self.v_cmd = 0
             if safe_mode: raise NoMotion()
 
@@ -799,13 +807,13 @@ class wave_control:
         #how much z changes per vref
         self.cal_collections = cals
 
-        print(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
+        log.info(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
         self.dzdvref = self.dz_range/self.dvref_range  
         
         #offset defaults to center
         self.vref_0 = (self.upper_v+self.lower_v)/2 #center
 
-        print(f'center before run')
+        log.info(f'center before run')
         await self.center_head_program()
 
         #TODO: add reset callback for this
@@ -813,19 +821,19 @@ class wave_control:
 
         self.save_cal_file()
 
-        print(f'set mode: {default_mode}')
+        log.info(f'set mode: {default_mode}')
         self.set_mode(default_mode)
 
     def save_cal_file(self,**kw):
         data = {'coef_2':self.coef_2,'coef_10':self.coef_10,'coef_100':self.coef_100,'upper_v':self.upper_v,'lower_v':self.lower_v,'z_cur_vcal':self.z_cur_vcal,'vref_0':self.vref_0,'dzdvref':self.dzdvref,'dvref_range':self.dvref_range,**kw}
-        print(f'saving cal data! {data}')
+        log.info(f'saving cal data! {data}')
         with open(os.path.join(control_dir,'wave_cal.json'),'w') as fp:
             fp.write(json.dumps(data))
 
     def load_cal_file(self):
         with open(os.path.join(control_dir,'wave_cal.json'),'r') as fp:
             data = json.loads(fp.read())
-        print(f'loading cal file!: {data}')            
+        log.info(f'loading cal file!: {data}')            
         self.__dict__.update(data) #youre welcome
 
 
@@ -869,7 +877,7 @@ class wave_control:
 
         vref = self.feedback_volts
         #if int(self.inx)%10==0:
-        print(self.z_cur,z,'|',v_cmd,self.v_sup,self.dv_err)
+        log.info(self.z_cur,z,'|',v_cmd,self.v_sup,self.dv_err)
 
         #determine direction
         ld = self._last_dir
@@ -919,13 +927,13 @@ class wave_control:
         if dc is None:
             toff = dt-mdt
             ton = mdt
-            #print(ton,toff)
+            #log.info(ton,toff)
             wave = [asyncpio.pulse(1<<pin, 0, ton)]
             wave.append(asyncpio.pulse(0, 1<<pin, max(toff,mdt)))
             return wave*inc
         else:
             #duty cycle
-            #print('dc',dc)
+            #log.info('dc',dc)
             wave = [asyncpio.pulse(1<<pin, 0, max(int(dt*dc),mdt))]
             wave.append(asyncpio.pulse(0, 1<<pin, max(int(dt*(1-dc)),mdt)))
             return wave*inc            
@@ -944,7 +952,7 @@ class wave_control:
 
         if Nw > 0:
             self.wave_last = self.wave_next #push back
-            #print(dir,len(wave))
+            #log.info(dir,len(wave))
             if self.wave_last is not None:
                 
                 sttime = await self.pi.wave_get_micros()
@@ -962,10 +970,10 @@ class wave_control:
                     await self.pi.wave_send_once( self.wave_next)
                 
                     while self.wave_last == await self.pi.wave_tx_at():
-                        #print(f'waiting...')
+                        #log.info(f'waiting...')
                         await asyncio.sleep(0)                    
                 except Exception as e:
-                    print(f'wave create error: {e}')
+                    log.info(f'wave create error: {e}')
                     while await self.pi.wave_tx_busy():
                         await asyncio.sleep(0) #break async context
                     await self.pi.wave_clear()                    
@@ -974,7 +982,7 @@ class wave_control:
                 try:
                     await self.pi.wave_delete(self.wave_last)
                 except Exception as e:
-                    print(f'wave delete error: {e}')
+                    log.info(f'wave delete error: {e}')
                     pass
 
             else:
@@ -992,7 +1000,7 @@ class wave_control:
                 mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
                 vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
 
-                print(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
+                log.info(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
             
             #keep tracks
             self.step_count += Nw
@@ -1023,7 +1031,7 @@ class wave_control:
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
             Kspd = min(self.act_max_speed,abs(vdmd))
             vnew = Kspd*(1 if vdmd > 0 else -1)
-            #print(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
+            #log.info(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
             vdmd = vnew
             
 
@@ -1040,7 +1048,7 @@ class wave_control:
 
     async def step_speed_control(self):
         """uses pigpio waves hardware concepts to drive output"""
-        print(f'setting up step speed control')
+        log.info(f'setting up step speed control')
 
         await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
         self.dt_st = 0.005
@@ -1064,7 +1072,7 @@ class wave_control:
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        #print(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
+                        #log.info(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
@@ -1079,20 +1087,20 @@ class wave_control:
                     self.dt_st = time.perf_counter() - self.ct_st
                 
                 #now your not in use
-                print(f'exit step speed control inner loop')
+                log.info(f'exit step speed control inner loop')
                 await self.pi.write(self._step_pin,0)
                 await self.speed_control_mode_changed
 
             except Exception as e:
                 #kill PWM
                 self.fail_st = True
-                print(f'issue in speed step routine {e}')
+                log.info(f'issue in speed step routine {e}')
                 traceback.print_tb(e.__traceback__)
                 await self.pi.write(self._step_pin,0)
 
     async def speed_pwm_control(self):
         """uses pigpio hw PWM to control pwm dutycycle"""
-        print(f'setting pwm speed control')
+        log.info(f'setting pwm speed control')
         self.dt_sc = 0.005
         self.pwm_speed_base = 1000
         self.pwm_speed_freq = 500
@@ -1113,7 +1121,7 @@ class wave_control:
         assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
         await self.pi.write(self._tpwm_pin,0) #start null        
 
-        print(f'PWM freq: {a} | range: {b}')
+        log.info(f'PWM freq: {a} | range: {b}')
         dc = 0
         while not self.stopped:
             stc = self.speed_control_mode_changed
@@ -1139,14 +1147,14 @@ class wave_control:
                     self.dt_sc = time.perf_counter() - self.ct_sc
 
                 #now your not in use
-                print(f'exit pwm speed control inner loop')
+                log.info(f'exit pwm speed control inner loop')
                 await self.pi.write(self._vpwm_pin,0)
                 await self.speed_control_mode_changed
 
             except Exception as e:
                 #kill PWM
                 self.fail_sc = True
-                print(f'issue in pwm speed : {dc} routine {e}')
+                log.info(f'issue in pwm speed : {dc} routine {e}')
                 traceback.print_tb(e.__traceback__)
                 #Set the appropriate pin config
                 a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)

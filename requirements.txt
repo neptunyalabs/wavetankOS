@@ -25,8 +25,9 @@ adafruit-board-toolkit
 
 
 #boto3
-aioboto3
-aiobotocore
+# aioboto3
+# aiobotocore
+aiobotocore[awscli,boto3]
 
 expiringdict
 

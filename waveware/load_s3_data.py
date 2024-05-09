@@ -68,7 +68,7 @@ close('all')
 test_sessions = []
 
 for dt,testdata in (test_days := data.groupby('date')):
-    print(dt)
+    log.info(dt)
     ts_min = testdata.timestamp.min()
     ts_max = testdata.timestamp.max()
     cal_points =  dict(filter(lambda kv: kv[0] > ts_min and kv[0] < ts_max, calibration.items()))
@@ -115,7 +115,7 @@ for dt,testdata in (test_days := data.groupby('date')):
 
                 #mark record breaks
                 if any( ttime > DT ):
-                    #print( f'big step,{tset}' )
+                    #log.info( f'big step,{tset}' )
                     tdd['gap'] = tdd['t'].diff() > DT
                     tdd['sesh'] = np.cumsum(tdd['gap'])
                 else:
@@ -227,9 +227,9 @@ close(pp2.figure)
 dataset = {}
 for tst,rss in rs.groupby('test'):
     name = tst.upper()
-    #print('\n'+('#'*80))
-    print(name)
-    #print(rss)
+    #log.info('\n'+('#'*80))
+    log.info(name)
+    #log.info(rss)
     dataset[name] = rss
 
 # FILM TEST PLOT
