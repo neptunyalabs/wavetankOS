@@ -36,8 +36,6 @@ all items will have a `timestamp` that is use to orchestrate using `after` searc
 
 import asyncio
 import threading
-import aiobotocore
-from aiobotocore.session import get_session
 import struct
 
 from collections import deque
@@ -58,13 +56,11 @@ import json,os
 import random
 
 from waveware.control import wave_control
-from waveware.data import *
+from waveware.config import *
 
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
-
-
 
 
 FAKE_INIT_TIME = 60.
@@ -169,9 +165,10 @@ class hardware_control:
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._setup_hardware())    
 
-        self.setup_i2c()
+        if ON_RASPI:
+            self.setup_i2c()
+            self.control.setup_i2c(smbus=self.smbus,lock=self.i2c_lock)
 
-        self.control.setup_i2c(smbus=self.smbus,lock=self.i2c_lock)
         self.control.setup()
 
 
@@ -225,7 +222,7 @@ class hardware_control:
         time.sleep(0.1) 
         #TODO: check everything ok
         self.control.setup_control()
-        self.control.run(call_loop=False)
+        self.control.run()
 
     def stop(self):
         loop = asyncio.get_event_loop()
@@ -285,7 +282,7 @@ class hardware_control:
         #do it live!
         self.wt.flush() 
         self.rt.flush()
-        
+
     def setup_std_fake(self):
         r, w = os.pipe()
         self.rd = os.fdopen(r, 'rb')
@@ -300,7 +297,7 @@ class hardware_control:
 
     async def imu_task(self):
         print(f'starting imu task')
-        while True:
+        while ON_RASPI:
             try:
                 await asyncio.to_thread(self._read_imu)
                 await asyncio.sleep(self.poll_rate)
@@ -325,7 +322,7 @@ class hardware_control:
     #TEMP Sensors
     async def temp_task(self):
         print(f'starting temp task')
-        while True:
+        while ON_RASPI:
             try:
                 await asyncio.to_thread(self._read_temp)
                 await asyncio.sleep(self.poll_temp)
@@ -442,8 +439,7 @@ class hardware_control:
             return dobj['dt'] * self.sound_conv
         return 0
 
-    @property
-    def output_data(self):
+    def output_data(self,add_bias=True):
         out = {}
         if ON_RASPI:
             out.update(self.record) #these are latest from I2C
@@ -458,7 +454,7 @@ class hardware_control:
 
         else:
             #FAKENESS
-            out = {'e1':0.1*(0.5-random.random()) + 0.2,
+            out = { 'e1':0.1*(0.5-random.random()) + 0.2,
                     'e2':0.1*(0.5-random.random()) + 0.2,
                     'e3':0.1*(0.5-random.random()) + 0.2,
                     'e4':0.1*(0.5-random.random()) + 0.2,
@@ -470,12 +466,30 @@ class hardware_control:
             #echo ts
             now = time.time()
             for i,echo_pin in enumerate(self.echo_pins):
-                out['e{i}_ts'] = now - self.poll_rate*random.random()
+                out[f'e{i}_ts'] = now - self.poll_rate*random.random()
 
             #they call it a bias for a reason :)
             for k,v in FAKE_BIAS.items():
                 if k in out:
                     out[k] = out[k] + v
+
+        #Add control info
+        out['z_wave'] = self.control.z_cur
+        out['wave_fb_volt'] = self.control.feedback_volts
+        out['coef_2'] = self.control.coef_2
+        out['coef_10'] = self.control.coef_10
+        out['coef_100'] = self.control.coef_100
+        out['stuck'] = self.control.stuck
+        out['maybe_stuck'] = self.control.maybe_stuck
+        out['drive_mode'] = self.control.drive_mode
+        out['speed_control_mode'] = self.control.speed_control_mode
+
+
+        #subtract the bias before it hits the system
+        if add_bias and hasattr(self,'zero_biases'):
+            for k,bs in self.zero_biases.items():
+                if k in out:
+                    out[k] = out[k] - bs                    
 
         return out 
 
@@ -483,9 +497,9 @@ class hardware_control:
         while True:
             try:
                 if PLOT_STREAM:
-                    print(' '.join([f'{v:3.4f}' for k,v in self.output_data.items() if isinstance(v,(float,int))] )+'\r\n')
+                    print(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
-                    print({k:f'{v:3.3f}' for k,v in self.output_data.items() if isinstance(v,(float,int))})
+                    print({k:f'{v:3.3f}' for k,v in self.output_data().items() if isinstance(v,(float,int))})
                 
                 await asyncio.sleep(intvl)
             except Exception as e:
@@ -522,12 +536,7 @@ class hardware_control:
                 ts = time.time()
                 if self.active:
                     #get the current record
-                    data = self.output_data
-                    #subtract the bias
-                    for k,bs in self.zero_biases.items():
-                        if k in data:
-                            data[k] = data[k] + bs
-
+                    data = self.output_data()
                     if data:
                         await self.buffer.put(data)
 
@@ -538,19 +547,29 @@ class hardware_control:
             except Exception as e:
                 log.error(str(e), exc_info=1)
 
+    async def mark_zero(self):
+        """average zeros over a second"""
+        mark_zero = {}
+        lt = st = time.time()
+        bs = {}
+        while (ct:=time.time() - st) < 1:
+            d = self.output_data(add_bias=False)
+            tm = time.time()
+            dt = tm-lt
+            lt = tm
+            a = dt/ct
+            b = 1-a
+            for k,rec in d.items():
+                if k in FAKE_BIAS:
+                    bs[k] = bs[k]*b + rec*a
+        self.zero_biases = bs
 
 def main():
     from waveware.control import regular_wave
     import sys
     
-    encoder_pins = [(17,18),(27,22),(23,24),(25,5)]
-    encoder_sens = [{'sens':0.005*4}]*4
-    echo_pins = [16,26,20,21]
-
-    pins_kw = dict(dir_pin=4,step_pin=6,speedpwm_pin=12,adc_alert_pin=7,hlfb_pin=13,motor_en_pin=19,torque_pwm_pin=10,echo_trig_pin=11)
 
     rw = regular_wave()
-    control_conf = dict(wave=rw,force_cal='-fc' in sys.argv)
     hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
     hw.setup()
     hw.run()

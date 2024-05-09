@@ -17,7 +17,7 @@ import datetime
 import seaborn as sns
 import numpy as np
 
-from waveware.data import *
+from waveware.config import *
 
 #login
 session = boto3.Session(profile_name=aws_profile)

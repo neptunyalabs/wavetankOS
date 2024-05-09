@@ -4,7 +4,6 @@ in which we define motion classes
 2. motion_control: class provides a high level PWM based interface for speed/torque with position control #TODO
 """
 import asyncpio
-from math import cos,sin
 import asyncio
 import time
 import traceback
@@ -15,6 +14,9 @@ import smbus
 import threading
 import time
 import sys,os,pathlib
+
+from waveware.config import *
+
 # Get I2C bus
 
 control_dir = pathlib.Path(__file__).parent
@@ -60,23 +62,7 @@ assert default_speed_mode in speed_modes
 
 vmove=vmove_default=[0.0001,0.001]
 
-class regular_wave:
 
-    def __init__(self,Hs=0.01,Ts=5) -> None:
-        self.hs = Hs
-        self.ts = Ts
-        self.update()
-
-    def update(self):
-        self.omg = (2*3.14159)/self.ts
-        self.a = self.hs/2
-
-    #wave interface
-    def z_pos(self,t):
-        return self.a*sin(self.omg*t)
-
-    def z_vel(self,t):
-        return self.a*self.omg*cos(self.omg*t)
     
 steps_per_rot = 360/1.8
 dz_per_rot = 0.01 #rate commad
@@ -169,14 +155,16 @@ class wave_control:
         
         self.dzdvref = 0
         self.z_est = 0
+        self.z_cur = 0
 
         self.upper_v = 3.3-tol
         self.lower_v = tol     
         self.vref_0 = (self.upper_v+self.lower_v)/2
+        self.zero_fb_volts = self.vref_0
 
         self._step_time = self.min_dt
         self._step_cint = 1
-        self.z_cur_vcal = 0 #TODO: rest call to set this
+        self.z_cur_vcal = 0
 
     #SETUP 
     async def _setup(self):
@@ -205,7 +193,7 @@ class wave_control:
 
 
     #RUN / OPS
-    def run(self,call_loop=True):
+    def run(self):
         self.stopped = False
         loop = asyncio.get_event_loop()
 
@@ -251,26 +239,26 @@ class wave_control:
 
         self.first_feedback.add_done_callback(go)
 
-        if call_loop:
-            try:
-                loop.run_forever()
-            except KeyboardInterrupt as e:
-                print("Caught keyboard interrupt. Canceling tasks...")
-                self.stop()
-                sys.exit(0)
-            finally:
-                loop.close()
+
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt as e:
+            print("Caught keyboard interrupt. Canceling tasks...")
+            self.stop()
+            sys.exit(0)
+        finally:
+            loop.close()
 
 
 
     #STOPPPING / SAFETY
     def stop(self):
-        self.stopped = True
         loop = asyncio.get_event_loop()
         if loop.is_running:
             loop.call_soon(self._stop)
         else:
             loop.run_until_complete(self._stop())        
+        self.stopped = True
 
     async def _stop(self):
 
@@ -336,7 +324,7 @@ class wave_control:
             print(f'fail in stop: {e}')
         os.kill(os.getpid(), signal.SIGKILL)
     
-    def setup_i2c(self,pin = 0,smbus=None,lock=None):
+    def setup_i2c(self,cv_inx = 0,smbus=None,lock=None):
         if smbus is None:
             self.smbus = smbus.SMBus(1)
         else:
@@ -344,8 +332,10 @@ class wave_control:
 
         if lock is None:
             self.i2c_lock = threading.Lock()
+        else:
+            self.i2c_lock = lock
 
-        cb = config_bit(pin,fvinx = 4)
+        cb = config_bit(cv_inx,fvinx = 4)
         db = int(f'{dr}00011',2)
         data = [cb,db]
         #do this before reading different pin, 
@@ -459,10 +449,12 @@ class wave_control:
         # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
 
         self.t_no_inst = False
-        while True:
+        while ON_RASPI:
             vlast = vnow = self.feedback_volts #prep vars
             tlast = tnow = time.perf_counter()
             vdtlast = vdtnow = self.v_command
+
+            
             try:
                 while True:
                     tlast = tnow #push back
@@ -479,6 +471,20 @@ class wave_control:
                     try:
                         with self.i2c_lock:
                             data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
+                        raw_adc = data[0] * 256 + data[1]
+                        if raw_adc > 32767:
+                            raw_adc -= 65535
+
+                        self.feedback_volts = vnow = (raw_adc/32767)*VR
+                        self.z_cur = (vnow - self.zero_fb_volts)*self.dzdvref
+                        
+
+                        if feedback_futr is not None:
+                            feedback_futr.set_result(True)
+                            feedback_futr = None #twas, no more                
+                        #ok!
+                        self.fail_feedback = False
+
                     except Exception as e:
                         print('read i2c issue',e)
                         continue
@@ -486,75 +492,110 @@ class wave_control:
                     # Convert the data
                     vdtnow = self.v_command
                     tnow = time.perf_counter()
-                    raw_adc = data[0] * 256 + data[1]
-                    if raw_adc > 32767:
-                        raw_adc -= 65535
 
-                    self.feedback_volts = vnow = (raw_adc/32767)*VR
-                    self.z_cur = (vnow- self.z_cur_vcal)*self.dzdvref 
-                    
-
-                    if feedback_futr is not None:
-                        feedback_futr.set_result(True)
-                        feedback_futr = None #twas, no more 
-
-                    
-                    dv = (vnow-vlast)
-                    dt = (tnow-tlast)
-                    accel = (vdtnow -vdtlast)/dt #speed
-                    self.z_est = self.z_est + vdtnow*dt+0.5*accel*dt**2
-
-                    #
-                    self.dvdt = dv / dt
-                    self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
-                    self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
-                    self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
-
-                    #TODO: determine stationary
-                    
-                    Nw = abs(int(self.inx - st_inx))
-
-
-                    #ok!
-                    self.fail_feedback = False                    
-                    
-                    #stop catching
-                    if self.drive_mode == 'stop':
-                        continue
-
-                    elif Nw < 1:
-                        #no steps, no thank you
-                        continue #dont add voltage change or check stuck
-                    
-                    #increment measure if points exist
-                    was_maybe_stuck,was_stuck = self.maybe_stuck,self.stuck
-                    self.t_no_inst = False
-                    self.dvds = dv/((self._last_dir*Nw))
-                    self._coef_2 = (self._coef_2 + self.dvds)/2
-                    self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
-                    self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
-
-                    #no stuck no problem
-                    if not self.maybe_stuck and not self.stuck:
-                        #set the official rate variables for estimates
-                        self.coef_2 = self._coef_2
-                        self.coef_10 = self._coef_10
-                        self.coef_100 = self._coef_100
-                                            
-                    elif self.maybe_stuck:
-                        if not was_maybe_stuck:
-                            print(f'CAUTION: maybe stuck: {self.coef_2}')
-
-                    elif self.stuck:
-                        if not was_stuck:
-                            print('STUCK!')
-                            self.set_mode('stop')
-
+                    kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
+                    self.calc_rates(vdtnow,tnow,**kw)
 
             except Exception as e:
                 self.fail_feedback = True
                 print(f'control error: {e}')       
                 traceback.print_tb(e.__traceback__)
+
+        #this is mock data
+        while not ON_RASPI:
+            vlast = vnow = self.feedback_volts #prep vars
+            tlast = tnow = time.perf_counter()
+            vdtlast = vdtnow = self.v_command
+
+            
+            try:
+                while True:
+                    tlast = tnow #push back
+                    vdtlast = vdtnow
+                    vlast = vnow if vnow is not None else 0
+                    st_inx = self.inx
+                    wait = wait_factor/float(dr_inx)
+                    
+                    #TODO: add feedback interrupt on GPIO7
+                    #-await deferred, in pigpio callback set_result
+                    #tick = await self._adc_feedback_pin_cb
+                    await self.sleep(wait)
+                    
+                    tnow = time.perf_counter()
+                    self.z_cur = self.wave.z_pos(tnow)
+                    self.feedback_volts = (self.z_cur*self.dzdvref)+ self.zero_fb_volts
+
+                    if feedback_futr is not None:
+                        feedback_futr.set_result(True)
+                        feedback_futr = None #twas, no more                
+                    #ok!
+                    self.fail_feedback = False                    
+
+                    # Convert the data
+                    vdtnow = self.v_command
+                    
+
+                    kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
+                    self.calc_rates(vdtnow,tnow,**kw)
+
+            except Exception as e:
+                self.fail_feedback = True
+                print(f'control error: {e}')       
+                traceback.print_tb(e.__traceback__)            
+
+    def calc_rates(self,vdtnow,tnow,**kw):
+        vnow = kw.get('vnow')
+        vlast = kw.get('vlast')
+        tlast = kw.get('tlast')
+        vdtlast = kw.get('vdtlast')
+        st_inx = kw.get('st_inx')
+        dv = (vnow-vlast)
+        dt = (tnow-tlast)
+        accel = (vdtnow -vdtlast)/dt #speed
+        self.z_est = self.z_est + vdtnow*dt+0.5*accel*dt**2
+
+        #
+        self.dvdt = dv / dt
+        self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
+        self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
+        self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
+
+        #TODO: determine stationary
+        
+        Nw = abs(int(self.inx - st_inx))
+        
+        #stop catching
+        if self.drive_mode == 'stop':
+            return
+
+        elif Nw < 1:
+            #no steps, no thank you
+            return
+        
+        #increment measure if points exist
+        was_maybe_stuck,was_stuck = self.maybe_stuck,self.stuck
+        self.t_no_inst = False
+        self.dvds = dv/((self._last_dir*Nw))
+        self._coef_2 = (self._coef_2 + self.dvds)/2
+        self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
+        self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
+
+        #no stuck no problem
+        if not self.maybe_stuck and not self.stuck:
+            #set the official rate variables for estimates
+            self.coef_2 = self._coef_2
+            self.coef_10 = self._coef_10
+            self.coef_100 = self._coef_100
+                                
+        elif self.maybe_stuck:
+            if not was_maybe_stuck:
+                print(f'CAUTION: maybe stuck: {self.coef_2}')
+
+        elif self.stuck:
+            if not was_stuck:
+                print('STUCK!')
+                self.set_mode('stop')
+
 
     #CONTROL MODES
     async def control_mode(self,loop_function:callable,mode_name:str):
@@ -661,6 +702,7 @@ class wave_control:
             vmove = [vmove]
 
         now_dir = self._last_dir
+        found_set = False
         for vmov in vmove:
             
             print(f'calibrate at speed: {vmov}')
@@ -713,10 +755,11 @@ class wave_control:
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
                     #reset stuck and reverse
                     maybe_stuck = False
-
+                    
+                    #max values, expansiveness
                     if now_dir > 0:
                         print(f'found top! {cv}')
-                        found_top = cv if cv > self.upper_v else self.upper_v
+                        found_top = cv if cv < self.upper_v else self.upper_v
                     else:
                         print(f'found bottom! {cv}')
                         found_btm = cv if cv > self.lower_v else self.lower_v
@@ -733,6 +776,7 @@ class wave_control:
         
         print(f'got speed cals: {cals} > { getattr(self,"cal_collections",None) }')
 
+        #min values
         self.upper_v = found_top if found_top > self.upper_v else self.upper_v
         self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
 

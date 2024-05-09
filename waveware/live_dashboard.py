@@ -6,7 +6,7 @@ import dash
 from dash import dcc, html
 import dash_daq as daq
 
-
+from waveware.config import *
 from dash.dependencies import Input, Output,State
 import sys
 
@@ -41,7 +41,7 @@ app_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
 
 PLOTS = []
 max_ts = 0
-from waveware.data import cache
+from waveware.config import cache
 
 
 # TODO: 1. Wave Measure Plot w/ act position and ultrasonic distance measurements
@@ -503,7 +503,6 @@ def calibrate(btn,msg):
 def main():
     """runs the dash / plotly process"""
     import os
-    from waveware.data import *
 
     try:
         srv_host = '0.0.0.0' if ON_RASPI else '127.0.0.1'

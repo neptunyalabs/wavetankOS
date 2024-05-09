@@ -1,5 +1,5 @@
 import asyncio
-
+from aiohttp import web
 
 global ON_RASPI
 
@@ -8,8 +8,8 @@ import os, sys
 import pathlib
 
 from waveware.hardware import hardware_control
-from waveware.data_server import make_web_app
-from waveware.data import *
+from waveware.data_server import make_web_app,push_data
+from waveware.config import *
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
@@ -55,7 +55,6 @@ async def run_dashboard():
 async def main(hw,web_app,skip_dash=False):
     log.info("starting data aquisition")
     # Create App & Setup
-
     await web_app.setup()
 
     # CREATE PIPELINE TASKS
@@ -64,10 +63,10 @@ async def main(hw,web_app,skip_dash=False):
     # 2. process data
     process_task = asyncio.create_task(hw.process_data())
     # 3. push data
-    push_task = asyncio.create_task(hw.push_data())
+    push_task = asyncio.create_task(push_data(hw))
 
     # Run Site
-    site = web_app.TCPSite(web_app, "0.0.0.0", 8777)
+    site = web.TCPSite(web_app, "0.0.0.0", 8777)
     site_task = asyncio.create_task(site.start())
 
     # Run Dashboard
@@ -81,7 +80,7 @@ def cli():
     2. process the data from a queue to the cache, and mark timestamp unprocessed
     3. periodically push the unprocessed data to the bucket
     4. also run the webserver to serve the cache data, as well as apply labels and start/stop the data process
-    """    
+    """
     import argparse
     parser = argparse.ArgumentParser('launch control')
     parser.add_argument("--no-dash",action="store_true",help='dont launch dashboard')
@@ -91,10 +90,10 @@ def cli():
     loop = asyncio.get_event_loop()
     try:
         #configure the system
-        hw = hardware_control()#TODO: pins init
+        hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
         app = make_web_app(hw)
 
-        task = main(skip_dash=args.no_dash)
+        task = main(hw,app,skip_dash=args.no_dash)
         loop.run_until_complete(task)
         loop.run_forever()  # to keep tasks spawning
 
