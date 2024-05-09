@@ -1,10 +1,6 @@
 import asyncio
 
-try:
-    import pigpio
-    ON_RASPI = True
-except:
-    ON_RASPI = False
+
 global ON_RASPI
 
 import logging
@@ -13,11 +9,7 @@ import pathlib
 
 from waveware.hardware import hardware_control
 from waveware.data_server import make_web_app
-
-# BUCKET CONFIG
-# Permissons only for this bucket so not super dangerous
-bucket = "nept-wavetank-data"
-folder = "TEST"
+from waveware.data import *
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
@@ -26,8 +18,6 @@ async def close(web_app):
     await web_app.close()
     if web_app:
         await web_app.kill()
-
-
 
 # MAIN
 async def run_dashboard():

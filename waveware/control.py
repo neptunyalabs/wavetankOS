@@ -12,6 +12,7 @@ import signal
 
 import json
 import smbus
+import threading
 import time
 import sys,os,pathlib
 # Get I2C bus
@@ -56,8 +57,8 @@ speed_modes = ['step','pwm','off']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
 assert default_speed_mode in speed_modes
 
-#vmove=[0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.1]
-vmove=vmove_default=[0.01,0.04]
+
+vmove=vmove_default=[0.0001,0.001]
 
 class regular_wave:
 
@@ -93,6 +94,7 @@ class wave_control:
     dz_range = 0.3 #meters #TODO: input actual length of lead screw
 
     adc_addr = 0x48
+    t_command = 0 #torque fraction of upper limit 0-1
 
     def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm:int=10,**conf):
         """This class represents an A4988 stepper motor driver.  It uses two output pins
@@ -113,7 +115,7 @@ class wave_control:
         self.dz_per_step = self.dz_per_rot / self.steps_per_rot
 
 
-        self.max_speed_motor = 0.3 #TODO: get better motor constants
+        self.max_speed_motor = 0.1 #TODO: get better motor constants
                 
         self.stopped = False
         self._dir_pin = dir
@@ -192,40 +194,18 @@ class wave_control:
         self.start = time.perf_counter()
         self.stopped = False        
         loop = asyncio.get_event_loop()
-        #g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
-        #loop.set_exception_handler(g)
+
+        #Add Exception & Signal Handling
+        # g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
+        # loop.set_exception_handler(g) #TODO: get this working
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
             sig = getattr(signal, signame)
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
 
-    # async def exec_cb(self,exc,loop):
-    #     print(f'got exception: {exc}| {loop}')
-    #     await self._stop()
-    #     #sys.exit(1) #os.kill(os.getpid(), signal.SIGKILL)
-
-    async def sig_cb(self,*a,**kw):
-        print(f'got signals, killing| {a} {kw}')
-        await self._stop()
-        os.kill(os.getpid(), signal.SIGKILL)
-    
-    def setup_i2c(self,pin = 0,smbus=None):
-        if smbus is None:
-            self.smbus = smbus.SMBus(1)
-
-        cb = config_bit(pin,fvinx = 4)
-        db = int(f'{dr}00011',2)
-        data = [cb,db]
-        #do this before reading different pin, 
-        print(f'setting adc to: {[bin(d) for d in data]}')
-        self.smbus.write_i2c_block_data(0x48, 0x01, data)
-        #setup alert pin!
-        #self.smbus.write_i2c_block_data(0x48, 0x02, [0x00,0x00])
-        #self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
-
     #RUN / OPS
-    def run(self):
+    def run(self,call_loop=True):
         self.stopped = False
         loop = asyncio.get_event_loop()
 
@@ -267,17 +247,19 @@ class wave_control:
                 if has_file: 
                     self.load_cal_file()
                 loop = asyncio.get_running_loop()
-                center_start = loop.create_task(self.center_start())
+                center_start = loop.create_task(self.center_start(default_mode))
 
         self.first_feedback.add_done_callback(go)
 
-        try:
-            loop.run_forever()
-        except KeyboardInterrupt as e:
-            print("Caught keyboard interrupt. Canceling tasks...")
-            self.stop()
-        finally:
-            loop.close()
+        if call_loop:
+            try:
+                loop.run_forever()
+            except KeyboardInterrupt as e:
+                print("Caught keyboard interrupt. Canceling tasks...")
+                self.stop()
+                sys.exit(0)
+            finally:
+                loop.close()
 
 
 
@@ -305,22 +287,74 @@ class wave_control:
             self.speed_step_task.cancel()
 
         await self.sleep(0.1)
-        await self.pi.wave_tx_stop()
+        try:
+            await self.pi.wave_tx_stop()
+        except Exception as e:
+            print('pigpio wavestop error: {e}')
 
-        print(f'setting signas off')
-        sp =await self.pi.write(self._step_pin,0)
-        dp = await self.pi.write(self._dir_pin,0)
-        pt = await self.pi.set_PWM_dutycycle(self._vpwm_pin,0)
-        vpt = await self.pi.write(self._vpwm_pin,0)
-        vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
-        tp = await self.pi.write(self._tpwm_pin,0)
+        #Set PWM Drive off
+        print(f'setting pwm off')
+        try:
+            pt = await self.pi.set_PWM_dutycycle(self._vpwm_pin,0)
+            vpt = await self.pi.write(self._vpwm_pin,0)
+            vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
+            tp = await self.pi.write(self._tpwm_pin,0)
+        except Exception as e:
+            print(f'exception turning off pwm: {e}')      
+
+        print(f'setting steps off')
+        try:
+            sp =await self.pi.write(self._step_pin,0)
+            dp = await self.pi.write(self._dir_pin,0)
+        except Exception as e:
+            print(f'exception turning off steps: {e}')             
+
+
         await self.sleep(0.1)
-        
-        await self.pi.wave_clear()            
+         
+        try:
+            await self.pi.wave_clear()
+        except Exception as e:
+            print('pigpio close error: {e}')
+
         await self.sleep(0.1)
         await self.pi.stop()
         print(f'done with signals: {sp} {dp} {pt} {vpt} {vt} {tp}')
 
+
+
+    # async def exec_cb(self,exc,loop):
+    #     print(f'got exception: {exc}| {loop}')
+    #     await self._stop()
+    #     #sys.exit(1) #os.kill(os.getpid(), signal.SIGKILL)
+
+    async def sig_cb(self,*a,**kw):
+        print(f'got signals, killing| {a} {kw}')
+        try:
+            await self._stop()
+        except Exception as e:
+            print(f'fail in stop: {e}')
+        os.kill(os.getpid(), signal.SIGKILL)
+    
+    def setup_i2c(self,pin = 0,smbus=None,lock=None):
+        if smbus is None:
+            self.smbus = smbus.SMBus(1)
+        else:
+            self.smbus = smbus
+
+        if lock is None:
+            self.i2c_lock = threading.Lock()
+
+        cb = config_bit(pin,fvinx = 4)
+        db = int(f'{dr}00011',2)
+        data = [cb,db]
+        #do this before reading different pin, 
+        print(f'setting adc to: {[bin(d) for d in data]}')
+        with self.i2c_lock:
+            self.smbus.write_i2c_block_data(0x48, 0x01, data)
+        #setup alert pin!
+        #self.smbus.write_i2c_block_data(0x48, 0x02, [0x00,0x00])
+        #self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
 
 
     def is_safe(self):
@@ -329,7 +363,6 @@ class wave_control:
         return all([not base,
                     not self.fail_sc,
                     not self.fail_st])
-                    #not self.stuck])
     
     def set_mode(self,new_mode):
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
@@ -444,7 +477,8 @@ class wave_control:
                     await self.sleep(wait)
                     
                     try:
-                        data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
+                        with self.i2c_lock:
+                            data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
                     except Exception as e:
                         print('read i2c issue',e)
                         continue
@@ -522,7 +556,6 @@ class wave_control:
                 print(f'control error: {e}')       
                 traceback.print_tb(e.__traceback__)
 
-
     #CONTROL MODES
     async def control_mode(self,loop_function:callable,mode_name:str):
         """runs an async function that sets v_cmd for the speed control systems"""
@@ -589,27 +622,26 @@ class wave_control:
                 await self.set_dir(dir=self._last_dir*-1)            
             await self.sleep(0)    
 
-    async def center_start(self):
+    async def center_start(self,go_to_mode=None):
         print('centering on start!')
         await self.center_head_program()
         self.started.set_result(True)
-        self.set_mode(default_mode)
+        if go_to_mode is not None:
+            self.set_mode(go_to_mode)
 
-    #Calibrate & Controlled Moves
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
         print('starting calibrate...')
 
         vstart = cv = sv = self.feedback_volts
 
-
         #### Alternate locally to build guesses
-        for v in [0.0001,0.001,0.01]:
+        for v in [0.0001,0.001]:
             for d in [1,-1]:
                 await self.set_dir(dir=d)
                 self.v_cmd = v
                 await self.sleep(0.1)
 
-        for v in [0.0001,0.001,0.01]:
+        for v in [0.0001,0.001]:
             for d in [1,-1]:
                 await self.set_dir(dir=d)
                 self.v_cmd = v
@@ -1023,12 +1055,19 @@ class wave_control:
         self.pwm_mid = int(self.pwm_speed_base/2)
         self.pwm_speed_k = self.pwm_mid / self.max_speed_motor 
 
-        #Set the appropriate pin config
+        #PWM Frequency
         a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)
         assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
         b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
         assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
         await self.pi.write(self._vpwm_pin,0) #start null
+        
+        #Torque Control Pin
+        a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
+        assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
+        b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
+        assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
+        await self.pi.write(self._tpwm_pin,0) #start null        
 
         print(f'PWM freq: {a} | range: {b}')
         dc = 0
@@ -1041,9 +1080,16 @@ class wave_control:
                     #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
 
                     v_dmd = self.v_command
+                    
 
                     dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),self.pwm_speed_base-1),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
+
+                    tdc = max(min(int(self.t_command*1000),1000-10),0)
+                    if tdc == 0:
+                        await self.pi.write(self._tpwm_pin,0)
+                    else:
+                        await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
 
                     self.fail_sc = False
                     self.dt_sc = time.perf_counter() - self.ct_sc

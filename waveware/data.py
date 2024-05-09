@@ -6,12 +6,20 @@ import json
 import pathlib
 import os
 
-from matplotlib.pylab import *
 import pandas as pd
 import pytz
 import datetime
 import seaborn as sns
 import numpy as np
+import pigpio
+
+try:
+    import RPi.GPIO as gpio
+    ON_RASPI = True
+    pigpio.exceptions = True #TODO: make false
+except:
+    ON_RASPI = False
+    pigpio.exceptions = True
 
 pst = pytz.timezone('US/Pacific')
 utc = pytz.utc
@@ -23,8 +31,10 @@ def to_test_time(timestamp):
 def to_date(timestamp):
     return to_test_time(timestamp).date()
 
-bucket = "nept-wavetank-data"
-folder = "V1"
+aws_profile = os.environ.get('AWS_PROFILE','wavetank')
+bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
+folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
+PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 
 path = pathlib.Path(__file__)
 fdir = path.parent
@@ -33,5 +43,16 @@ cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
 
-#TODO: deploy account for wave tank script
-aws_profile = os.environ.get('AWS_PROFILE','wavetank')
+
+
+
+LABEL_DEFAULT = {
+    "title": "test",
+    "hs_in": 0/1000., #m
+    "ts-in": 10.0, #s
+    "trq_pct": 0,
+    "kp-gain":0,
+    "ki-gain":0,
+    "kd-gain":0,
+
+}

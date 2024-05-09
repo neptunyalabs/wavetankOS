@@ -503,12 +503,7 @@ def calibrate(btn,msg):
 def main():
     """runs the dash / plotly process"""
     import os
-
-    try:
-        import RPi.GPIO as gpio
-        ON_RASPI = True
-    except:
-        ON_RASPI = False    
+    from waveware.data import *
 
     try:
         srv_host = '0.0.0.0' if ON_RASPI else '127.0.0.1'
