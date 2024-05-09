@@ -9,7 +9,6 @@ import os
 import pandas as pd
 import pytz
 import datetime
-import seaborn as sns
 import numpy as np
 import pigpio
 
