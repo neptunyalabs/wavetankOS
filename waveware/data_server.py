@@ -42,15 +42,15 @@ def make_web_app(hw):
 
             #TODO: add API functionality
             #boolean commands
-            web.get('/hw/zero_pos',hwfi(zero_control,hw))
-            web.get('/hw/mpu_calibrate',hwfi(mpu_calibrate,hw))
+            web.get('/hw/zero_pos',hwfi(zero_control,hw)),
+            web.get('/hw/mpu_calibrate',hwfi(mpu_calibrate,hw)),
             
-            web.get('/control/run',hwfi(start_control,hw))
-            web.get('/control/stop',hwfi(stop_control,hw))
-            web.get('/control/calibrate',hwfi(control_cal,hw))
+            web.get('/control/run',hwfi(start_control,hw)),
+            web.get('/control/stop',hwfi(stop_control,hw)),
+            web.get('/control/calibrate',hwfi(control_cal,hw)),
             #complex control inputs (post/json)
-            web.post('/control/set_wave',hwfi(set_wave,hw))
-            web.post('/control/z_set',hwfi(set_z_pos,hw))
+            web.post('/control/set_wave',hwfi(set_wave,hw)),
+            web.post('/control/z_set',hwfi(set_z_pos,hw)),
             web.post('/control/set_bounds',hwfi(set_z_bounds,hw))
             
         ]
