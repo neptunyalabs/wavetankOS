@@ -444,7 +444,7 @@ class hardware_control:
             #Add in GPIO Signals
             for i,echo_pin in enumerate(self.echo_pins):
                 out[f'e{i}'] = self.read(echo_pin)
-                out[f'e{i}_ts'] = self.last[gpio].get('dt_tick',None)
+                out[f'e{i}_ts'] = self.last[echo_pin].get('dt_tick',None)
 
             for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
                 out[f'z{i}'] = self.last.get(f'pos_enc_{i}',None)
