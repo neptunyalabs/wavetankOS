@@ -27,7 +27,8 @@ from decimal import *
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("dash-comp")
 
-nept_bk1 = '#9FB0C4'
+nept_bk1 = "#061E44"
+nept_bk2= '#9FBFFF'
 triton_bk = "#082255"
 
 app_color = {"graph_bg": triton_bk, "graph_line": "#007ACE"}
@@ -48,15 +49,49 @@ z_sensors = [f'z{i+1}' for i in range(4)]
 e_sensors = [f'e{i+1}' for i in range(4)]
 
 wave_drive_modes = ['off','center','wave']
+M = len(wave_drive_modes)
+mode_dict = {i:v.upper() for i,v in enumerate(wave_drive_modes)}
 
-
-wave_inputs = ['wave-ts','wave-hs','z_ref','z_range','trq_lim']
+wave_inputs = ['mode','wave-ts','wave-hs','z_ref','z_range','trq_lim']
 Ninputs = len(wave_inputs)
 
 all_sys_vars = z_wave_parms+z_sensors+e_sensors #output only
 all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
 
-wave_input_parms = {'wave-ts':dict(
+# mode_input_parms = dict(
+#                             name="Mode".upper(),
+#                             id="mode-slider",
+#                             type="radio",
+#                             min=0,
+#                             max=len(wave_drive_modes)-1,
+#                             value=0,
+#                             step=None,
+#                             marks=mode_dict,
+#                             tooltip={
+#                                     "always_visible": True,
+#                                     "placement": "left",
+#                                     "template": "{value}"
+#                                 },
+#                             N=Ninputs
+#                         )
+
+mode_input_parms = dict(
+                         off=   {
+                                    "label": html.Div(['OFF'], style={'color': 'WHITE', 'font-size': 20}),
+                                    "value": "OFF",
+                                },
+                        center= {
+                                    "label": html.Div(['CENTER'], style={'color': 'WHITE', 'font-size': 20}),
+                                    "value": "CENTER",
+                                },
+                        wave  = {
+                                    "label": html.Div(['WAVE'], style={'color': 'Red', 'font-size': 20}),
+                                    "value": "WAVE",
+                                },
+                        )
+
+wave_input_parms = { 
+                    'wave-ts':dict(
                             name="Ts".upper(),
                             id="wave-ts",
                             type="number",
@@ -103,7 +138,7 @@ wave_input_parms = {'wave-ts':dict(
                             N=Ninputs
                         ),
                         'trq_lim':dict(
-                            name="Max Torque".upper(),
+                            name="Torque".upper(),
                             id="max-torque",
                             type="number",
                             min=0,
@@ -113,7 +148,8 @@ wave_input_parms = {'wave-ts':dict(
                             marks=None,
                             vertical=True,
                             N=Ninputs
-                        ),
+                        ), 
+                                               
                     }
 
 def generate_plot(title, id=None):
@@ -153,14 +189,19 @@ def input_card(name, id="",N=1, type="number", **kwargs):
         widget = daq.Slider
         inp.pop("type")
         inp.pop("style")
-        inp["handleLabel"] = {"showCurrentValue": True, "label": "VALUE"}
+    if type == "choice":
+        widget = dcc.Slider
+        inp.pop("type")
+        inp.pop("style")        
+        #inp["handleLabel"] = {"showCurrentValue": True, "label": "VALUE"}
     elif type == 'range':
         widget = dcc.RangeSlider
 
         inp = dict( marks=None,
                     tooltip={
                         "always_visible": True,
-                        "template": "$ {value}"
+                        "template": "{value}%",
+                        'placement':'left'
                     })
 
 

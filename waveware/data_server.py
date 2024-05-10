@@ -31,18 +31,18 @@ def make_app(hw):
     log.info(f'creating web server')
     app.add_routes(
         [
-            web.get("/", hwfi(check,hw)),
+            web.get("/", hwfi(check,hw)), #works
             
             #the data broker to front end
-            web.get("/getdata", hwfi(get_data,hw)),
-            web.get("/getcurrent", hwfi(get_current,hw)),
+            web.get("/getdata", hwfi(get_data,hw)), #works
+            web.get("/getcurrent", hwfi(get_current,hw)), #works
 
             web.post("/set_meta", hwfi(set_meta,hw)),
             web.post("/add_note", hwfi(add_note,hw)),
 
             #start recording
-            web.get("/turn_on", hwfi(turn_daq_on,hw)),
-            web.get("/turn_off", hwfi(turn_daq_off,hw)),
+            web.get("/turn_on", hwfi(turn_daq_on,hw)), #works
+            web.get("/turn_off", hwfi(turn_daq_off,hw)), #works
 
             #TODO: add API functionality
             #boolean commands

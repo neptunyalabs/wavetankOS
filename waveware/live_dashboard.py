@@ -116,10 +116,20 @@ app.layout = html.Div(
             # READOUTS
             html.Div([
                 html.Div([
-                    html.H6("INPUT:",className="graph__title"),
-                    html.Div([dcc.Input("Test Name", id="title-in", style={'width':'80%','padding-left':'1%','justify-content':'left'}),
-                    html.Button("set input",id='test-log-send',style={'background-color':'#FFFFFF','height':'30px','padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
+                    html.H6("TEST NAME:",className="graph__title"),
+                    html.Div([dcc.Input("Record Data With This Title", id="title-in", style={'width':'80%','padding-left':'1%','justify-content':'left'}),
+                    html.Button("RUN",id='test-log-send',style={'background-color':'#FFFFFF','height':'40px','padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
                     style={'displaty':'flex'}),
+                    dcc.RadioItems(
+                            [mode_input_parms[k] for k in wave_drive_modes],
+                            #[k for k in wave_drive_modes],
+                            value=wave_drive_modes[0],
+                            id='mode-select',
+                            inline=True,
+                            inputStyle = {'width':f'{(80)/M}%', 'padding':'0 3% 3% 0'},
+                            labelStyle={'width':f'{(80)/M}%','padding':'0 3% 3% 0'},
+                            style={'width':'100%','background':triton_bk,'display':'inline-block'}
+                        ),
                     html.Div([
                         html.Div([
                                 input_card(**wave_input_parms[k]) for k in wave_inputs if k in wave_input_parms
@@ -134,7 +144,7 @@ app.layout = html.Div(
                     style={
                         "display": "table",
                         "width": "100%",
-                        "height": "300px",
+                        "height": "250px",
                     },
                     className="graph__container first",
                 ),
