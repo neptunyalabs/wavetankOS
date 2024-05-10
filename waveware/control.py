@@ -10,12 +10,12 @@ import traceback
 import signal
 
 import json
-import smbus
 import threading
 import time
 import sys,os,pathlib
 
 from waveware.config import *
+import random
 
 # Get I2C bus
 
@@ -68,7 +68,7 @@ steps_per_rot = 360/1.8
 dz_per_rot = 0.01 #rate commad
 
 class wave_control:
-
+    enabled = False
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
@@ -82,7 +82,7 @@ class wave_control:
     adc_addr = 0x48
     t_command = 0 #torque fraction of upper limit 0-1
 
-    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm:int=10,**conf):
+    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm,motor_en_pin,**conf):
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
@@ -104,6 +104,7 @@ class wave_control:
         self.max_speed_motor = 0.1 #TODO: get better motor constants
                 
         self.stopped = False
+        self._motor_en_pin = motor_en_pin
         self._dir_pin = dir
         self._step_pin = step
         self._vpwm_pin = speed_pwm
@@ -119,6 +120,7 @@ class wave_control:
     
     def reset(self):
         #fail setupso
+        self.enabled = False
         self._control_modes = {}
         self._control_mode_fail_parms = {}
 
@@ -179,19 +181,27 @@ class wave_control:
 
     #SETUP 
     async def _setup(self):
-        await self.pi.connect()
-        await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
-        await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
-        await self.pi.set_mode(self._tpwm_pin,asyncpio.OUTPUT)
-        await self.pi.set_mode(self._vpwm_pin,asyncpio.OUTPUT)
+        if ON_RASPI: 
+            await self.pi.connect()
+            await self.pi.set_mode(self._motor_en_pin,asyncpio.OUTPUT)
+            await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
+            await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
+            await self.pi.set_mode(self._tpwm_pin,asyncpio.OUTPUT)
+            await self.pi.set_mode(self._vpwm_pin,asyncpio.OUTPUT)
 
-        await self.pi.set_mode(self._hlfb,asyncpio.INPUT)
-        await self.pi.set_mode(self._adc_feedback_pin,asyncpio.INPUT)
-        #await self.pi.wave_clear()
+            await self.pi.set_mode(self._hlfb,asyncpio.INPUT)
+            await self.pi.set_mode(self._adc_feedback_pin,asyncpio.INPUT)
+
+            await self.pi.write(self._motor_en_pin,0)
+            await self.pi.write(self._dir_pin,0)
+            await self.pi.write(self._step_pin,0)
+            await self.pi.write(self._tpwm_pin,0)
+            await self.pi.write(self._vpwm_pin,0)        
+
 
     def setup(self):
-        self.start = time.perf_counter()
-        self.stopped = False        
+        self.start = None
+        self.stopped = False 
         loop = asyncio.get_event_loop()
 
         #Add Exception & Signal Handling
@@ -202,10 +212,9 @@ class wave_control:
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
-
-    #RUN / OPS
-    def run(self):
-        self.stopped = False
+    def start(self,await_feedback=True):
+        self.start = time.perf_counter()
+        self.stopped = False 
         loop = asyncio.get_event_loop()
 
         def check_failure(res):
@@ -213,13 +222,17 @@ class wave_control:
                 res.result()
             except Exception as e:
                 log.info(f'speed drive failure: {e}')
-                traceback.print_tb(e.__traceback__)
+                traceback.print_tb(e.__traceback__)        
 
         self.speed_control_mode = default_speed_mode
+
         self.mode_changed = asyncio.Future()
         self.speed_control_mode_changed = asyncio.Future()
-        self.first_feedback = d = asyncio.Future()
-        self.feedback_task = loop.create_task(self.feedback(d))
+        
+
+        if await_feedback:
+            self.first_feedback = d = asyncio.Future()
+            self.feedback_task = loop.create_task(self.feedback(d))
         
         #SPEED CONTROL MODES
         self.speed_off_task = loop.create_task(self.speed_control_off())
@@ -229,8 +242,7 @@ class wave_control:
         self.speed_pwm_task.add_done_callback(check_failure)
 
         self.speed_step_task = loop.create_task(self.step_speed_control())
-        self.speed_step_task.add_done_callback(check_failure)
-        
+        self.speed_step_task.add_done_callback(check_failure) 
 
         def go(*args,docal=True,**kw):
             nonlocal self, loop
@@ -248,8 +260,16 @@ class wave_control:
                 loop = asyncio.get_running_loop()
                 center_start = loop.create_task(self.center_start(default_mode))
 
-        self.first_feedback.add_done_callback(go)
+        if await_feedback:
+            self.first_feedback.add_done_callback(go)
+                    
 
+    #RUN / OPS
+    def run(self):
+        self.stopped = False
+        loop = asyncio.get_event_loop()
+        
+        self.start(await_feedback=True)
 
         try:
             loop.run_forever()
@@ -272,53 +292,53 @@ class wave_control:
         self.stopped = True
 
     async def _stop(self):
-
+        
         self.stopped = True
         await self.sleep(0.1)
 
-        if not self.speed_off_task.cancelled:
+        if hasattr(self,'speed_off_task') and not self.speed_off_task.cancelled:
             self.speed_off_task.cancel()
         
-        if not self.speed_pwm_task.cancelled:
+        if hasattr(self,'speed_pwm_task') and not self.speed_pwm_task.cancelled:
             self.speed_pwm_task.cancel()
 
-        if not self.speed_step_task.cancelled:
+        if hasattr(self,'speed_step_task') and not self.speed_step_task.cancelled:
             self.speed_step_task.cancel()
 
         await self.sleep(0.1)
-        try:
-            await self.pi.wave_tx_stop()
-        except Exception as e:
-            log.info('pigpio wavestop error: {e}')
+        if ON_RASPI:
+            try:
+                await self.pi.wave_tx_stop()
+            except Exception as e:
+                log.info(f'pigpio wavestop error: {e}')
 
-        #Set PWM Drive off
-        log.info(f'setting pwm off')
-        try:
-            pt = await self.pi.set_PWM_dutycycle(self._vpwm_pin,0)
-            vpt = await self.pi.write(self._vpwm_pin,0)
-            vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
-            tp = await self.pi.write(self._tpwm_pin,0)
-        except Exception as e:
-            log.info(f'exception turning off pwm: {e}')      
+            #Set PWM Drive off
+            log.info(f'setting pwm off')
+            try:
+                pt = await self.pi.set_PWM_dutycycle(self._vpwm_pin,0)
+                vpt = await self.pi.write(self._vpwm_pin,0)
+                vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
+                tp = await self.pi.write(self._tpwm_pin,0)
+            except Exception as e:
+                log.info(f'exception turning off pwm: {e}')      
 
-        log.info(f'setting steps off')
-        try:
-            sp =await self.pi.write(self._step_pin,0)
-            dp = await self.pi.write(self._dir_pin,0)
-        except Exception as e:
-            log.info(f'exception turning off steps: {e}')             
+            log.info(f'setting steps off')
+            try:
+                sp =await self.pi.write(self._step_pin,0)
+                dp = await self.pi.write(self._dir_pin,0)
+            except Exception as e:
+                log.info(f'exception turning off steps: {e}')             
 
 
-        await self.sleep(0.1)
-         
-        try:
-            await self.pi.wave_clear()
-        except Exception as e:
-            log.info('pigpio close error: {e}')
+            await self.sleep(0.1)
+        
+            try:
+                await self.pi.wave_clear()
+            except Exception as e:
+                log.info(f'pigpio close error: {e}')
 
-        await self.sleep(0.1)
-        await self.pi.stop()
-        log.info(f'done with signals: {sp} {dp} {pt} {vpt} {vt} {tp}')
+            await self.sleep(0.1)
+            await self.pi.stop()
 
 
 
@@ -523,11 +543,9 @@ class wave_control:
                     st_inx = self.inx
                     wait = wait_factor/float(dr_inx)
                     
-                    #TODO: add feedback interrupt on GPIO7
-                    #-await deferred, in pigpio callback set_result
-                    #tick = await self._adc_feedback_pin_cb
                     await self.sleep(wait)
-                    self.z_cur = self.z_cmd
+                    #fake integration w
+                    self.z_cur = self.z_cur+self.v_command*(1+0.04*(0.5-random.random()))*wait
                     self.feedback_volts = (self.z_cur*self.dzdvref)+ self.zero_fb_volts
 
                     if feedback_futr is not None:
@@ -588,7 +606,7 @@ class wave_control:
         self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
         self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
 
-        #no stuck no problem
+        #no stuck no problem, update official rate
         if not self.maybe_stuck and not self.stuck:
             #set the official rate variables for estimates
             self.coef_2 = self._coef_2
@@ -678,6 +696,39 @@ class wave_control:
         if go_to_mode is not None:
             self.set_mode(go_to_mode)
 
+    #External Control Methods
+    async def enable_control(self):
+        log.info('centering on start!')
+        if not self.enabled:
+            if ON_RASPI:
+                val = await self.pi.write(self._motor_en_pin,1)
+                print(f'got val in enable: {val}')
+                if val == 1:
+                    self.enabled = True
+            else:
+                self.enabled = True
+        else:
+            print(f'already enabled!')
+
+    async def start_control(self):
+        await self.enable_control()
+        if self.enabled and self.stopped:
+            self.start(await_feedback=False)
+            await asyncio.sleep(0.5)
+        else:
+            print(f'already started!!')
+
+    async def disable_control(self):
+        log.info('disabiling motor!')
+        if ON_RASPI:
+            await self.pi.write(self._motor_en_pin,0) #disable force
+        self.enabled = False
+
+    async def stop_control(self):
+        await self.disable_control()
+        await self._stop()
+
+    #Calibrate MOde
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
         log.info('starting calibrate...')
 
@@ -947,7 +998,8 @@ class wave_control:
             dir = self._last_dir
         elif self._last_dir != dir:
             dv = 1 if dir >= 0 else 0
-            await self.pi.write(self._dir_pin,dv)
+            
+            if ON_RASPI: await self.pi.write(self._dir_pin,dv)
             self._last_dir = dir
 
         if Nw > 0:
@@ -1049,8 +1101,9 @@ class wave_control:
     async def step_speed_control(self):
         """uses pigpio waves hardware concepts to drive output"""
         log.info(f'setting up step speed control')
+        if ON_RASPI: 
+            await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
 
-        await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
         self.dt_st = 0.005
         self.max_wait = 1E5 #0.1s
         while not self.stopped:
@@ -1088,7 +1141,8 @@ class wave_control:
                 
                 #now your not in use
                 log.info(f'exit step speed control inner loop')
-                await self.pi.write(self._step_pin,0)
+                
+                if ON_RASPI: await self.pi.write(self._step_pin,0)
                 await self.speed_control_mode_changed
 
             except Exception as e:
@@ -1096,7 +1150,7 @@ class wave_control:
                 self.fail_st = True
                 log.info(f'issue in speed step routine {e}')
                 traceback.print_tb(e.__traceback__)
-                await self.pi.write(self._step_pin,0)
+                if ON_RASPI: await self.pi.write(self._step_pin,0)
 
     async def speed_pwm_control(self):
         """uses pigpio hw PWM to control pwm dutycycle"""
@@ -1108,22 +1162,23 @@ class wave_control:
         self.pwm_speed_k = self.pwm_mid / self.max_speed_motor 
 
         #PWM Frequency
-        a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)
-        assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
-        b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
-        assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
-        await self.pi.write(self._vpwm_pin,0) #start null
-        
-        #Torque Control Pin
-        a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
-        assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
-        b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
-        assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
-        await self.pi.write(self._tpwm_pin,0) #start null        
+        if ON_RASPI: 
+            a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)
+            assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
+            b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
+            assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
+            await self.pi.write(self._vpwm_pin,0) #start null
+            
+            #Torque Control Pin
+            a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
+            assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
+            b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
+            assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
+            await self.pi.write(self._tpwm_pin,0) #start null        
 
         log.info(f'PWM freq: {a} | range: {b}')
         dc = 0
-        while not self.stopped:
+        while not self.stopped and ON_RASPI:
             stc = self.speed_control_mode_changed
             try:
                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
@@ -1162,8 +1217,9 @@ class wave_control:
                 b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
                 assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
                 await self.pi.write(self._vpwm_pin,0) #start null
-                
-        await self.pi.write(self._vpwm_pin,0)
+
+        if ON_RASPI:        
+            await self.pi.write(self._vpwm_pin,0)
         
         
     async def sleep(self,wait_time,short=True):

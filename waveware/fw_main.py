@@ -79,7 +79,7 @@ class program:
         self.push_task = asyncio.create_task(push_data(self.hw))
 
         # Run Site
-        self.site = web.TCPSite(self.app, "0.0.0.0", 8777)
+        self.site = web.TCPSite(self.app, "0.0.0.0", embedded_srv_port)
         self.site_task = asyncio.create_task(self.site.start())
 
         # Run Dashboard

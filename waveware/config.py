@@ -23,9 +23,13 @@ try:
     import RPi.GPIO as gpio
     ON_RASPI = True
     pigpio.exceptions = True #TODO: make false
+    from imusensor.MPU9250 import MPU9250
+    import smbus
 except:
     ON_RASPI = False
     pigpio.exceptions = True
+    smbus = None
+    MPU9250 = None
 
 pst = pytz.timezone('US/Pacific')
 utc = pytz.utc
@@ -46,6 +50,7 @@ bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
 folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
 PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 
+embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
 
 log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}')
 

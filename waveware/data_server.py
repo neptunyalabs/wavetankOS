@@ -37,7 +37,7 @@ def make_app(hw):
             web.get("/getdata", hwfi(get_data,hw)), #works
             web.get("/getcurrent", hwfi(get_current,hw)), #works
 
-            web.post("/set_meta", hwfi(set_meta,hw)),
+            web.post("/set_const", hwfi(set_const,hw)),
             web.post("/add_note", hwfi(add_note,hw)),
 
             #start recording
@@ -45,17 +45,18 @@ def make_app(hw):
             web.get("/turn_off", hwfi(turn_daq_off,hw)), #works
 
             #TODO: add API functionality
-            #boolean commands
-            web.get('/hw/zero_pos',hwfi(zero_positions,hw)),
+            #process commands
+            web.get('/hw/zero_pos',hwfi(zero_positions,hw)), #works
             web.get('/hw/mpu_calibrate',hwfi(mpu_calibrate,hw)),
             
-            web.get('/control/run',hwfi(run_wave,hw)),
-            web.get('/control/stop',hwfi(stop_control,hw)),
-            web.get('/control/calibrate',hwfi(control_cal,hw)),
+            #TODO: EN pin High, speed ctl on
+            web.get('/control/enable',hwfi(start_control,hw)),  #works
+            #TODO: EN pin High, speed ctl off
+            web.get('/control/disable',hwfi(stop_control,hw)), #works
+            web.get('/control/stop',hwfi(stop_control,hw)), #works
+            #web.get('/control/calibrate',hwfi(control_cal,hw)),
             #complex control inputs (post/json)
-            web.post('/control/set_wave',hwfi(set_wave,hw)),
-            web.post('/control/z_set',hwfi(set_z_pos,hw)),
-            web.post('/control/set_bounds',hwfi(set_z_bounds,hw))
+            web.post('/control/set_inputs',hwfi(set_inputs,hw)),
         ]
     )
     log.info(f'creating web server')
@@ -92,22 +93,21 @@ async def run_wave(request,hw):
     resp = web.Response(text='Wave Started')
     return resp
 
-async def set_wave(request,hw):
+async def set_inputs(request,hw):
     pass #TODO
 
-async def set_z_pos(request,hw):
+async def set_const(request,hw):
     pass #TODO
-
-async def set_z_bounds(request,hw):
-    pass #TODO ensuring bounds indside calibrated space
-
-async def control_cal(request,hw):
-    pass #TODO ensuring bounds indside calibrated space
 
 async def stop_control(request,hw):
-    assert not hw.control.started
-    await hw.control._stop()
+    assert not hw.control.stopped
+    await hw.control.stop_control()
     return web.Response(text='stopped')
+
+async def start_control(request,hw):
+    assert hw.control.stopped
+    await hw.control.start_control()
+    return web.Response(text='started')
 
 
 #DATA LOGGING

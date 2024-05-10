@@ -85,29 +85,24 @@ app.layout = html.Div(
                         )
                     ]
                 ),
-                html.Div([daq.StopButton(id="reset-btn", buttonText="STOP")]),                
                 html.Div(
                     [
-                        html.H6(
-                            "WAVE ON/OFF",
-                            id="motor_msg",
-                            style={"text-align": "center"},
-                        ),
-                        daq.PowerButton(on=False, id="motor_on_off"),
+                        # html.H6(
+                        #     
+                        #     id="daq_msg",
+                        #     style={"text-align": "center"},
+                        # ),
+                        daq.BooleanSwitch(label="DAC ON/OFF",on=False, id="daq_on_off"),
                     ],
-                    className="one-third column",
+                    className="column",
                 ),                
+                html.Div([daq.StopButton(id="stop-btn", buttonText="STOP")]),                
                 html.Div(
                     [
-                        html.H6(
-                            "DAC ON/OFF",
-                            id="daq_msg",
-                            style={"text-align": "center"},
-                        ),
-                        daq.PowerButton(on=False, id="daq_on_off"),
+                        daq.PowerButton(label="WAVE ON/OFF",on=False, id="motor_on_off"),
                     ],
                     className="one-third column",
-                ),           
+                ),         
             ],
             className="app__header",
         ),
@@ -183,10 +178,10 @@ app.layout = html.Div(
 
                 html.Div(
                     [
-                    html.H6("Read / Edit Values:".upper(),className="edit_title",style={'display':'none'}),                      dash_table.DataTable(  data=[],
+                    html.H6("Read / Edit Values:".upper(),className="edit_title",style={'display':'none'}), dash_table.DataTable(  data=[],
                                 columns=[],
                                 page_action='none',
-                                style_table={'height': '300px', 'overflowY': 'auto'})
+                                style_table={'height': '100px', 'overflowY': 'auto','width':'90%'})
                 ])               
             ],
             className=" column histogram__direction",
@@ -236,10 +231,10 @@ def update_graphs(n,on):
             if memcache:
                 #we got data so lets do the query
                 max_ts = max(list(memcache.keys()))
-                new_data = requests.get(f"http://localhost:8777/getdata?after={max_ts}")
+                new_data = requests.get(f"http://localhost:{embedded_srv_port}/getdata?after={max_ts}")
             else:
                 #no data, so ask for the full blast. yeet
-                new_data = requests.get(f"http://localhost:8777/getdata")
+                new_data = requests.get(f"http://localhost:{embedded_srv_port}/getdata")
 
 
 
@@ -312,7 +307,7 @@ def update_readout(n,on):
     if on:
         log.info(f'update readout: {on}')
         try:
-            new_data = requests.get(f"http://localhost:8777/getcurrent")
+            new_data = requests.get(f"http://localhost:{embedded_srv_port}/getcurrent")
             data = new_data.json()
             if data:
                 data= [float(Decimal(data[k]).quantize(mm_accuracy_ech)) if k in e_sensors else float(Decimal(data[k]).quantize(mm_accuracy_enc)) for k in all_sys_vars]
@@ -326,15 +321,43 @@ def update_readout(n,on):
     raise dash.exceptions.PreventUpdate
 
 
-@app.callback(Output("daq_msg", "children"), Input("daq_on_off", "on"))
+@app.callback(Output("daq_on_off", "label"), Input("daq_on_off", "on"))
 def turn_on_off_daq(on):
     log.info(f"setting {on}.")
     if on:
-        requests.get(f"http://localhost:8777/turn_on")
+        requests.get(f"http://localhost:{embedded_srv_port}/turn_on")
         return "DAC ON"
     else:
-        requests.get(f"http://localhost:8777/turn_off")
+        requests.get(f"http://localhost:{embedded_srv_port}/turn_off")
         return "DAC OFF"
+    
+@app.callback(Output("motor_on_off", "label"), Input("motor_on_off", "on"))
+def dis_and_en_able_motor(on):
+    log.info(f"setting {on}.")
+    if on:
+        requests.get(f"http://localhost:{embedded_srv_port}/control/enable")
+        return "MOTOR ENABLED"
+    else:
+        requests.get(f"http://localhost:{embedded_srv_port}/control/disable")
+        return "MOTOR DISABLE"
+    
+@app.callback(Output('mode-select','value'),Input("radio-button", "n_clicks"))
+def stop_motor(n_clicks):
+    log.info(f"stopping {n_clicks}.")
+    if n_clicks < 1:
+        return
+    rep = requests.get(f"http://localhost:{embedded_srv_port}/control/stop")
+    if rep.status_code  == 200:
+        return 0 #set off
+        
+@app.callback(Input("zero-btn", "n_clicks"))
+def zero_sensors(n_clicks):
+    log.info(f"zeroing {n_clicks}.")
+    if n_clicks < 1:
+        return
+    rep = requests.get(f"http://localhost:{embedded_srv_port}/hw/zero_pos")
+    if rep.status_code  == 200:
+        return 0 #set off      
 
 #TODO: setup inputs callbacks
 # @app.callback(
@@ -348,7 +371,7 @@ def turn_on_off_daq(on):
 #     Input("reset-btn","n_clicks"),
 #     )
 # def reset_labels(btn):
-#     out = requests.get(f"http://localhost:8777/reset_labels")
+#     out = requests.get(f"http://localhost:{embedded_srv_port}/reset_labels")
 #     data = out.json()
 # 
 #     return [data['title'],data['sen1-x'],data['sen1-rot'],data['sen2-x'],data['sen2-rot'],data['air-pla'],data['water-pla']]
@@ -362,7 +385,7 @@ def turn_on_off_daq(on):
 #     )
 # def set_labels(btn,title,sen1x,sen1rot,sen2x,sen2rot,airpla,waterpla):
 #     
-#     resp = requests.get(f"http://localhost:8777/set_labels?title={title}&sen1-x={sen1x}&sen1-rot={sen1rot}&sen2-x={sen2x}&sen2-rot={sen2rot}&air-pla={airpla}&water-pla={waterpla}")
+#     resp = requests.get(f"http://localhost:{embedded_srv_port}/set_labels?title={title}&sen1-x={sen1x}&sen1-rot={sen1rot}&sen2-x={sen2x}&sen2-rot={sen2rot}&air-pla={airpla}&water-pla={waterpla}")
 # 
 #     out = resp.text
 # 
@@ -381,7 +404,7 @@ def turn_on_off_daq(on):
 #     #     msg = [ html.P(v) for v in msg.replace('<p>','').split('</p>') ]
 #     # else:
 #     #    msg = []
-#     resp = requests.get('http://localhost:8777/calibrate')
+#     resp = requests.get('http://localhost:{embedded_srv_port}/calibrate')
 # 
 #     msg = html.Div([html.P(resp.text)])
 # 

@@ -5,13 +5,10 @@ pandas
 dash
 dash_daq
 pigpio
-smbus
 easydict
-RPi.GPIO
 asyncpio@ git+https://github.com/neptunyalabs/asyncpio.git
 imusensor@ git+https://github.com/niru-5/imusensor.git
 adafruit-circuitpython-si7021
 adafruit-board-toolkit
-aioboto3
-aiobotocore
+aiobotocore[awscli,boto3]
 expiringdict

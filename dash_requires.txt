@@ -1,0 +1,24 @@
+setuptools==58.2.0 #beyond this requires a new instlal strategy
+
+requests
+
+numpy
+#scipy
+#matplotlib
+pandas
+#statsmodels
+
+#Web Server
+dash
+dash_daq
+
+
+
+
+#boto3
+# aioboto3
+# aiobotocore
+aiobotocore[awscli,boto3]
+
+expiringdict
+

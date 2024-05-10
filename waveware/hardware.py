@@ -40,13 +40,11 @@ import struct
 
 from collections import deque
 
-from imusensor.MPU9250 import MPU9250
 import sys
 import asyncpio
 asyncpio.exceptions = True
 
 import pigpio
-import smbus
 
 import datetime
 import time
@@ -78,16 +76,48 @@ _RESET = 0xFE
 
 #These exist to test calibration when not running on RPI
 FAKE_BIAS = {
-                'e1':0.1*(0.5-random.random()) + 0.2,
-                'e2':0.1*(0.5-random.random()) + 0.2,
-                'e3':0.1*(0.5-random.random()) + 0.2,
-                'e4':0.1*(0.5-random.random()) + 0.2,
+                'e1':0.1*(0.5-random.random()) + 0.2*random.random(),
+                'e2':0.1*(0.5-random.random()) + 0.2*random.random(),
+                'e3':0.1*(0.5-random.random()) + 0.2*random.random(),
+                'e4':0.1*(0.5-random.random()) + 0.2*random.random(),
                 'z1':1*(0.5-random.random()),
                 'z2':1*(0.5-random.random()),
                 'z3':1*(0.5-random.random()),
                 'z4':1*(0.5-random.random()),
                 }
 
+FakeWaveMass = 2
+FakeTorque = 5
+Ao = 0.0001
+Ah = 0.05
+Bo = 0
+Bh = 0.1
+Zh = 0.1
+
+def asub(z):
+    if z>=0:
+        return 0
+    fh = min(abs(z)/Zh,1)
+    return Ao*(1-fh) + Ah*fh
+
+def bsub(z):
+    if z>=0:
+        return 0
+    fh = min(abs(z)/Zh,1)
+    return Bo*(1-fh) + Bh*fh
+
+def fake_wave_stiffness(z):
+    if z >= 0:
+        return 0
+    ah = asub(z)
+    return ah * 1000 * 9.81
+
+def fake_wave_damping(z):
+    if z >= 0:
+        return 0
+    ah = asub(z)
+    bh = bsub(z)
+    return bh * ah * 1000 * 9.81    
 
 class hardware_control:
     
@@ -162,7 +192,7 @@ class hardware_control:
         if cntl_conf is None: 
             cntl_conf = {} #empty
 
-        self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._adc_alert_pin,self._hlfb_pin,self._torque_pwm_pin,**cntl_conf)
+        self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._adc_alert_pin,self._hlfb_pin,self._torque_pwm_pin,motor_en_pin,**cntl_conf)
 
     #Run / Setup
     #Setup & Shutdown
@@ -455,14 +485,14 @@ class hardware_control:
 
         else:
             #FAKENESS
-            mock_sensors ={ 'e1':0.1*(0.5-random.random()) + 0.2,
-                    'e2':0.1*(0.5-random.random()) + 0.2,
-                    'e3':0.1*(0.5-random.random()) + 0.2,
-                    'e4':0.1*(0.5-random.random()) + 0.2,
-                    'z1':10*(0.5-random.random()),
-                    'z2':10*(0.5-random.random()),
-                    'z3':10*(0.5-random.random()),
-                    'z4':10*(0.5-random.random()),
+            mock_sensors ={ 'e1':0.1*(0.5-random.random()),
+                    'e2':0.1*(0.5-random.random()),
+                    'e3':0.1*(0.5-random.random()),
+                    'e4':0.1*(0.5-random.random()),
+                    'z1':5*(0.5-random.random()),
+                    'z2':5*(0.5-random.random()),
+                    'z3':5*(0.5-random.random()),
+                    'z4':5*(0.5-random.random()),
                     }
             out.update(mock_sensors)
             #echo ts
@@ -569,8 +599,13 @@ class hardware_control:
             a = dt/ct
             b = 1-a
             for k,rec in d.items():
-                if k in FAKE_BIAS:
+                if k not in FAKE_BIAS:
+                    continue
+                if k not in bs:
+                    bs[k] = rec
+                else:
                     bs[k] = bs[k]*b + rec*a
+                
         self.zero_biases = bs
 
 def main():
