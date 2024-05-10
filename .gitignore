@@ -3,3 +3,4 @@ __pycache__/*
 sandbox/*.zip
 .DS_Store
 build/*
+/.idea
