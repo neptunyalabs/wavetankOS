@@ -3,10 +3,11 @@
 import datetime
 
 import dash
-from dash import dcc, html
+from dash import dcc, html, dash_table
 import dash_daq as daq
 
 from waveware.config import *
+from waveware.app_comps import *
 from dash.dependencies import Input, Output,State
 import sys
 
@@ -39,22 +40,8 @@ app = dash.Dash(
 )
 app.title = TITLE = "WAVE TANK DASHBOARD"
 
-app_color = {"graph_bg": "#082255", "graph_line": "#007ACE"}
-
-PLOTS = []
-max_ts = 0
 
 
-#parameter groupings
-z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
-z_sensors = [f'z{i+1}' for i in range(4)]
-e_sensors = [f'e{i+1}' for i in range(4)]
-
-wave_drive_modes = ['off','center','wave']
-wave_inputs = ['ts','hs','z_ref','z_upper','z_lower']
-
-all_sys_vars = z_wave_parms+z_sensors+e_sensors #output only
-all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
 
 # TODO: 1. Wave Measure Plot w/ act position and ultrasonic distance measurements
 # TODO: 2. ref height / mode selection
@@ -62,136 +49,19 @@ all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
 # TODO: 4. wave input config settings
 # TODO: 5. add range limit slider for bounds
 
-def generate_plot(title, id=None):
-
-    mark = id if id else title.lower().split("(")[0].strip().replace(" ", "-")
-    PLOTS.append(mark)
-    o = html.Div(
-        [
-            html.Div([html.H6(title.upper(), className="graph__title")]),
-            dcc.Graph(
-                id=f"{mark}-graph",
-                figure=dict(
-                    layout=dict(
-                        plot_bgcolor=app_color["graph_bg"],
-                        paper_bgcolor=app_color["graph_bg"],
-                    )
-                ),
-            ),
-        ],
-        id=f"graph-container-{mark}",
-    )
-
-    return o
 
 
-def input_card(name, id="", type="number", **kwargs):
-    mark = id if id else name.lower().split("(")[0].strip().replace(" ", "-")
-    inp = {"id": f"{mark}-input", "type": type, "style": {"width": "100%"}}
-
-    widget = dcc.Input
-    if type == "number":
-        widget = daq.Slider
-        inp.pop("type")
-        inp.pop("style")
-        inp["handleLabel"] = {"showCurrentValue": True, "label": "VALUE"}
-
-    div = html.Div(
-        [
-            html.Div(
-                [
-                    html.Div(
-                        html.H6(name.upper(), className="graph__title"),
-                        style={"display": "table-cell", "float": "left"},
-                    ),
-                    html.Div(
-                        widget(**inp, **kwargs),
-                        style={
-                            "display": "table-cell",
-                            "width": "100%",
-                            "float": "right",
-                            "margin-right": "0px",
-                        },
-                    ),
-                ],
-                style={
-                    "display": "table-row",
-                    "width": "100%",
-                },
-            ),
-        ],
-        style={
-            "display": "table",
-            "width": "100%",
-        },
-        className="graph__container first",
-    )
-    return div
-
-
-def readout_card(name, id=None, val=0.0):
-    mark = name.lower().replace(" ",'-')
-
-    if id is None:
-        id=""
-
-    div = html.Div(
-        [
-            html.Div(
-                [
-                    html.Div(
-                        html.H6(name.upper(), className="graph__title"),
-                        style={"display": "table-cell", "float": "left"},
-                    ),
-                    html.Div(
-                        daq.LEDDisplay(
-                            id=f"{mark}-display",
-                            value=f"{val:3.6f}",
-                            backgroundColor=app_color["graph_bg"],
-                            size=25,
-                            style={
-                                "width": "100%",
-                                "margin": "0px 0px 0px 0px",
-                                "padding": "0px 0px 0px 0px",
-                            },
-                        ),
-                        style={
-                            "display": "table-cell",
-                            # "width": "100%",
-                            "float": "right",
-                            "margin-right": "0px",
-                        },
-                    ),
-                ],
-                style={
-                    "display": "table-row",
-                    "width": "100%",
-                },
-            ),
-        ],
-        style={
-            "display": "table",
-            "width": "100%",
-        },
-        className="graph__container first",
-    )
-    return div
-
-btn_header = {
-        "background-color": "#FFFFFF",
-        "margin": "10 10 0 0px",
-        "text-align": "center"
-            }
 app.layout = html.Div(
     [
-        # HEADER
+        # HEADER / Toolbar
         html.Div(
             [
                 html.Div(
                     [
-                        html.H4(TITLE, className="app__header__title"),
+                        #html.H4(TITLE, className="app__header__title"),
+                        html.Img(src='https://img1.wsimg.com/isteam/ip/3f70d281-e9f0-4171-94d1-bfd90bbedd4e/Neptunya_LogoTagline_Black_SolidColor_margin.png/:/cr=t:0%25,l:0%25,w:100%25,h:100%25/rs=h:150'),
                         html.P(
-                            "This Dashboard Displays current values from the neptunya demo system, when DAC turned ON",
+                            "This Dashboard Displays current values from the neptunya waveware system when turned on",
                             className="app__header__title--grey",
                         ),
                     ],
@@ -200,22 +70,33 @@ app.layout = html.Div(
                 html.Div(
                     [
                         html.Button(
-                            "Calibrate",
+                            "Calibrate".upper(),
                             id="calibrate-btn",
                             style=btn_header,
                         )
                     ]
-                ),                
+                ),  
                 html.Div(
                     [
                         html.Button(
-                            "SET LABELS",
-                            id="set-btn",
+                            "Zero".upper(),
+                            id="zero-btn",
                             style=btn_header,
                         )
                     ]
                 ),
-                html.Div([daq.StopButton(id="reset-btn", buttonText="RESET")]),
+                html.Div([daq.StopButton(id="reset-btn", buttonText="STOP")]),                
+                html.Div(
+                    [
+                        html.H6(
+                            "WAVE ON/OFF",
+                            id="motor_msg",
+                            style={"text-align": "center"},
+                        ),
+                        daq.PowerButton(on=False, id="motor_on_off"),
+                    ],
+                    className="one-third column",
+                ),                
                 html.Div(
                     [
                         html.H6(
@@ -226,98 +107,95 @@ app.layout = html.Div(
                         daq.PowerButton(on=False, id="daq_on_off"),
                     ],
                     className="one-third column",
-                ),
+                ),           
             ],
             className="app__header",
         ),
         # BODY
-        html.Div(
-            [
-                # READOUTS
+        html.Div([
+            # READOUTS
+            html.Div([
+                html.Div([
+                    html.H6("INPUT:",className="graph__title"),
+                    html.Div([dcc.Input("Test Name", id="title-in", style={'width':'80%','padding-left':'1%','justify-content':'left'}),
+                    html.Button("set input",id='test-log-send',style={'background-color':'#FFFFFF','height':'30px','padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
+                    style={'displaty':'flex'}),
+                    html.Div([
+                        html.Div([
+                                input_card(**wave_input_parms[k]) for k in wave_inputs if k in wave_input_parms
+                                ])
+                        ],
+                        style={
+                        "display": "table-row",
+                        "width": "100%",
+                        "justify-content":"center"
+                        })
+                    ],
+                    style={
+                        "display": "table",
+                        "width": "100%",
+                        "height": "300px",
+                    },
+                    className="graph__container first",
+                ),
+
+                # Write Test Log
                 html.Div(
                     [
-                        input_card("Test", id="title-in", type="text"),
-                        html.Div(
-                            [
-                                html.H6("INPUT:",className="graph__title"),
-                                input_card(
-                                    "Ts",
-                                    id="wave-ts",
-                                    type="number",
-                                    min=1,
-                                    max=10,
-                                    value=10,
-                                    step=0.1,
-                                ),
-                                input_card(
-                                    "Hs",
-                                    id="wave-hs",
-                                    type="number",
-                                    min=0,
-                                    max=0.2,
-                                    value=0,
-                                    marks=None,
-                                    step=0.01,
-                                ),
-                                input_card(
-                                    "Z-ref",
-                                    id="sen2-x",
-                                    type="number",
-                                    min=0,
-                                    max=100,
-                                    value=0,
-                                    step=1,
-                                ),                               
-                            ]
-                        ),                
+                        html.H6("Test Notes:".upper(),className="graph__title"),
+                        dcc.Textarea(id='test-log',value='',style={'width': '100%', 'height': 200}),
+                        html.Button("record".upper(),id='test-log-send',style={'background-color':'#FFFFFF','height':'30px','padding-top':'0%','padding-bottom':'5%'})
+                    ]
+                ),                
 
-                        html.Div(
-                            [
-                            # Station 1
-                            html.H6("Wave Gen Control:",className="graph__title"),
-                            readout_card("z_cur"),
-                            readout_card("z_cmd"),
-                            readout_card("z_wave"),
-                            readout_card("v_cur"),
-                            readout_card("v_cmd"),
-                            readout_card("v_wave"),                        
-                            html.H6("Encoder Z 1-4:",className="graph__title"),
-                            readout_card("z1"),
-                            readout_card("z2"),
-                            readout_card("z3"),
-                            readout_card("z4"),
-                            html.H6("Echo Sensor Z 1-4:",className="graph__title"),
-                            readout_card("e1"),
-                            readout_card("e2"),
-                            readout_card("e3"),
-                            readout_card("e4"),
-                            ]
-                        ),
-
-                        # Sensor Input
-                        html.Div(
-                            [
-                                html.H6("OUTPUT:",className="graph__title"),
-                                html.Div(id='outy',style={'background-color':'#FFFFFF','height':'200px'})
-
-                            ]
-                        )
-                    ],
-                    className="one-third column histogram__direction",
-                ),
-                # PLOTS
                 html.Div(
                     [
-                        generate_plot("Station Pressure (kpa)"),
-                        generate_plot("Station Speeds (m/s)"),
-                        generate_plot("Station Alpha (frac air)"),
-                        
-                    ],
-                    className="two-thirds column wind__speed__container",
+                    # Station 1
+                    html.H6("Wave Gen Control:".upper(),className="graph__title"),
+                    readout_card("z_cur"),
+                    readout_card("z_cmd"),
+                    readout_card("z_wave"),
+                    readout_card("v_cur"),
+                    readout_card("v_cmd"),
+                    readout_card("v_wave"),                        
+                    html.H6("Encoder Z 1-4:".upper(),className="graph__title"),
+                    readout_card("z1"),
+                    readout_card("z2"),
+                    readout_card("z3"),
+                    readout_card("z4"),
+                    html.H6("Echo Sensor Z 1-4:".upper(),className="graph__title"),
+                    readout_card("e1"),
+                    readout_card("e2"),
+                    readout_card("e3"),
+                    readout_card("e4"),
+                    ]
                 ),
+
+                html.Div(
+                    [
+                    html.H6("Read / Edit Values:".upper(),className="edit_title",style={'display':'none'}),                      dash_table.DataTable(  data=[],
+                                columns=[],
+                                page_action='none',
+                                style_table={'height': '300px', 'overflowY': 'auto'})
+                ])               
             ],
-            className="app__content body",
-        ),
+            className=" column histogram__direction",
+            style={'width':'25%'}
+            ),
+            # PLOTS
+            html.Div(
+                [
+                    generate_plot("Encoder Z 1-4 (mm)".upper()),
+                    generate_plot("Echo Height (mm)".upper()), #TODO: wave plot
+                    generate_plot("Wave Generator (m),(m/s)".upper()),
+                    #TODO: test set overview
+                    
+                ],
+                className="two-thirds column wind__speed__container",
+            ),
+        ],
+        className="app__content body",
+    ),
     dcc.Interval(
     id=f"graph-update",
     interval=2.5*1000,
@@ -370,7 +248,7 @@ def update_graphs(n,on):
             #adjust to present
             df['timestamp']=df['timestamp']-tm
 
-            fig_pr = px.scatter(df,x='timestamp',y=['p1t','p1s','p2t','p2s'])#trendline='lowess',trendline_options=dict(frac=1./10.))
+            fig_pr = px.scatter(df,x='timestamp',y=z_sensors)#trendline='lowess',trendline_options=dict(frac=1./10.))
             fig_pr.update_layout({
             "plot_bgcolor": "rgba(0, 0, 0, 0)",
             "paper_bgcolor": "rgba(0, 0, 0, 0)",
@@ -381,7 +259,7 @@ def update_graphs(n,on):
                 "gridcolor":"white"
                 }) 
 
-            fig_speed = plotly.express.line(df,x='timestamp',y=['V1','V2'])
+            fig_speed = plotly.express.line(df,x='timestamp',y=e_sensors)
             fig_speed.update_layout({
             "plot_bgcolor": "rgba(0, 0, 0, 0)",
             "paper_bgcolor": "rgba(0, 0, 0, 0)",
@@ -392,7 +270,7 @@ def update_graphs(n,on):
                 "gridcolor":"white"
                 })        
 
-            fig_alph = plotly.express.line(df,x='timestamp',y=['alpha1','alpha2'])
+            fig_alph = plotly.express.line(df,x='timestamp',y=z_wave_parms)
             fig_alph.update_layout({
             "plot_bgcolor": "rgba(0, 0, 0, 0)",
             "paper_bgcolor": "rgba(0, 0, 0, 0)",
