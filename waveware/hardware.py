@@ -209,9 +209,11 @@ class hardware_control:
 
 
     async def _setup_hardware(self):
-        if not self.pi.connected:
-            log.info(f'control connecting to pigpio')        
-            con =  await self.pi.connect()
+              
+        if not hasattr(self.pi,'connected'):
+            log.info(f'control connecting to pigpio')  
+            con = await self.pi.connect()
+            self.pi.connected = True
         await self._start_sensors()
     
     async def _start_sensors(self):

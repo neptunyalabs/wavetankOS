@@ -186,11 +186,11 @@ class wave_control:
     #SETUP 
     async def _setup(self):
         if ON_RASPI: 
-            if not self.pi.connected:
-                log.info(f'control connecting to pigpio')
+            if not hasattr(self.pi,'connected'):
                 con = await self.pi.connect()
+                self.pi.connected = True
 
-            log.info(f'PI Connection Res: {con} | {await self.pi.connected}')
+            log.info(f'PI Connection Res: {con}')
             await self.pi.set_mode(self._motor_en_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
