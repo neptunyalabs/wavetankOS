@@ -86,6 +86,8 @@ class program:
         if not skip_dash:
             self.dash = self.run_dashboard()
             self.dash_task = asyncio.create_task(self.dash)
+        else:
+            self.dash = None
 
     def setup(self):
         #configure the system
@@ -102,7 +104,8 @@ class program:
     
     async def close(self,print_dash=True):
         app = self.dash
-        app.close()
+        if app is not None:
+            app.close()
 
         if hasattr(self,'dash_proc'):
             cb = asyncio.gather(self.dash_proc.communicate())
