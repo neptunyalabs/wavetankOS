@@ -38,7 +38,7 @@ def make_app(hw):
             web.get("/getcurrent", hwfi(get_current,hw)), #works
 
             web.post("/set_const", hwfi(set_const,hw)),
-            web.post("/add_note", hwfi(add_note,hw)),
+            web.post("/log_note", hwfi(add_note,hw)),
 
             #start recording
             web.get("/turn_on", hwfi(turn_daq_on,hw)), #works
@@ -82,8 +82,10 @@ async def mpu_calibrate(request,hw):
 async def zero_positions(request,hw):
     loop = asyncio.get_event_loop()
     hw._zero_task = loop.create_task(hw.mark_zero())
-    resp = web.Response(text='Positions zeroed')
-    await hw._zero_task
+    
+    output = await hw._zero_task
+    
+    resp = web.Response(text='Positions zeroed: {output}')
     return resp
 
 #CONTROL
