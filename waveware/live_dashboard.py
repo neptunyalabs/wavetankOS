@@ -376,7 +376,7 @@ def dis_and_en_able_motor(on):
     
 @app.callback(Output('mode-select','value'),
               Input("stop-btn", "n_clicks"))
-def stop_motor(n_clicks,console):
+def stop_motor(n_clicks):
     log.info(f"stopping {n_clicks}.")
     if n_clicks < 1:
         return

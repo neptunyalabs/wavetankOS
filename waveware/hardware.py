@@ -599,12 +599,14 @@ class hardware_control:
             a = dt/ct
             b = 1-a
             for k,rec in d.items():
+                val = rec if rec is not None else 0
                 if k not in FAKE_BIAS:
                     continue
                 if k not in bs:
-                    bs[k] = rec if rec is not None else 0
+                    bs[k] = val
                 else:
-                    bs[k] = bs[k]*b + rec*a
+                    
+                    bs[k] = bs[k]*b + val*a
                 
         self.zero_biases = bs
 
