@@ -341,7 +341,7 @@ def update_readout(n,on):
             if data:
                 print(data) #FIXME: remove
                 data= [ format_value(k,data[k]) if k in data else 0 for k in all_sys_vars]
-                
+                print(data)
                 return data
 
             raise dash.exceptions.PreventUpdate
