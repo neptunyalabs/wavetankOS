@@ -340,9 +340,7 @@ class wave_control:
                 log.info(f'pigpio close error: {e}')
 
     async def _close(self):
-
-            await self.sleep(0.1)
-            await self.pi.stop()
+        await self.pi.stop()
 
 
 
