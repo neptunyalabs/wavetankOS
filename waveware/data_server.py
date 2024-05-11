@@ -85,7 +85,7 @@ async def zero_positions(request,hw):
     
     output = await hw._zero_task
     
-    resp = web.Response(text='Positions zeroed: {output}')
+    resp = web.Response(text=f'Positions zeroed: {output}')
     return resp
 
 #CONTROL
