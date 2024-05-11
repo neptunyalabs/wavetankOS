@@ -57,6 +57,7 @@ def make_app(hw):
             #web.get('/control/calibrate',hwfi(control_cal,hw)),
             #complex control inputs (post/json)
             web.post('/control/set_inputs',hwfi(set_inputs,hw)),
+            web.post('/control/test_pins',hwfi(test_pins,hw)),
         ]
     )
     log.info(f'creating web server')
@@ -70,6 +71,10 @@ async def check(request,hw):
 
 async def mpu_calibrate(request,hw):
     loop = asyncio.get_event_loop()
+
+    if not hw.active:
+        raise Exception(f'DAQ not on')
+
     if hw.active_mpu_cal:
         raise Exception(f'active calibration process!')
     
@@ -83,6 +88,9 @@ async def zero_positions(request,hw):
     loop = asyncio.get_event_loop()
     hw._zero_task = loop.create_task(hw.mark_zero())
     
+    if not hw.active:
+        raise Exception(f'DAQ not on')
+
     output = await hw._zero_task
     output = json.dumps(output)
     resp = web.Response(text=f'Positions zeroed: {output}')
@@ -171,6 +179,18 @@ async def add_note(request,hw):
     dt = datetime.datetime.now()
     return web.Response(body='Added Note: {}')
 
+
+async def test_pins(request,hw):
+
+    pi = hw.pi
+
+    #control
+    obj = hw.control
+    for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin]:
+    try:
+        await pi.write(pin,0)
+    except Exception as e:
+        log.info(f'issue on pin: {pin}| {e}')
 
 
 #Data Recording

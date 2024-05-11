@@ -186,7 +186,10 @@ class wave_control:
     #SETUP 
     async def _setup(self):
         if ON_RASPI: 
-            con = await self.pi.connect()
+            if not self.pi.connected:
+                log.info(f'control connecting to pigpio')
+                con = await self.pi.connect()
+
             log.info(f'PI Connection Res: {con} | {await self.pi.connected}')
             await self.pi.set_mode(self._motor_en_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
@@ -203,6 +206,7 @@ class wave_control:
             await self.pi.write(self._tpwm_pin,0)
             await self.pi.write(self._vpwm_pin,0)
             print(f'raspi setup!')   
+
 
 
     def setup(self):
@@ -222,22 +226,16 @@ class wave_control:
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
-    def start(self,await_feedback=True,go_on_feedback=True):
-        self.start = time.perf_counter()
+    def reset_speed_tasks(self):
+        #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
-
         def check_failure(res):
             try:
                 res.result()
             except Exception as e:
                 log.info(f'speed drive failure: {e}')
-                traceback.print_tb(e.__traceback__)        
-        
-        if await_feedback:
-            self.first_feedback = d = asyncio.Future()
-            self.feedback_task = loop.create_task(self.feedback(d))
-        
-        #SPEED CONTROL MODES
+                traceback.print_tb(e.__traceback__) 
+
         self.speed_off_task = loop.create_task(self.speed_control_off())
         self.speed_off_task.add_done_callback(check_failure)
 
@@ -245,7 +243,18 @@ class wave_control:
         self.speed_pwm_task.add_done_callback(check_failure)
 
         self.speed_step_task = loop.create_task(self.step_speed_control())
-        self.speed_step_task.add_done_callback(check_failure) 
+        self.speed_step_task.add_done_callback(check_failure)         
+
+    def start(self,await_feedback=True,go_on_feedback=True):
+        print(f'start control fb: {await_feedback}| {go_on_feedback}')
+        self.start = time.perf_counter()
+        loop = asyncio.get_event_loop()
+
+        if await_feedback:
+            self.first_feedback = d = asyncio.Future()
+            self.feedback_task = loop.create_task(self.feedback(d))
+        
+        self.reset_speed_tasks()
 
         def go(*args,docal=True,**kw):
             nonlocal self, loop
@@ -276,6 +285,7 @@ class wave_control:
 
         try:
             loop.run_forever()
+
         except KeyboardInterrupt as e:
             log.info("Caught keyboard interrupt. Canceling tasks...")
             self.stop()
@@ -288,7 +298,7 @@ class wave_control:
     #STOPPPING / SAFETY
     #External Control Methods
     async def enable_control(self):
-        log.info('centering on start!')
+        log.info('enable control')
         if not self.enabled:
             if ON_RASPI:
                 val = await self.pi.write(self._motor_en_pin,1)
@@ -303,7 +313,7 @@ class wave_control:
     async def start_control(self):
         await self.enable_control()
         if self.enabled and self.stopped:
-            self.start(await_feedback=False,go_on_feedback=False)
+            self.reset_speed_tasks()
             await asyncio.sleep(0.5)
         else:
             print(f'already started!!')
