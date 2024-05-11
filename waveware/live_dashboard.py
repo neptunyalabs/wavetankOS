@@ -378,7 +378,7 @@ def dis_and_en_able_motor(on):
               Input("stop-btn", "n_clicks"))
 def stop_motor(n_clicks):
     log.info(f"stopping {n_clicks}.")
-    if n_clicks < 1:
+    if n_clicks is None or n_clicks < 1:
         return
     resp = requests.get(f"{REMOTE_HOST}/control/stop")
     if resp.status_code  == 200:
@@ -390,13 +390,13 @@ def stop_motor(n_clicks):
 
 
 #LOGGING FUNCTIONS
-@app.callback(Output('console','children',allow_duplicate=True),
+@app.callback(Output('console','value',allow_duplicate=True),
               Input("zero-btn", "n_clicks"),
-              State('console','children'),
+              State('console','value'),
               prevent_initial_call=True)
 def zero_sensors(n_clicks,console):
     log.info(f"zeroing {n_clicks}.")
-    if n_clicks < 1:
+    if n_clicks is None or  n_clicks < 1:
         return
     resp = requests.get(f"{REMOTE_HOST}/hw/zero_pos")
     if resp.status_code  == 200:
@@ -405,11 +405,11 @@ def zero_sensors(n_clicks,console):
         return append_log(console,f'ERROR ZEROING: {resp.status_code}|{resp.text}')
 
 @app.callback(
-    Output('console','children',allow_duplicate=True),
-    Output('test-log','children'),
+    Output('console','value',allow_duplicate=True),
+    Output('test-log','value'),
     Input("calibrate-btn","n_clicks"),
-    State('console','children'),
-    State('test-log','children'),
+    State('console','value'),
+    State('test-log','value'),
     prevent_initial_call=True
 )
 def log_note(btn,console,test_msg):

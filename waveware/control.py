@@ -82,7 +82,7 @@ class wave_control:
     adc_addr = 0x48
     t_command = 0 #torque fraction of upper limit 0-1
 
-    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm,motor_en_pin,**conf):
+    def __init__(self, dir:int,step:int,speed_pwm:int,fb_an_pin:int,hlfb:int,torque_pwm,motor_en_pin,pi=None,**conf):
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
@@ -113,7 +113,10 @@ class wave_control:
         self._hlfb = hlfb
         
         #TODO: setup high/low interrupt on hlfb for ppr or torque / speed ect
-        
+        if pi is None:
+            self.pi = asyncpio.pi()
+        else:
+            self.pi = pi
         self.reset()
 
         
@@ -123,8 +126,6 @@ class wave_control:
         self.enabled = False
         self._control_modes = {}
         self._control_mode_fail_parms = {}
-
-        self.pi = asyncpio.pi()
 
         self.speed_control_mode = default_speed_mode
         self.mode_changed = None

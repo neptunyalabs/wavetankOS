@@ -191,7 +191,8 @@ class hardware_control:
 
         if cntl_conf is None: 
             cntl_conf = {} #empty
-
+        
+        self.pi = asyncpio.pi()
         self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._adc_alert_pin,self._hlfb_pin,self._torque_pwm_pin,motor_en_pin,**cntl_conf)
 
     #Run / Setup
@@ -208,7 +209,6 @@ class hardware_control:
 
 
     async def _setup_hardware(self):
-        self.pi = asyncpio.pi()
         con =  await self.pi.connect()
 
         await self.setup_encoder()
