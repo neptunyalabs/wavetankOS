@@ -187,8 +187,8 @@ class wave_control:
             if not hasattr(self.pi,'connected'):
                 con = await self.pi.connect()
                 self.pi.connected = True
-
-            log.info(f'PI Connection Res: {con}')
+                log.info(f'PI Connection Res: {con}')
+                
             await self.pi.set_mode(self._motor_en_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
