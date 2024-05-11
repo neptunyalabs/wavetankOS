@@ -172,8 +172,6 @@ class wave_control:
         self.v_active_tol = 0.1
         self.act_max_speed = 0.01
         
-
-
         self.upper_v = 3.3-tol
         self.lower_v = tol     
         self.vref_0 = (self.upper_v+self.lower_v)/2
@@ -414,17 +412,22 @@ class wave_control:
         else:
             self.i2c_lock = lock
 
-        cb = config_bit(cv_inx,fvinx = 4)
-        db = int(f'{dr}00011',2)
-        data = [cb,db]
-        #do this before reading different pin, 
-        log.info(f'setting adc to: {[bin(d) for d in data]}')
-        with self.i2c_lock:
-            self.smbus.write_i2c_block_data(0x48, 0x01, data)
-        #setup alert pin!
-        #self.smbus.write_i2c_block_data(0x48, 0x02, [0x00,0x00])
-        #self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
+        try:
+            cb = config_bit(cv_inx,fvinx = 4)
+            db = int(f'{dr}00011',2)
+            data = [cb,db]
+            #do this before reading different pin, 
+            log.info(f'setting adc to: {[bin(d) for d in data]}')
+            with self.i2c_lock:
+                self.smbus.write_i2c_block_data(0x48, 0x01, data)
+            #setup alert pin!
+            #self.smbus.write_i2c_block_data(0x48, 0x02, [0x00,0x00])
+            #self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
+            self.adc_ready = True
 
+        except Exception as e:
+            log.error('issue setting up temp',exc_info=e)
+            self.adc_ready = False        
 
     def is_safe(self):
         #base = any((self._control_mode_fail_parms.values()))
@@ -434,6 +437,7 @@ class wave_control:
                     not self.fail_st])
     
     def set_mode(self,new_mode):
+        assert self.adc_ready, f'cannot run without feedback!'
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
@@ -449,6 +453,7 @@ class wave_control:
         self.mode_changed = asyncio.Future()
     
     def set_speed_mode(self,new_mode):
+        assert self.adc_ready, f'cannot run without feedback!'
         assert new_mode in speed_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.speed_control_mode:
@@ -494,10 +499,12 @@ class wave_control:
 
     def setup_control(self):
         log.info('starting...')
+        assert self.adc_ready, f'cannot run without feedback!'
+
         loop = asyncio.get_event_loop()
         self.set_mode(default_mode)
         self.started = asyncio.Future()
-
+        
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
         self.stop_task = self.make_control_mode('stop',self.run_stop)
         self.center_task = self.make_control_mode('center',self.center_head)
@@ -524,6 +531,7 @@ class wave_control:
         #     
         # 
         # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+        
         tlast = tnow = time.perf_counter()
         self.z_cur = self.wave.z_pos(tnow)
         self.v_wave = self.wave.z_vel(tnow)

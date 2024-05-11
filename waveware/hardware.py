@@ -203,7 +203,7 @@ class hardware_control:
 
         if ON_RASPI:
             self.setup_i2c()
-            self.control.setup_i2c(smbus=self.smbus,lock=self.i2c_lock)
+            
 
         self.control.setup()
 
@@ -226,25 +226,46 @@ class hardware_control:
         self.smbus = smbus.SMBus(1)
 
         #MPU
-        log.info(f'setup mpu9250')
-        self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
-        log.info(f'mpu9250 begin')
-        self.imu.begin()
-        log.info(f'mpu9250 config')
-        self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
-        self.imu.setAccelRange("AccelRangeSelect2G")
-        self.imu.setGyroRange("GyroRangeSelect250DPS")
-
         self.mpu_cal_file = f"{fdir}/mpu_calib.json"
-        if os.path.exists(self.mpu_cal_file):
-            log.info(f'loading calibration file!: {self.mpu_cal_file}')
-            self.imu.loadCalibDataFromFile(self.mpu_cal_file)
-        self.setup_adc()
+        try:
+            log.info(f'setup mpu9250')
+            self.imu = MPU9250.MPU9250(self.smbus, self.mpu_addr)
+            log.info(f'mpu9250 begin')
+            self.imu.begin()
+            log.info(f'mpu9250 config')
+            self.imu.setLowPassFilterFrequency("AccelLowPassFilter184")
+            self.imu.setAccelRange("AccelRangeSelect2G")
+            self.imu.setGyroRange("GyroRangeSelect250DPS")
+            if os.path.exists(self.mpu_cal_file):
+                log.info(f'loading calibration file!: {self.mpu_cal_file}')
+                self.imu.loadCalibDataFromFile(self.mpu_cal_file)  
+            self.imu_ready = True
+        except Exception as e:
+            log.error('issue setting up imu',exc_info=e)
+            self.imu_ready = False
+            
+        try:
+            self.control.setup_i2c(smbus=self.smbus,lock=self.i2c_lock)
+            self.adc_ready = True
+        except Exception as e:
+            log.error('issue setting up control i2c',exc_info=e)
+            self.adc_ready = False
+
+        try:
+            self.smbus.read_i2c_block_data(0x40, 0xE3,2)
+            self.temp_ready = True
+        except Exception as e:
+            log.error('issue setting up temp',exc_info=e)
+            self.temp_ready = False
+            
+        
 
     def create_sensor_tasks(self):
         loop = asyncio.get_event_loop()
-        self.imu_read_task = loop.create_task(self.imu_task())
-        self.temp_task = loop.create_task(self.temp_task())
+        if self.imu_ready:
+            self.imu_read_task = loop.create_task(self.imu_task())
+        if self.temp_ready:
+            self.temp_task = loop.create_task(self.temp_task())
         self.print_task = loop.create_task(self.print_data())        
 
     def run(self):
