@@ -103,7 +103,7 @@ class wave_control:
 
         self.max_speed_motor = 0.1 #TODO: get better motor constants
                 
-        self.stopped = False
+        self.stopped = True
         self._motor_en_pin = motor_en_pin
         self._dir_pin = dir
         self._step_pin = step
@@ -186,7 +186,8 @@ class wave_control:
     #SETUP 
     async def _setup(self):
         if ON_RASPI: 
-            await self.pi.connect()
+            con = await self.pi.connect()
+            log.info(f'PI Connection Res: {con} | {await self.pi.connected}')
             await self.pi.set_mode(self._motor_en_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
@@ -200,12 +201,12 @@ class wave_control:
             await self.pi.write(self._dir_pin,0)
             await self.pi.write(self._step_pin,0)
             await self.pi.write(self._tpwm_pin,0)
-            await self.pi.write(self._vpwm_pin,0)        
+            await self.pi.write(self._vpwm_pin,0)
+            print(f'raspi setup!')   
 
 
     def setup(self):
         self.start = None
-        self.stopped = False 
         loop = asyncio.get_event_loop()
 
         self.speed_control_mode = default_speed_mode
@@ -223,7 +224,6 @@ class wave_control:
 
     def start(self,await_feedback=True,go_on_feedback=True):
         self.start = time.perf_counter()
-        self.stopped = False 
         loop = asyncio.get_event_loop()
 
         def check_failure(res):

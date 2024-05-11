@@ -115,7 +115,9 @@ class program:
 
             res = self.dash_proc.kill()
             log.info(f'dash proc kill: {res}')
-        await cb
+            await cb
+
+        await asyncio.sleep(0.1)
 
     def cli(self):
         """The main task does several things:
