@@ -59,7 +59,7 @@ from waveware.config import *
 
 
 logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("data")
+log = logging.getLogger("hw")
 
 
 FAKE_INIT_TIME = 60.
