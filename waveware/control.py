@@ -437,7 +437,6 @@ class wave_control:
                     not self.fail_st])
     
     def set_mode(self,new_mode):
-        assert self.adc_ready, f'cannot run without feedback!'
         assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
@@ -453,7 +452,6 @@ class wave_control:
         self.mode_changed = asyncio.Future()
     
     def set_speed_mode(self,new_mode):
-        assert self.adc_ready, f'cannot run without feedback!'
         assert new_mode in speed_modes,'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.speed_control_mode:
@@ -531,7 +529,7 @@ class wave_control:
         #     
         # 
         # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
-        
+
         tlast = tnow = time.perf_counter()
         self.z_cur = self.wave.z_pos(tnow)
         self.v_wave = self.wave.z_vel(tnow)
