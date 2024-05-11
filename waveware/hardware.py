@@ -239,11 +239,15 @@ class hardware_control:
             self.imu.loadCalibDataFromFile(self.mpu_cal_file)
         self.setup_adc()
 
-    def run(self):
+    def create_sensor_tasks(self):
         loop = asyncio.get_event_loop()
         self.imu_read_task = loop.create_task(self.imu_task())
         self.temp_task = loop.create_task(self.temp_task())
-        self.print_task = loop.create_task(self.print_data())
+        self.print_task = loop.create_task(self.print_data())        
+
+    def run(self):
+        
+        self.create_sensor_tasks()
         
         time.sleep(0.1) 
         #TODO: check everything ok

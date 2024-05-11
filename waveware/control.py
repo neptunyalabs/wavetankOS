@@ -226,7 +226,7 @@ class wave_control:
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
-    def reset_speed_tasks(self):
+    def set_speed_tasks(self,d_fb=None):
         #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
         def check_failure(res):
@@ -235,6 +235,8 @@ class wave_control:
             except Exception as e:
                 log.info(f'speed drive failure: {e}')
                 traceback.print_tb(e.__traceback__) 
+        
+        self.feedback_task = loop.create_task(self.feedback(d_fb))
 
         self.speed_off_task = loop.create_task(self.speed_control_off())
         self.speed_off_task.add_done_callback(check_failure)
@@ -250,11 +252,11 @@ class wave_control:
         self.start = time.perf_counter()
         loop = asyncio.get_event_loop()
 
-        self.feedback_task = loop.create_task(self.feedback(d))
+        
         if await_feedback:
             self.first_feedback = d = asyncio.Future()
         
-        self.reset_speed_tasks()
+        self.set_speed_tasks(d)
 
         def go(*args,docal=True,**kw):
             nonlocal self, loop

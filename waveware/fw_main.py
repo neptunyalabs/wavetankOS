@@ -71,7 +71,9 @@ class program:
             log.info("starting hw data server..")
             # Create App & Setup
             await self.app.setup() #turn on webapp
-            await 
+            
+            #Create HW Tasks
+            self.
 
             # CREATE PIPELINE TASKS
             # 1. data poll
@@ -100,6 +102,9 @@ class program:
         #configure the system
         self.hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
         self.hw.setup()
+        self.hw.create_sensor_tasks()
+        self.hw.control.setup_control()
+        #self.hw.control.set_speed_tasks()
         self.app = make_app(self.hw)
 
     def print_dash(self,out):
