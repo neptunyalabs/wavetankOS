@@ -289,7 +289,8 @@ class wave_control:
         if loop.is_running:
             loop.call_soon(self._stop)
         else:
-            loop.run_until_complete(self._stop())        
+            loop.run_until_complete(self._stop())     
+            loop.run_until_complete(self._close())
         self.stopped = True
 
     async def _stop(self):
@@ -337,6 +338,8 @@ class wave_control:
                 await self.pi.wave_clear()
             except Exception as e:
                 log.info(f'pigpio close error: {e}')
+
+    async def _close(self):
 
             await self.sleep(0.1)
             await self.pi.stop()
