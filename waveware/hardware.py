@@ -474,14 +474,14 @@ class hardware_control:
             #Add in GPIO Signals
             for i,echo_pin in enumerate(self.echo_pins):
                 if echo_pin in self.last:
-                    out[f'e{i}'] = self.read(echo_pin)
-                    out[f'e{i}_ts'] = self.last[echo_pin].get('dt_tick',None)
+                    out[f'e{i+1}'] = self.read(echo_pin)
+                    out[f'e{i+1}_ts'] = self.last[echo_pin].get('dt_tick',None)
                 else:
-                    out[f'e{i}'] = 0
-                    out[f'e{i}_ts'] = None
+                    out[f'e{i+1}'] = 0
+                    out[f'e{i+1}_ts'] = 0
 
             for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
-                out[f'z{i}'] = self.last.get(f'pos_enc_{i}',None)
+                out[f'z{i}'] = self.last.get(f'pos_enc_{i}',0)
 
         else:
             #FAKENESS
