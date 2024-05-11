@@ -250,9 +250,9 @@ class wave_control:
         self.start = time.perf_counter()
         loop = asyncio.get_event_loop()
 
+        self.feedback_task = loop.create_task(self.feedback(d))
         if await_feedback:
             self.first_feedback = d = asyncio.Future()
-            self.feedback_task = loop.create_task(self.feedback(d))
         
         self.reset_speed_tasks()
 

@@ -68,9 +68,10 @@ class program:
 
     async def main(self,skip_dash=False):
         try:
-            log.info("starting data aquisition")
+            log.info("starting hw data server..")
             # Create App & Setup
-            await self.app.setup()
+            await self.app.setup() #turn on webapp
+            await 
 
             # CREATE PIPELINE TASKS
             # 1. data poll
@@ -98,6 +99,7 @@ class program:
     def setup(self):
         #configure the system
         self.hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
+        self.hw.setup()
         self.app = make_app(self.hw)
 
     def print_dash(self,out):
