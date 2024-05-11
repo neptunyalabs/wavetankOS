@@ -602,7 +602,7 @@ class hardware_control:
                 if k not in FAKE_BIAS:
                     continue
                 if k not in bs:
-                    bs[k] = rec
+                    bs[k] = rec if rec is not None else 0
                 else:
                     bs[k] = bs[k]*b + rec*a
                 

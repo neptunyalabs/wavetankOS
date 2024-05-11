@@ -81,6 +81,7 @@ sudo apt install python3-pip -y
 sudo apt install python3-setuptools -y
 sudo apt install python3-pigpio -y
 sudo apt install libatlas3-base -y
+sudo apt install awscli boto3 -y
 
 ### Terminal plotting
 git clone https://github.com/mogenson/ploot.git
@@ -106,6 +107,7 @@ then
 else
     conda activate py3
 fi
+
 
 #Allow python 3.10 to bind to ports below 1025
 sudo setcap 'cap_net_bind_service=+ep' "$(which python3.10)"
