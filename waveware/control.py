@@ -113,10 +113,13 @@ class wave_control:
         self._hlfb = hlfb
         
         #TODO: setup high/low interrupt on hlfb for ppr or torque / speed ect
+
+        #setup pi if one isn't provided
         if pi is None:
             self.pi = asyncpio.pi()
         else:
             self.pi = pi
+
         self.reset()
 
         
@@ -340,6 +343,7 @@ class wave_control:
                 log.info(f'pigpio close error: {e}')
 
     async def _close(self):
+        time.sleep(1)
         await self.pi.stop()
 
 
