@@ -6,6 +6,7 @@ global ON_RASPI
 import logging
 import os, sys
 import pathlib
+import traceback
 
 from waveware.hardware import hardware_control
 from waveware.data_server import make_app,push_data
@@ -66,28 +67,33 @@ class program:
             return dash
 
     async def main(self,skip_dash=False):
-        log.info("starting data aquisition")
-        # Create App & Setup
-        await self.app.setup()
+        try:
+            log.info("starting data aquisition")
+            # Create App & Setup
+            await self.app.setup()
 
-        # CREATE PIPELINE TASKS
-        # 1. data poll
-        self.poll_task = asyncio.create_task(self.hw.poll_data())
-        # 2. process data
-        self.process_task = asyncio.create_task(self.hw.process_data())
-        # 3. push data
-        self.push_task = asyncio.create_task(push_data(self.hw))
+            # CREATE PIPELINE TASKS
+            # 1. data poll
+            self.poll_task = asyncio.create_task(self.hw.poll_data())
+            # 2. process data
+            self.process_task = asyncio.create_task(self.hw.process_data())
+            # 3. push data
+            self.push_task = asyncio.create_task(push_data(self.hw))
 
-        # Run Site
-        self.site = web.TCPSite(self.app, "0.0.0.0", embedded_srv_port)
-        self.site_task = asyncio.create_task(self.site.start())
+            # Run Site
+            self.site = web.TCPSite(self.app, "0.0.0.0", embedded_srv_port)
+            self.site_task = asyncio.create_task(self.site.start())
 
-        # Run Dashboard
-        if not skip_dash:
-            self.dash = self.run_dashboard()
-            self.dash_task = asyncio.create_task(self.dash)
-        else:
-            self.dash = None
+            # Run Dashboard
+            if not skip_dash:
+                self.dash = self.run_dashboard()
+                self.dash_task = asyncio.create_task(self.dash)
+            else:
+                self.dash = None
+        except Exception as e:
+            print(f'error in main: {e}')
+            traceback.print_tb(e.__traceback__)
+            sys.exit(1)
 
     def setup(self):
         #configure the system

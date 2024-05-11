@@ -57,7 +57,7 @@ def make_app(hw):
             #web.get('/control/calibrate',hwfi(control_cal,hw)),
             #complex control inputs (post/json)
             web.post('/control/set_inputs',hwfi(set_inputs,hw)),
-            web.post('/control/test_pins',hwfi(test_pins,hw)),
+            web.get('/control/test_pins',hwfi(test_pins,hw)),
         ]
     )
     log.info(f'creating web server')

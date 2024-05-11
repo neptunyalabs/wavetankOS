@@ -245,7 +245,7 @@ class wave_control:
         self.speed_step_task = loop.create_task(self.step_speed_control())
         self.speed_step_task.add_done_callback(check_failure)         
 
-    def start(self,await_feedback=True,go_on_feedback=True):
+    def startup(self,await_feedback=True,go_on_feedback=True):
         print(f'start control fb: {await_feedback}| {go_on_feedback}')
         self.start = time.perf_counter()
         loop = asyncio.get_event_loop()
@@ -281,7 +281,7 @@ class wave_control:
         self.stopped = False
         loop = asyncio.get_event_loop()
         
-        self.start(await_feedback=True)
+        self.startup(await_feedback=True)
 
         try:
             loop.run_forever()
