@@ -208,6 +208,11 @@ class wave_control:
         self.stopped = False 
         loop = asyncio.get_event_loop()
 
+        self.speed_control_mode = default_speed_mode
+
+        self.mode_changed = asyncio.Future()
+        self.speed_control_mode_changed = asyncio.Future()        
+
         #Add Exception & Signal Handling
         # g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
         # loop.set_exception_handler(g) #TODO: get this working
@@ -216,7 +221,7 @@ class wave_control:
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
-    def start(self,await_feedback=True):
+    def start(self,await_feedback=True,go_on_feedback=True):
         self.start = time.perf_counter()
         self.stopped = False 
         loop = asyncio.get_event_loop()
@@ -227,13 +232,7 @@ class wave_control:
             except Exception as e:
                 log.info(f'speed drive failure: {e}')
                 traceback.print_tb(e.__traceback__)        
-
-        self.speed_control_mode = default_speed_mode
-
-        self.mode_changed = asyncio.Future()
-        self.speed_control_mode_changed = asyncio.Future()
         
-
         if await_feedback:
             self.first_feedback = d = asyncio.Future()
             self.feedback_task = loop.create_task(self.feedback(d))
@@ -264,7 +263,7 @@ class wave_control:
                 loop = asyncio.get_running_loop()
                 center_start = loop.create_task(self.center_start(default_mode))
 
-        if await_feedback:
+        if await_feedback and go_on_feedback:
             self.first_feedback.add_done_callback(go)
                     
 
@@ -287,6 +286,38 @@ class wave_control:
 
 
     #STOPPPING / SAFETY
+    #External Control Methods
+    async def enable_control(self):
+        log.info('centering on start!')
+        if not self.enabled:
+            if ON_RASPI:
+                val = await self.pi.write(self._motor_en_pin,1)
+                print(f'got val in enable: {val}')
+                if val == 1:
+                    self.enabled = True
+            else:
+                self.enabled = True
+        else:
+            print(f'already enabled!')
+
+    async def start_control(self):
+        await self.enable_control()
+        if self.enabled and self.stopped:
+            self.start(await_feedback=False,go_on_feedback=False)
+            await asyncio.sleep(0.5)
+        else:
+            print(f'already started!!')
+
+    async def disable_control(self):
+        log.info('disabiling motor!')
+        if ON_RASPI:
+            await self.pi.write(self._motor_en_pin,0) #disable force
+        self.enabled = False
+
+    async def stop_control(self):
+        await self.disable_control()
+        await self._stop()
+
     def stop(self):
         loop = asyncio.get_event_loop()
         if loop.is_running:
@@ -312,10 +343,6 @@ class wave_control:
 
         await self.sleep(0.1)
         if ON_RASPI:
-            try:
-                await self.pi.wave_tx_stop()
-            except Exception as e:
-                log.info(f'pigpio wavestop error: {e}')
 
             #Set PWM Drive off
             log.info(f'setting pwm off')
@@ -334,18 +361,21 @@ class wave_control:
             except Exception as e:
                 log.info(f'exception turning off steps: {e}')             
 
-
             await self.sleep(0.1)
-        
-            try:
-                await self.pi.wave_clear()
-            except Exception as e:
-                log.info(f'pigpio close error: {e}')
 
     async def _close(self):
+        try:
+            await self.pi.wave_tx_stop()
+        except Exception as e:
+            log.info(f'pigpio wavestop error: {e}')
+        
+        try:
+            await self.pi.wave_clear()
+        except Exception as e:
+            log.info(f'pigpio close error: {e}')                
+
         time.sleep(1)
         await self.pi.stop()
-
 
 
     # async def exec_cb(self,exc,loop):
@@ -442,7 +472,6 @@ class wave_control:
             except Exception as e:
                 traceback.print_exception(e)
 
-        
         def on_start(*res):
             task = loop.create_task(func)
             self._control_modes[mode]=task
@@ -458,7 +487,6 @@ class wave_control:
         self.started = asyncio.Future()
 
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
-        
         self.stop_task = self.make_control_mode('stop',self.run_stop)
         self.center_task = self.make_control_mode('center',self.center_head)
         self.cal_task = self.make_control_mode('cal',self.calibrate)
@@ -702,37 +730,7 @@ class wave_control:
         if go_to_mode is not None:
             self.set_mode(go_to_mode)
 
-    #External Control Methods
-    async def enable_control(self):
-        log.info('centering on start!')
-        if not self.enabled:
-            if ON_RASPI:
-                val = await self.pi.write(self._motor_en_pin,1)
-                print(f'got val in enable: {val}')
-                if val == 1:
-                    self.enabled = True
-            else:
-                self.enabled = True
-        else:
-            print(f'already enabled!')
 
-    async def start_control(self):
-        await self.enable_control()
-        if self.enabled and self.stopped:
-            self.start(await_feedback=False)
-            await asyncio.sleep(0.5)
-        else:
-            print(f'already started!!')
-
-    async def disable_control(self):
-        log.info('disabiling motor!')
-        if ON_RASPI:
-            await self.pi.write(self._motor_en_pin,0) #disable force
-        self.enabled = False
-
-    async def stop_control(self):
-        await self.disable_control()
-        await self._stop()
 
     #Calibrate MOde
     async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):

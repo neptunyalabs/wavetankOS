@@ -113,8 +113,8 @@ class program:
             if print_dash:
                 cb.add_done_callback(self.print_dash)
 
-        res = self.dash_proc.kill()
-        log.info(f'dash proc kill: {res}')
+            res = self.dash_proc.kill()
+            log.info(f'dash proc kill: {res}')
         await cb
 
     def cli(self):

@@ -84,7 +84,7 @@ async def zero_positions(request,hw):
     hw._zero_task = loop.create_task(hw.mark_zero())
     
     output = await hw._zero_task
-    
+    output = json.dumps(output)
     resp = web.Response(text=f'Positions zeroed: {output}')
     return resp
 
@@ -114,6 +114,7 @@ async def start_control(request,hw):
 
 #DATA LOGGING
 async def turn_daq_on(request,hw):
+    '''switch puts data in buffer'''
     log.info("turning on")
     hw.active = True
     return web.Response(text="success")

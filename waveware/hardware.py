@@ -210,15 +210,12 @@ class hardware_control:
 
     async def _setup_hardware(self):
         con =  await self.pi.connect()
-
+        await self._start_sensors()
+    
+    async def _start_sensors(self):
         await self.setup_encoder()
         await self.setup_echo_sensors()        
-        
-        #TODO: functionality
-        #await self.setup_motor_control()
-        #await self.setup_i2c_sensors()
-        #await self.setup_gpio_sensors()
-        #await self.setup_adc_sensors()        
+             
     
     def setup_i2c(self):
         log.info(f'setup i2c')
@@ -506,9 +503,9 @@ class hardware_control:
                     out[k] = out[k] + v
 
         #Add control info
-        out['z_wave'] = self.control.z_cur
+        out['z_wave'] = self.control.v_wave
         out['z_cmd'] = self.control.z_cmd
-        out['z_cur'] = self.control.v_cur
+        out['z_cur'] = self.control.z_cur
         out['v_cmd'] = self.control.v_command
         out['v_cur'] = self.control.v_cur
         out['v_wave'] = self.control.v_wave
@@ -609,6 +606,8 @@ class hardware_control:
                     bs[k] = bs[k]*b + val*a
                 
         self.zero_biases = bs
+
+        return 
 
 def main():
     from waveware.control import regular_wave
