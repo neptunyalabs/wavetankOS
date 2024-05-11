@@ -71,9 +71,7 @@ class program:
             log.info("starting hw data server..")
             # Create App & Setup
             await self.app.setup() #turn on webapp
-            
-            #Create HW Tasks
-            self.
+
 
             # CREATE PIPELINE TASKS
             # 1. data poll
