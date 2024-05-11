@@ -187,10 +187,10 @@ async def test_pins(request,hw):
     #control
     obj = hw.control
     for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin]:
-    try:
-        await pi.write(pin,0)
-    except Exception as e:
-        log.info(f'issue on pin: {pin}| {e}')
+        try:
+            await pi.write(pin,0)
+        except Exception as e:
+            log.info(f'issue on pin: {pin}| {e}')
 
 
 #Data Recording
