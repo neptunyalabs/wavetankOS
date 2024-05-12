@@ -126,8 +126,8 @@ async def ctrl_status(request,hw):
     out = {'dac_active':hw.active,
            'motor_enabled':hw.control.enabled,
            'motor_stopped':hw.control.stopped,
-           'speed_mode': hw.speed_control_mode,
-           'drive_mode': hw.drive_mode}
+           'speed_mode': hw.control.speed_control_mode,
+           'drive_mode': hw.control.drive_mode}
     return web.Response(body=json.dumps(out))
 
 async def turn_daq_on(request,hw):
