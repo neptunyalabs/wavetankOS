@@ -48,7 +48,7 @@ z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
 z_sensors = [f'z{i+1}' for i in range(4)]
 e_sensors = [f'e{i+1}' for i in range(4)]
 
-wave_drive_modes = ['off','center','wave']
+wave_drive_modes = ['stop','center','wave']
 M = len(wave_drive_modes)
 mode_dict = {i:v.upper() for i,v in enumerate(wave_drive_modes)}
 
@@ -76,7 +76,7 @@ all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
 #                         )
 
 mode_input_parms = dict(
-                         off=   {
+                         stop=   {
                                     "label": html.Div(['OFF'], style={'color': 'WHITE', 'font-size': 20}),
                                     "value": "OFF",
                                 },
@@ -102,18 +102,18 @@ wave_input_parms = {
                             vertical=True,
                             N=Ninputs
                         ),
-                        'wave-hs':dict(
-                                name="Hs".upper(),
-                                id="wave-hs",
-                                type="number",
-                                min=0,
-                                max=0.2,
-                                value=0,
-                                marks=None,
-                                step=0.01,
-                                vertical=True,
-                                N=Ninputs
-                            ),
+                    'wave-hs':dict(
+                            name="Hs".upper(),
+                            id="wave-hs",
+                            type="number",
+                            min=0,
+                            max=0.2,
+                            value=0,
+                            marks=None,
+                            step=0.01,
+                            vertical=True,
+                            N=Ninputs
+                        ),
                         'z_ref':dict(
                             name="z0".upper(),
                             id="z-ref",

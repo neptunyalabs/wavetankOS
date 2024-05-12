@@ -58,6 +58,7 @@ def make_app(hw):
             #complex control inputs (post/json)
             web.post('/control/set_inputs',hwfi(set_inputs,hw)),
             web.get('/control/test_pins',hwfi(test_pins,hw)),
+            web.get('/control/status',hwfi(ctrl_status,hw)),
         ]
     )
     log.info(f'creating web server')
@@ -96,7 +97,7 @@ async def zero_positions(request,hw):
     resp = web.Response(text=f'Positions zeroed: {output}')
     return resp
 
-#CONTROL
+#Start / Stop
 async def run_wave(request,hw):
     assert not hw.control.started
     hw.control.set_mode('wave')
@@ -121,6 +122,14 @@ async def start_control(request,hw):
 
 
 #DATA LOGGING
+async def ctrl_status(request,hw):
+    out = {'dac_active':hw.active,
+           'motor_enabled':hw.control.enabled,
+           'motor_stopped':hw.control.stopped,
+           'speed_mode': hw.speed_control_mode,
+           'drive_mode': hw.drive_mode}
+    return web.Response(body=json.dumps(out))
+
 async def turn_daq_on(request,hw):
     '''switch puts data in buffer'''
     log.info("turning on")
@@ -190,6 +199,16 @@ async def test_pins(request,hw):
             await pi.write(pin,0)
         except Exception as e:
             log.info(f'issue on pin: {pin}| {e}')
+
+
+
+
+
+
+
+
+
+
 
 
 #Data Recording

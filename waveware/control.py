@@ -603,7 +603,6 @@ class wave_control:
                     # Convert the data
                     vdtnow = self.v_command
                     
-
                     kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
                     self.calc_rates(vdtnow,tnow,**kw)
 

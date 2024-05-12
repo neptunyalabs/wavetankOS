@@ -226,91 +226,9 @@ app.layout = html.Div(
 
 
 
-
-
-
-
-
-axes_style = {
-                "linecolor":"white",
-                "gridcolor":"white"
-                }
-layout_style = {
-            "plot_bgcolor": "rgba(0, 0, 0, 0)",
-            "paper_bgcolor": "rgba(0, 0, 0, 0)",
-            "font_color":"white",
-            }
-
-
-
-@app.callback(
-    [Output(f'{mk}-graph',"figure") for mk in PLOTS],
-    Input("graph-update","n_intervals"),
-    State("daq_on_off","on")
-            )
-def update_graphs(n,on):
-    """first ask for new data then update the graphs"""
-    log.info(f'update graphs {on}')
-    begin = time.perf_counter()
-    if on:
-        try:
-            #TODO: add synchronization via diskcache... in background thread?
-            if memcache:
-                #we got data so lets do the query
-                max_ts = max(list(memcache.keys()))
-                new_data = requests.get(f"{REMOTE_HOST}/getdata?after={max_ts}")
-            else:
-                #no data, so ask for the full blast. yeet
-                new_data = requests.get(f"{REMOTE_HOST}/getdata")
-
-
-
-            #Apply away
-            if new_data.status_code == 200:
-                #log.info(f'got response {new_data}')
-                data = new_data.json()
-                #add data to cache
-                for ts,data in data.items():
-                    memcache[float(ts)] = data
-            else:
-                log.info(f'got bad response: {new_data}')
-
-            #dataframe / index
-            #tm = time.perf_counter()    
-            data = list(memcache.values())    
-            print(data[0:4])
-            df = pd.DataFrame.from_dict(data)
-            print(df)
-            df.set_index('timestamp')
-            df.sort_index()
-
-            #adjust to present
-            
-            print(df.columns)
-            t = df['timestamp']
-            df['timestamp']=t-t.max()
-
-            fig_pr = px.scatter(df,x='timestamp',y=z_sensors)#trendline='lowess',trendline_options=dict(frac=1./10.))
-            fig_pr.update_layout(layout_style)
-            fig_pr.update_xaxes(axes_style)
-
-            fig_speed = plotly.express.line(df,x='timestamp',y=e_sensors)
-            fig_speed.update_layout(layout_style)
-            fig_speed.update_xaxes(axes_style)        
-
-            fig_alph = plotly.express.line(df,x='timestamp',y=z_wave_parms)
-            fig_alph.update_layout(layout_style)
-            fig_alph.update_xaxes(axes_style)
-                    
-            log.info(f'returning 3 graphs {time.perf_counter()-begin}')
-            return [fig_pr,fig_speed,fig_alph]
-        
-        except Exception as e:
-            log.error(e,exc_info=1)
-            log.info(e)
-    
-    raise dash.exceptions.PreventUpdate
-
+def control_status():
+    resp = requests.get(f"{REMOTE_HOST}/control/status")
+    return resp.json()
 
 def format_value(k,data):
     if data:
@@ -319,6 +237,31 @@ def format_value(k,data):
         else:
             return float(Decimal(str(data)).quantize(mm_accuracy_enc))
     return data
+
+@app.callback([Output('mode-select','value'),
+               Output("motor_on_off", "on"),
+               Output("motor_on_off", "label"),
+               Output("daq_on_off", "label"),
+               Output("daq_on_off", "on"),
+               Input("num-raw-update","n_intervals")])
+def update_status(n):
+    status = control_status()
+
+    mode = status['drive_mode']
+    mode = mode if mode.lower() != 'cal' else 'center'
+
+    motor_on = not status['motor_stopped']
+    dac_on = not status['motor_stopped']
+
+    out = (mode,
+           motor_on,
+           'MOTOR RDY' if motor_on else 'MOTOR OFF',
+           'DAC ON' if dac_on else 'DAC OFF',
+           dac_on,
+           )
+    return out
+
+
 
 #TODO; add status (indicator?) output red/green for true/false
 #all_sys_vars get update in order by data
@@ -335,9 +278,7 @@ def update_readout(n,on):
             new_data = requests.get(f"{REMOTE_HOST}/getcurrent")
             data = new_data.json()
             if data:
-                #print(data) #FIXME: remove
                 data= [ format_value(k,data[k]) if k in data else 0 for k in all_sys_vars]
-                #print(data)
                 return data
 
             raise dash.exceptions.PreventUpdate
@@ -348,7 +289,7 @@ def update_readout(n,on):
     raise dash.exceptions.PreventUpdate
 
 
-@app.callback(Output("daq_on_off", "label"),
+@app.callback(Output('none0', 'children'),
               Input("daq_on_off", "on"),
               prevent_initial_call=True)
 def turn_on_off_daq(on):
@@ -360,30 +301,36 @@ def turn_on_off_daq(on):
         requests.get(f"{REMOTE_HOST}/turn_off")
         return "DAC OFF"
     
-@app.callback(Output("motor_on_off", "label"),
+@app.callback(Output('none1', 'children'),
               Input("motor_on_off", "on"),
               prevent_initial_call=True)
 def dis_and_en_able_motor(on):
     log.info(f"MOTOR ENABLED: {on}.")
-    if on:
+    status = control_status()
+    
+    if not status['motor_enabled']:
         requests.get(f"{REMOTE_HOST}/control/enable")
         return "MOTOR ENABLED"
     else:
         requests.get(f"{REMOTE_HOST}/control/disable")
-        return "MOTOR DISABLE"
+        return "MOTOR DISABLED"
     
-@app.callback(Output('mode-select','value'),
-              Input("stop-btn", "n_clicks"))
-def stop_motor(n_clicks):
+@app.callback(Output('none2', 'children'),
+              Input("stop-btn", "n_clicks"),
+              State("motor_on_off", "on"),
+              prevent_initial_call=True)
+def stop_motor(n_clicks,on):
     log.info(f"stopping {n_clicks}.")
     if n_clicks is None or n_clicks < 1:
         return
-    resp = requests.get(f"{REMOTE_HOST}/control/stop")
-    if resp.status_code  == 200:
-        return 0 #set off
-    else:
-        return 0
-
+    status = control_status()
+    if on or not status['motor_stopped']:
+        resp = requests.get(f"{REMOTE_HOST}/control/stop")
+        if resp.status_code  == 200:
+            return 0,False,'MOTOR STOPPED' #set off
+        else:
+            return 0,False,f'ERROR STOPPING: {resp.text}'
+    return 0,False,'MOTOR STOPPED'
 
 
 
@@ -486,6 +433,83 @@ def append_log(prv_msgs,msg,section_title=None):
 
 
 
+axes_style = {
+                "linecolor":"white",
+                "gridcolor":"white"
+                }
+layout_style = {
+            "plot_bgcolor": "rgba(0, 0, 0, 0)",
+            "paper_bgcolor": "rgba(0, 0, 0, 0)",
+            "font_color":"white",
+            }
+
+
+
+@app.callback(
+    [Output(f'{mk}-graph',"figure") for mk in PLOTS],
+    Input("graph-update","n_intervals"),
+    State("daq_on_off","on")
+            )
+def update_graphs(n,on):
+    """first ask for new data then update the graphs"""
+    log.info(f'update graphs {on}')
+    begin = time.perf_counter()
+    if on:
+        try:
+            #TODO: add synchronization via diskcache... in background thread?
+            if memcache:
+                #we got data so lets do the query
+                max_ts = max(list(memcache.keys()))
+                new_data = requests.get(f"{REMOTE_HOST}/getdata?after={max_ts}")
+            else:
+                #no data, so ask for the full blast. yeet
+                new_data = requests.get(f"{REMOTE_HOST}/getdata")
+
+
+
+            #Apply away
+            if new_data.status_code == 200:
+                #log.info(f'got response {new_data}')
+                data = new_data.json()
+                #add data to cache
+                for ts,data in data.items():
+                    memcache[float(ts)] = data
+            else:
+                log.info(f'got bad response: {new_data}')
+
+            #dataframe / index
+            #tm = time.perf_counter()    
+            data = list(memcache.values())
+            df = pd.DataFrame.from_dict(data)
+
+            df.set_index('timestamp')
+            df.sort_index()
+
+            #adjust to present
+            
+            t = df['timestamp']
+            df['timestamp']=t-t.max()
+
+            fig_pr = px.scatter(df,x='timestamp',y=z_sensors)#trendline='lowess',trendline_options=dict(frac=1./10.))
+            fig_pr.update_layout(layout_style)
+            fig_pr.update_xaxes(axes_style)
+
+            fig_speed = plotly.express.line(df,x='timestamp',y=e_sensors)
+            fig_speed.update_layout(layout_style)
+            fig_speed.update_xaxes(axes_style)        
+
+            fig_alph = plotly.express.line(df,x='timestamp',y=z_wave_parms)
+            fig_alph.update_layout(layout_style)
+            fig_alph.update_xaxes(axes_style)
+                    
+            log.info(f'returning 3 graphs {time.perf_counter()-begin}')
+            return [fig_pr,fig_speed,fig_alph]
+        
+        except Exception as e:
+            log.error(e,exc_info=1)
+            log.info(e)
+    
+    raise dash.exceptions.PreventUpdate
 
 
 
