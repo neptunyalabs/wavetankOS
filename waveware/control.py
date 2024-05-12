@@ -309,7 +309,7 @@ class wave_control:
     async def start_control(self):
         await self.enable_control()
         if self.enabled and self.stopped:
-            self.reset_speed_tasks()
+            self.set_speed_tasks()
             self.stopped = False
             await asyncio.sleep(0.5)
         elif not self.stopped:
