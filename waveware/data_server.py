@@ -239,7 +239,7 @@ async def push_data(hw):
                             data_rows[row_ts] = row
 
                 # Finally try writing the data
-                if data_rows:
+                if data_rows and LOG_TO_S3:
                     log.info(f"writing to S3")
                     await write_s3(hw,data_set)
                 else:

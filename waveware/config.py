@@ -34,12 +34,14 @@ if 'AWS_PROFILE' not in os.environ:
 else:
     aws_profile = os.environ.get('AWS_PROFILE','wavetank')
 
+LOG_TO_S3 = os.environ.get('WAVEWARE_LOG_S3','true').lower().strip()=='true'
 bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
 folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
 PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 
 embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
 REMOTE_HOST = os.environ.get('EMBEDDED_SRV_URL',f'http://localhost:{embedded_srv_port}')
+
 
 DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
 

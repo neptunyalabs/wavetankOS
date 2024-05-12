@@ -275,7 +275,6 @@ def update_readout(n,on):
 #MAJOR IO (DATA/ MOTOR ENABLE)
 #we need to handle all status at the same time since we call the machine to check, easier to set at same time
 @app.callback( Output('console','value',allow_duplicate=True),
-               Output('mode-select','value'),
                Output("motor_on_off", "on"),
                Output("motor_on_off", "label"),
                Output("daq_on_off", "on"),
@@ -286,22 +285,21 @@ def update_readout(n,on):
                Input("motor_on_off", "label"),
                Input("daq_on_off", "on"),
                Input("daq_on_off", "label"),               
-               State('mode-select','value'), #get old state values too
                State("motor_on_off", "on"),
                State("motor_on_off", "label"),
                State("daq_on_off", "on"),
                State("daq_on_off", "label"),               
                State('console','value'),
                prevent_initial_call=True)
-def update_status(n,m_in_new,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on_old,m_lab_old,d_on_old,d_lab_old,console):
+def update_status(n,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on_old,m_lab_old,d_on_old,d_lab_old,console):
     """if input is != state then we know a user provided input, if input != current status then call to system should be made to set state
     
     care should be taken to alighn to the machines end state, which means not taking user triggered action IF the net result would be the machine ending in current state.
     """
 
     #the output of this call should expect to not have an update
-    new = [m_in_new,m_on_new,d_on_new]
-    current = [m_in_old,m_on_old,d_on_old]
+    new = [m_on_new,d_on_new]
+    current = [m_on_old,d_on_old]
     
     
     #get the trigger
@@ -317,16 +315,14 @@ def update_status(n,m_in_new,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on
     mode = mode if mode.lower() != 'cal' else 'center'
     mode_id = wave_drive_modes.index(mode)
     motor_on = not status['motor_stopped']
-    dac_on = not status['dac_active']
+    dac_on = status['dac_active']
 
     actions = [] #for console
 
 
     #Prep output
-    out = [no_update for i in range(6)]
+    out = [no_update for i in range(5)]
 
-    if m_in_old != mode_id:
-        out[1] = mode_id #set mode (not affected by )
 
     user_input = False
     if 'motor_on_off.on' in triggers:
@@ -336,21 +332,21 @@ def update_status(n,m_in_new,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on
             if m_on_new:
                 actions.append('Enabled Motor')
                 requests.get(f"{REMOTE_HOST}/control/enable")
-                out[2] = True
-                out[3] = "Motor Enabled"
+                out[1] = True
+                out[2] = "Motor Enabled"
             else:
                 actions.append('Disabled Motor')
                 requests.get(f"{REMOTE_HOST}/control/disable")
-                out[2] = False
-                out[3] = "Motor Disabled"
+                out[1] = False
+                out[2] = "Motor Disabled"
         elif motor_on != m_on_old:
             # a simple interface change
             if motor_on:
-                out[4] = True
-                out[5] = "DAC Enabled"
+                out[3] = True
+                out[4] = "DAC Enabled"
             else:
-                out[4] = False
-                out[5] = "DAC Disabled"                
+                out[3] = False
+                out[4] = "DAC Disabled"                
 
     if 'daq_on_off.on' in triggers:
         #set dac status to desired if not already
@@ -359,34 +355,34 @@ def update_status(n,m_in_new,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on
             if d_on_new:
                 actions.append('DAC ON')
                 requests.get(f"{REMOTE_HOST}/turn_on")
-                out[4] = True
-                out[5] = "DAC Enabled"
+                out[3] = True
+                out[4] = "DAC Enabled"
             if not d_on_new:
                 actions.append('DAC OFF')
                 requests.get(f"{REMOTE_HOST}/turn_off")
-                out[4] = False
-                out[5] = "DAC Disabled"
+                out[3] = False
+                out[4] = "DAC Disabled"
 
     if not user_input and 'num-raw-update.n_intervals' in triggers:
         #update the items per control status
         if motor_on and not m_on_old:
             actions.append(f'ref M.en')
-            out[2] = True
-            out[3] = "Motor Enabled"
+            out[1] = True
+            out[2] = "Motor Enabled"
         elif not motor_on and m_on_old:
             actions.append(f'ref M.disen')
-            out[2] = False
-            out[3] = "Motor Disabled"            
+            out[1] = False
+            out[2] = "Motor Disabled"            
 
         if dac_on and not d_on_old:
             actions.append(f'ref M.dacen')
-            out[4] = True
-            out[5] = "DAC Enabled"
+            out[3] = True
+            out[4] = "DAC Enabled"
 
         elif not dac_on and d_on_old:
             actions.append(f'ref M.dacdisen')
-            out[4] = False
-            out[5] = "DAC Disabled"  
+            out[3] = False
+            out[4] = "DAC Disabled"  
 
         if actions:
             log.info(f'update status: {status} for triggers: {triggers}')
@@ -398,6 +394,10 @@ def update_status(n,m_in_new,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on
     #elif user_input:
     #    #check status again after calls
     #    status = control_status()
+
+    if actions:
+        console = append_log(console,actions)
+        out[0] = console
 
     #finally set values based on status if it is different
     if user_input:
@@ -503,10 +503,12 @@ def append_log(prv_msgs,msg,section_title=None):
     b = []
     title = None
 
-
-    b = list(filter(None.__ne__,[ de_prop(c,'') for c in de_prop(prv_msgs,[])]))
-    #if prv_msgs:
-        #b = [ v for v in prv_msgs.replace('<p>','').split('</p>') ]
+    
+    #b = list(filter(None.__ne__,[ de_prop(c,'') for c in de_prop(prv_msgs,[])]))
+    if prv_msgs:
+        b = list(filter(None.__ne__,[ de_prop(c,'') for c in de_prop(prv_msgs,[])]))
+    else:
+        b = []
 
     if section_title:
         title = section_title
@@ -514,6 +516,8 @@ def append_log(prv_msgs,msg,section_title=None):
         title = '#'*spad+' '+title.upper()+' '+'#'*spad
 
     if msg:
+        if isinstance(msg,(list,tuple)):
+            msg = '\n'.join(msg)
         log.info(msg)
         top = msg
         if title:
@@ -619,7 +623,6 @@ def update_graphs(n,on):
                 raise dash.exceptions.PreventUpdate
 
             if new_data.status_code == 200:
-                print(new_data.text)
                 data = new_data.json()
                 #add data to cache
                 for ts,data in data.items():
