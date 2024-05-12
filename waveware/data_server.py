@@ -145,7 +145,10 @@ async def turn_daq_off(request,hw):
 #DATA ACCESS
 async def get_current(request,hw):
     if hw.last_time and hw.last_time in hw.cache:
-        return web.Response(body=json.dumps(hw.cache[hw.last_time]))
+        data = hw.cache[hw.last_time]
+        if data:
+            print('current',data)
+            return web.Response(body=json.dumps(data))
     return web.Response(text='no data, turn on DAC')
 
 async def get_data(request,hw):

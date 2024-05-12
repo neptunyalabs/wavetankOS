@@ -277,8 +277,10 @@ def update_status(n):
 def update_readout(n,on):
     if on:
         log.info(f'update readout: {on}')
+        new_data = None
         try:
             new_data = requests.get(f"{REMOTE_HOST}/getcurrent")
+            log.info(new_data.text)
             data = new_data.json()
             if data:
                 data= [ format_value(k,data[k]) if k in data else 0 for k in all_sys_vars]
@@ -292,37 +294,54 @@ def update_readout(n,on):
     raise dash.exceptions.PreventUpdate
 
 
-@app.callback(#Output('none0', 'children'),
+#ASSIGNMENT CALLS
+@app.callback(Output('console','value',allow_duplicate=True),
               Input("daq_on_off", "on"),
+              State('console','value'),
+              State("daq_on_off", "on"),
               prevent_initial_call=True)
-def turn_on_off_daq(on):
+def turn_on_off_daq(on,console,old_on):
     log.info(f"DAQ ON: {on}.")
+    
+    if on == old_on:
+        return
+    
     if on:
         requests.get(f"{REMOTE_HOST}/turn_on")
-        return "DAC ON"
+        o= "DAC ON"
     else:
         requests.get(f"{REMOTE_HOST}/turn_off")
-        return "DAC OFF"
+        o= "DAC OFF"
     
-@app.callback(Output('none1', 'children'),
+    return append_log(console,o)
+    
+@app.callback(Output('console','value',allow_duplicate=True),
               Input("motor_on_off", "on"),
-              prevent_initial_call=True)
-def dis_and_en_able_motor(on):
-    log.info(f"MOTOR ENABLED: {on}.")
-    status = control_status()
-    
-    if not status['motor_enabled']:
-        requests.get(f"{REMOTE_HOST}/control/enable")
-        return "MOTOR ENABLED"
-    else:
-        requests.get(f"{REMOTE_HOST}/control/disable")
-        return "MOTOR DISABLED"
-    
-@app.callback(Output('none2', 'children'),
-              Input("stop-btn", "n_clicks"),
+              State('console','value'),
               State("motor_on_off", "on"),
               prevent_initial_call=True)
-def stop_motor(n_clicks,on):
+def dis_and_en_able_motor(set_on,console,old_on):
+    log.info(f"Set Motor On: {set_on}.")
+    status = control_status()
+    
+    if set_on == old_on:
+        return append_log(console,f'Motor Already Enabled: {set_on}') 
+
+    if not on:
+        requests.get(f"{REMOTE_HOST}/control/enable")
+        o = "Motor Enabled"
+    else:
+        requests.get(f"{REMOTE_HOST}/control/disable")
+        o = "Motor Disabled"
+    
+    return append_log(console,o)
+    
+@app.callback(Output('console','value',allow_duplicate=True),
+              Input("stop-btn", "n_clicks"),
+              State("motor_on_off", "on"),
+              State('console','value'),
+              prevent_initial_call=True)
+def stop_motor(n_clicks,on,console):
     log.info(f"stopping {n_clicks}.")
     if n_clicks is None or n_clicks < 1:
         return
@@ -330,10 +349,13 @@ def stop_motor(n_clicks,on):
     if on or not status['motor_stopped']:
         resp = requests.get(f"{REMOTE_HOST}/control/stop")
         if resp.status_code  == 200:
-            return 0,False,'MOTOR STOPPED' #set off
+            o = 'Motor Stopped' #set off
         else:
-            return 0,False,f'ERROR STOPPING: {resp.text}'
-    return 0,False,'MOTOR STOPPED'
+            o = f'Error Stopping: {resp.status_code}|{resp.text}'
+    else:
+        o = 'Already Stopped'
+
+    return append_log(console,o)
 
 
 
@@ -352,6 +374,8 @@ def zero_sensors(n_clicks,console):
     else:
         return append_log(console,f'ERROR ZEROING: {resp.status_code}|{resp.text}')
 
+
+
 @app.callback(
     Output('console','value',allow_duplicate=True),
     Output('test-log','value'),
@@ -369,24 +393,37 @@ def log_note(btn,console,test_msg):
 def append_log(prv_msgs,msg,section_title=None):
     b = []
     title = None
-    if prv_msgs:
-        b = [ html.P(v) for v in prv_msgs.replace('<p>','').split('</p>') ]
+
+
+    b = list(filter(None.__ne__,[ de_prop(c,'') for c in de_prop(prv_msgs,[])]))
+    #if prv_msgs:
+        #b = [ v for v in prv_msgs.replace('<p>','').split('</p>') ]
+
     if section_title:
         title = section_title
         spad = int((80-len(title)/2))
-        title = html.P('#'*spad+' '+title.upper()+' '+'#'*spad)
+        title = '#'*spad+' '+title.upper()+' '+'#'*spad
 
     if msg:
         log.info(msg)
-        top = html.P(msg) if isinstance(msg,str) else msg
+        top = msg
         if title:
             b = [title,top,html.P('#'*80)]+b[:1000]
         else:
             b = [top]+b[:1000]
         
-    return html.Div(b)
+    return '\n'.join(b)
 
-   
+def de_prop(prv_msgs,dflt):
+    if isinstance(prv_msgs,str):
+        return prv_msgs
+    if prv_msgs is None:
+        return ''   
+    if isinstance(prv_msgs,dict):
+        p = prv_msgs.get('props',{})
+    else:
+        raise Exception(f'unexpected {prv_msgs}')
+    return p.get('children',dflt)
 
 #TODO: setup inputs callbacks
 # @app.callback(
@@ -528,7 +565,10 @@ def main():
 
     try:
         srv_host = '0.0.0.0' if ON_RASPI else '127.0.0.1'
-        app.run_server(debug=not ON_RASPI,host=srv_host)
+
+        print(f'serving on: {srv_host} with DEBUG={DEBUG}')
+
+        app.run_server(debug=DEBUG,host=srv_host)
 
     except KeyboardInterrupt:
         sys.exit()
