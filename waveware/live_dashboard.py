@@ -289,15 +289,15 @@ def update_graphs(n,on):
             print(df.columns)
             df['timestamp']=df['timestamp']-tm
 
-            fig_pr = px.scatter(df,x='timestamp',y=df[z_sensors])#trendline='lowess',trendline_options=dict(frac=1./10.))
+            fig_pr = px.scatter(df,x='timestamp',y=z_sensors)#trendline='lowess',trendline_options=dict(frac=1./10.))
             fig_pr.update_layout(layout_style)
             fig_pr.update_xaxes(axes_style)
 
-            fig_speed = plotly.express.line(df,x='timestamp',y=df[e_sensors])
+            fig_speed = plotly.express.line(df,x='timestamp',y=e_sensors)
             fig_speed.update_layout(layout_style)
             fig_speed.update_xaxes(axes_style)        
 
-            fig_alph = plotly.express.line(df,x='timestamp',y=df[z_wave_parms])
+            fig_alph = plotly.express.line(df,x='timestamp',y=z_wave_parms)
             fig_alph.update_layout(layout_style)
             fig_alph.update_xaxes(axes_style)
                     
