@@ -280,18 +280,13 @@ def update_readout(n,on):
                Output("daq_on_off", "on"),
                Output("daq_on_off", "label"),               
                Input("num-raw-update","n_intervals"), #on timer
-               Input('mode-select','value'),
                Input("motor_on_off", "on"),
-               Input("motor_on_off", "label"),
                Input("daq_on_off", "on"),
-               Input("daq_on_off", "label"),               
                State("motor_on_off", "on"),
-               State("motor_on_off", "label"),
                State("daq_on_off", "on"),
-               State("daq_on_off", "label"),               
                State('console','value'),
                prevent_initial_call=True)
-def update_status(n,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on_old,m_lab_old,d_on_old,d_lab_old,console):
+def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
     """if input is != state then we know a user provided input, if input != current status then call to system should be made to set state
     
     care should be taken to alighn to the machines end state, which means not taking user triggered action IF the net result would be the machine ending in current state.
@@ -310,6 +305,7 @@ def update_status(n,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on_old,m_la
     status = control_status()
     if 'num-raw-update.n_intervals' not in triggers:
         log.info(f'got status: {status} for triggers: {triggers}')
+        log.info(f'new: {new} current: {current}')
 
     mode = status['drive_mode']
     mode = mode if mode.lower() != 'cal' else 'center'
@@ -396,6 +392,7 @@ def update_status(n,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on_old,m_la
     #    status = control_status()
 
     if actions:
+        print('adding', console,actions)
         console = append_log(console,actions)
         out[0] = console
 
@@ -503,12 +500,12 @@ def append_log(prv_msgs,msg,section_title=None):
     b = []
     title = None
 
-    
-    #b = list(filter(None.__ne__,[ de_prop(c,'') for c in de_prop(prv_msgs,[])]))
-    if prv_msgs:
-        b = list(filter(None.__ne__,[ de_prop(c,'') for c in de_prop(prv_msgs,[])]))
+    if isinstance(prv_msgs,str):
+        b = prv_msgs.split('\n')
     else:
-        b = []
+        print(f'unknown prv: {prv_msgs}')
+        
+                
 
     if section_title:
         title = section_title
@@ -524,8 +521,13 @@ def append_log(prv_msgs,msg,section_title=None):
             b = [title,top,html.P('#'*80)]+b[:1000]
         else:
             b = [top]+b[:1000]
-        
-    return '\n'.join(b)
+    
+
+    out = '\n'.join(b)
+
+    #log.info(f'got {prv_msgs} and {msg} -> {out}')
+
+    return out
 
 def de_prop(prv_msgs,dflt):
     if isinstance(prv_msgs,str):
