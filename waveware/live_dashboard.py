@@ -253,7 +253,7 @@ def update_status(n):
     motor_on = not status['motor_stopped']
     dac_on = not status['motor_stopped']
 
-    out = (mode,
+    out = (wave_drive_modes.index(mode),
            motor_on,
            'MOTOR RDY' if motor_on else 'MOTOR OFF',
            'DAC ON' if dac_on else 'DAC OFF',
