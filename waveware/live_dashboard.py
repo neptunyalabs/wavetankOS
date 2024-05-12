@@ -238,14 +238,16 @@ def format_value(k,data):
             return float(Decimal(str(data)).quantize(mm_accuracy_enc))
     return data
 
-@app.callback([Output('mode-select','value'),
+@app.callback( Output('mode-select','value'),
                Output("motor_on_off", "on"),
                Output("motor_on_off", "label"),
                Output("daq_on_off", "label"),
                Output("daq_on_off", "on"),
-               Input("num-raw-update","n_intervals")])
+               Input("num-raw-update","n_intervals"))
 def update_status(n):
     status = control_status()
+
+    log.info(f'got status: {status}')
 
     mode = status['drive_mode']
     mode = mode if mode.lower() != 'cal' else 'center'
@@ -259,6 +261,7 @@ def update_status(n):
            'DAC ON' if dac_on else 'DAC OFF',
            dac_on,
            )
+    log.info(f'setting out: {out}')
     return out
 
 
@@ -289,7 +292,7 @@ def update_readout(n,on):
     raise dash.exceptions.PreventUpdate
 
 
-@app.callback(Output('none0', 'children'),
+@app.callback(#Output('none0', 'children'),
               Input("daq_on_off", "on"),
               prevent_initial_call=True)
 def turn_on_off_daq(on):
