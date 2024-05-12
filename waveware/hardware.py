@@ -473,7 +473,6 @@ class hardware_control:
 
             self.last[echo_pin] = {'dt':0,'rise':None}
 
-            #TODO: loop over pins, put callbacks in dict
             await  self.pi.set_mode(echo_pin, asyncpio.INPUT)
 
             self._cb_rise.append(await self.pi.callback(echo_pin, asyncpio.RISING_EDGE, self._rise))
@@ -603,7 +602,7 @@ class hardware_control:
                 if not self.active:
                     await asyncio.sleep(intvl)
                     continue
-
+                print(self.last)
                 if PLOT_STREAM:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:

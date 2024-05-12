@@ -28,7 +28,7 @@ def make_app(hw):
     app = web.Application()
     #function making function (should scope internally to lambda inst)
     hwfi = lambda f,*a,**kw: lambda req: f(req,*a,**kw)
-    log.info(f'creating web server')
+    #log.info(f'creating web server')
     app.add_routes(
         [
             web.get("/", hwfi(check,hw)), #works

@@ -188,7 +188,7 @@ class wave_control:
                 con = await self.pi.connect()
                 self.pi.connected = True
                 log.info(f'PI Connection Res: {con}')
-                
+
             await self.pi.set_mode(self._motor_en_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._dir_pin,asyncpio.OUTPUT)
             await self.pi.set_mode(self._step_pin,asyncpio.OUTPUT)
@@ -500,16 +500,13 @@ class wave_control:
         assert self.adc_ready, f'cannot run without feedback!'
 
         loop = asyncio.get_event_loop()
-        self.set_mode(default_mode)
+        self.set_mode('off')
         self.started = asyncio.Future()
         
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
         self.stop_task = self.make_control_mode('stop',self.run_stop)
         self.center_task = self.make_control_mode('center',self.center_head)
-        self.cal_task = self.make_control_mode('cal',self.calibrate)
-        # self.local_task = self.make_control_mode('local',self.local_cal)
-        # self.extent_task = self.make_control_mode('extents',self.find_extends)
-        
+        self.cal_task = self.make_control_mode('cal',self.calibrate)        
         #TODO: interactive
         #self.manual_task = self.make_control_mode('manual',self.manual_mode)
     
