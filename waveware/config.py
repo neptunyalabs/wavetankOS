@@ -19,18 +19,6 @@ log = logging.getLogger("conf")
 mm_accuracy_enc = Decimal('1e-3')
 mm_accuracy_ech = Decimal('1e-4')
 
-try:
-    import RPi.GPIO as gpio
-    ON_RASPI = True
-    pigpio.exceptions = True #TODO: make false
-    from imusensor.MPU9250 import MPU9250
-    import smbus
-except:
-    ON_RASPI = False
-    pigpio.exceptions = True
-    smbus = None
-    MPU9250 = None
-
 pst = pytz.timezone('US/Pacific')
 utc = pytz.utc
 
@@ -61,7 +49,18 @@ path = pathlib.Path(__file__)
 fdir = path.parent
 cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
 
-
+#IMPORT GPIO / CONFIGURE RASPI
+try:
+    import RPi.GPIO as gpio
+    ON_RASPI = True
+    pigpio.exceptions = DEBUG #TODO: make false
+    from imusensor.MPU9250 import MPU9250
+    import smbus
+except:
+    ON_RASPI = False
+    pigpio.exceptions = DEBUG
+    smbus = None
+    MPU9250 = None
 
 #PINS
 encoder_pins = [(17,18),(27,22),(23,24),(25,5)]

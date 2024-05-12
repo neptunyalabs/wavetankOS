@@ -205,12 +205,10 @@ class hardware_control:
         if ON_RASPI:
             self.setup_i2c()
             
-
         self.control.setup()
 
 
     async def _setup_hardware(self):
-              
         if not hasattr(self.pi,'connected'):
             log.info(f'control connecting to pigpio')  
             con = await self.pi.connect()
@@ -218,6 +216,7 @@ class hardware_control:
         await self._start_sensors()
     
     async def _start_sensors(self):
+        log.info(f'starting sensors')
         await self.setup_encoder()
         await self.setup_echo_sensors()        
              
@@ -283,6 +282,7 @@ class hardware_control:
         self.control.run()
 
     def stop(self):
+        log.info(f'hw stopping')
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self._stop())
 
@@ -290,18 +290,22 @@ class hardware_control:
         """
         Cancel the rotary encoder decoder.
         """
+        log.info(f'hw stopping tasks..')
         for cba in self.cbA:
             await cba.cancel()
         for cbb in self.cbB:
             await cbb.cancel()
-
+        
+        #log.info(f'stopping echos')
         for cbr in self._cb_rise:
             await cbr.cancel()
         for cbf in self._cb_fall:
             await cbf.cancel()
 
-        self.imu_read_task.cancel()
+        #log.info(f'stopping echos')
+        self.imu_read_task.cancel() 
         self.print_task.cancel()
+        self.echo_trigger_task.cancel()
 
     #MPU:
     #Interactive MPU Cal 
@@ -464,8 +468,8 @@ class hardware_control:
 
         self._cb_rise = []
         self._cb_fall = []
-        for echo_pin in self.echo_pins:
-            log.info(f'starting ecno sensors on pin {echo_pin}')
+        for i,echo_pin in enumerate(self.echo_pins):
+            log.info(f'starting ecno sensors {i+1} on pin {echo_pin}')
 
             self.last[echo_pin] = {'dt':0,'rise':None}
 
