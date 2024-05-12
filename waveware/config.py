@@ -53,6 +53,8 @@ PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
 REMOTE_HOST = os.environ.get('EMBEDDED_SRV_URL',f'http://localhost:{embedded_srv_port}')
 
+DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
+
 log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}')
 
 path = pathlib.Path(__file__)

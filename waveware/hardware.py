@@ -94,6 +94,7 @@ Bo = 0
 Bh = 0.1
 Zh = 0.1
 
+#TODO: model / predict kinematics
 def asub(z):
     if z>=0:
         return 0
@@ -266,7 +267,8 @@ class hardware_control:
             self.imu_read_task = loop.create_task(self.imu_task())
         if self.temp_ready:
             self.temp_task = loop.create_task(self.temp_task())
-        self.print_task = loop.create_task(self.print_data())        
+        if DEBUG:
+            self.print_task = loop.create_task(self.print_data())        
 
     def run(self):
         
@@ -560,6 +562,10 @@ class hardware_control:
     async def print_data(self,intvl:int=1):
         while True:
             try:
+                if not self.active:
+                    await asyncio.sleep(intvl)
+                    continue
+                
                 if PLOT_STREAM:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
