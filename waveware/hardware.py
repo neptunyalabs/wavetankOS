@@ -505,10 +505,6 @@ class hardware_control:
 
 
 
-        
-
-
-
     def _rise(self, gpio, level, tick):
         self.last[gpio]['rise'] = tick
 
@@ -583,9 +579,15 @@ class hardware_control:
         out['coef_10'] = self.control.coef_10
         out['coef_100'] = self.control.coef_100
         out['stuck'] = self.control.stuck
+
         out['maybe_stuck'] = self.control.maybe_stuck
         out['drive_mode'] = self.control.drive_mode
         out['speed_control_mode'] = self.control.speed_control_mode
+        
+        #mode check
+        out['data_active'] = self.active
+        out['ctrl_stopped'] = self.control.stopped
+        out['ctrl_enabled'] = self.control.enabled
 
 
         #subtract the bias before it hits the system
@@ -602,7 +604,6 @@ class hardware_control:
                 if not self.active:
                     await asyncio.sleep(intvl)
                     continue
-                print(self.last)
                 if PLOT_STREAM:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:

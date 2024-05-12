@@ -278,9 +278,9 @@ class wave_control:
 
     #RUN / OPS
     def run(self):
-        self.stopped = False
+        #self.stopped = False
         loop = asyncio.get_event_loop()
-        
+        loop.run_until_complete(self.start_control)
         self.startup(await_feedback=True)
 
         try:
@@ -314,6 +314,7 @@ class wave_control:
         await self.enable_control()
         if self.enabled and self.stopped:
             self.reset_speed_tasks()
+            self.stopped = False
             await asyncio.sleep(0.5)
         else:
             print(f'already started!!')
