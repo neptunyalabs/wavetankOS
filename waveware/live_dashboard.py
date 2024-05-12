@@ -3,6 +3,7 @@
 import datetime
 
 import dash
+from dash import ctx, no_update
 from dash import dcc, html, dash_table
 import dash_daq as daq
 
@@ -238,31 +239,6 @@ def format_value(k,data):
             return float(Decimal(str(data)).quantize(mm_accuracy_enc))
     return data
 
-@app.callback( Output('mode-select','value'),
-               Output("motor_on_off", "on"),
-               Output("motor_on_off", "label"),
-               Output("daq_on_off", "label"),
-               Output("daq_on_off", "on"),
-               Input("num-raw-update","n_intervals"))
-def update_status(n):
-    status = control_status()
-
-    log.info(f'got status: {status}')
-
-    mode = status['drive_mode']
-    mode = mode if mode.lower() != 'cal' else 'center'
-
-    motor_on = not status['motor_stopped']
-    dac_on = not status['motor_stopped']
-
-    out = (wave_drive_modes.index(mode),
-           motor_on,
-           'MOTOR RDY' if motor_on else 'MOTOR OFF',
-           'DAC ON' if dac_on else 'DAC OFF',
-           dac_on,
-           )
-    log.info(f'setting out: {out}')
-    return out
 
 
 
@@ -280,14 +256,15 @@ def update_readout(n,on):
         new_data = None
         try:
             new_data = requests.get(f"{REMOTE_HOST}/getcurrent")
-            log.info(new_data.text)
+            if new_data.status_code == 420:
+                raise dash.exceptions.PreventUpdate
+            
             data = new_data.json()
             if data:
                 data= [ format_value(k,data[k]) if k in data else 0 for k in all_sys_vars]
                 return data
-
-            raise dash.exceptions.PreventUpdate
-
+        except dash.exceptions.PreventUpdate:
+            pass #continue to your demise!
         except Exception as e:
             log.error(f'update issue: {e}',exc_info=1)
     
@@ -295,46 +272,178 @@ def update_readout(n,on):
 
 
 #ASSIGNMENT CALLS
-@app.callback(Output('console','value',allow_duplicate=True),
-              Input("daq_on_off", "on"),
-              State('console','value'),
-              State("daq_on_off", "on"),
-              prevent_initial_call=True)
-def turn_on_off_daq(on,console,old_on):
-    log.info(f"DAQ ON: {on}.")
+#MAJOR IO (DATA/ MOTOR ENABLE)
+#we need to handle all status at the same time since we call the machine to check, easier to set at same time
+@app.callback( Output('console','value',allow_duplicate=True),
+               Output('mode-select','value'),
+               Output("motor_on_off", "on"),
+               Output("motor_on_off", "label"),
+               Output("daq_on_off", "on"),
+               Output("daq_on_off", "label"),               
+               Input("num-raw-update","n_intervals"), #on timer
+               Input('mode-select','value'),
+               Input("motor_on_off", "on"),
+               Input("motor_on_off", "label"),
+               Input("daq_on_off", "on"),
+               Input("daq_on_off", "label"),               
+               State('mode-select','value'), #get old state values too
+               State("motor_on_off", "on"),
+               State("motor_on_off", "label"),
+               State("daq_on_off", "on"),
+               State("daq_on_off", "label"),               
+               State('console','value'),
+               prevent_initial_call=True)
+def update_status(n,m_in_new,m_on_new,m_lab_new,d_on_new,d_lab_new,m_in_old,m_on_old,m_lab_old,d_on_old,d_lab_old,console):
+    """if input is != state then we know a user provided input, if input != current status then call to system should be made to set state
     
-    if on == old_on:
-        return
-    
-    if on:
-        requests.get(f"{REMOTE_HOST}/turn_on")
-        o= "DAC ON"
-    else:
-        requests.get(f"{REMOTE_HOST}/turn_off")
-        o= "DAC OFF"
-    
-    return append_log(console,o)
-    
-@app.callback(Output('console','value',allow_duplicate=True),
-              Input("motor_on_off", "on"),
-              State('console','value'),
-              State("motor_on_off", "on"),
-              prevent_initial_call=True)
-def dis_and_en_able_motor(set_on,console,old_on):
-    log.info(f"Set Motor On: {set_on}.")
-    status = control_status()
-    
-    if set_on == old_on:
-        return append_log(console,f'Motor Already Enabled: {set_on}') 
+    care should be taken to alighn to the machines end state, which means not taking user triggered action IF the net result would be the machine ending in current state.
+    """
 
-    if not on:
-        requests.get(f"{REMOTE_HOST}/control/enable")
-        o = "Motor Enabled"
-    else:
-        requests.get(f"{REMOTE_HOST}/control/disable")
-        o = "Motor Disabled"
+    #the output of this call should expect to not have an update
+    new = [m_in_new,m_on_new,d_on_new]
+    current = [m_in_old,m_on_old,d_on_old]
     
-    return append_log(console,o)
+    
+    #get the trigger
+    #print('trig',ctx.triggered)
+    triggers = [t["prop_id"] for t in ctx.triggered]
+
+    #get true status
+    status = control_status()
+    if 'num-raw-update.n_intervals' not in triggers:
+        log.info(f'got status: {status} for triggers: {triggers}')
+
+    mode = status['drive_mode']
+    mode = mode if mode.lower() != 'cal' else 'center'
+    mode_id = wave_drive_modes.index(mode)
+    motor_on = not status['motor_stopped']
+    dac_on = not status['dac_active']
+
+    actions = [] #for console
+
+
+    #Prep output
+    out = [no_update for i in range(6)]
+
+    if m_in_old != mode_id:
+        out[1] = mode_id #set mode (not affected by )
+
+    user_input = False
+    if 'motor_on_off.on' in triggers:
+        #set the motor state to desired if not already
+        if m_on_new != motor_on:
+            user_input = True
+            if m_on_new:
+                actions.append('Enabled Motor')
+                requests.get(f"{REMOTE_HOST}/control/enable")
+                out[2] = True
+                out[3] = "Motor Enabled"
+            else:
+                actions.append('Disabled Motor')
+                requests.get(f"{REMOTE_HOST}/control/disable")
+                out[2] = False
+                out[3] = "Motor Disabled"
+        elif motor_on != m_on_old:
+            # a simple interface change
+            if motor_on:
+                out[4] = True
+                out[5] = "DAC Enabled"
+            else:
+                out[4] = False
+                out[5] = "DAC Disabled"                
+
+    if 'daq_on_off.on' in triggers:
+        #set dac status to desired if not already
+        if d_on_new != dac_on:
+            user_input = True
+            if d_on_new:
+                actions.append('DAC ON')
+                requests.get(f"{REMOTE_HOST}/turn_on")
+                out[4] = True
+                out[5] = "DAC Enabled"
+            if not d_on_new:
+                actions.append('DAC OFF')
+                requests.get(f"{REMOTE_HOST}/turn_off")
+                out[4] = False
+                out[5] = "DAC Disabled"
+
+    if not user_input and 'num-raw-update.n_intervals' in triggers:
+        #update the items per control status
+        if motor_on and not m_on_old:
+            actions.append(f'ref M.en')
+            out[2] = True
+            out[3] = "Motor Enabled"
+        elif not motor_on and m_on_old:
+            actions.append(f'ref M.disen')
+            out[2] = False
+            out[3] = "Motor Disabled"            
+
+        if dac_on and not d_on_old:
+            actions.append(f'ref M.dacen')
+            out[4] = True
+            out[5] = "DAC Enabled"
+
+        elif not dac_on and d_on_old:
+            actions.append(f'ref M.dacdisen')
+            out[4] = False
+            out[5] = "DAC Disabled"  
+
+        if actions:
+            log.info(f'update status: {status} for triggers: {triggers}')
+            log.info(f'actions: {actions} setting out: {out}')
+
+
+
+    #TODO: final check?   
+    #elif user_input:
+    #    #check status again after calls
+    #    status = control_status()
+
+    #finally set values based on status if it is different
+    if user_input:
+        log.info(f'actions: {actions} setting out: {out}')
+    return out
+
+# @app.callback(Output('console','value',allow_duplicate=True),
+#               Input("daq_on_off", "on"),
+#               State('console','value'),
+#               State("daq_on_off", "on"),
+#               prevent_initial_call=True)
+# def turn_on_off_daq(on,console,old_on):
+#     log.info(f"DAQ ON: {on}.")
+#     
+#     if on == old_on:
+#         return
+#     
+#     if on:
+#         requests.get(f"{REMOTE_HOST}/turn_on")
+#         o= "DAC ON"
+#     else:
+#         requests.get(f"{REMOTE_HOST}/turn_off")
+#         o= "DAC OFF"
+#     
+#     return append_log(console,o)
+    
+# @app.callback(Output('console','value',allow_duplicate=True),
+#               Input("motor_on_off", "on"),
+#               State('console','value'),
+#               State("motor_on_off", "on"),
+#               prevent_initial_call=True)
+# def dis_and_en_able_motor(set_on,console,old_on):
+#     log.info(f"Set Motor On: {set_on}.")
+#     status = control_status()
+#     
+#     if set_on == old_on:
+#         return append_log(console,f'Motor Already Enabled: {set_on}') 
+# 
+#     if not on:
+#         requests.get(f"{REMOTE_HOST}/control/enable")
+#         o = "Motor Enabled"
+#     else:
+#         requests.get(f"{REMOTE_HOST}/control/disable")
+#         o = "Motor Disabled"
+#     
+#     return append_log(console,o)
     
 @app.callback(Output('console','value',allow_duplicate=True),
               Input("stop-btn", "n_clicks"),
@@ -505,11 +614,12 @@ def update_graphs(n,on):
                 #no data, so ask for the full blast. yeet
                 new_data = requests.get(f"{REMOTE_HOST}/getdata")
 
-
-
             #Apply away
+            if new_data.status_code == 420:
+                raise dash.exceptions.PreventUpdate
+
             if new_data.status_code == 200:
-                #log.info(f'got response {new_data}')
+                print(new_data.text)
                 data = new_data.json()
                 #add data to cache
                 for ts,data in data.items():
@@ -545,6 +655,9 @@ def update_graphs(n,on):
             log.info(f'returning 3 graphs {time.perf_counter()-begin}')
             return [fig_pr,fig_speed,fig_alph]
         
+        except dash.exceptions.PreventUpdate:
+            pass
+
         except Exception as e:
             log.error(e,exc_info=1)
             log.info(e)

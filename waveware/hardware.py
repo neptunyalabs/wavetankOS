@@ -129,11 +129,14 @@ class hardware_control:
     encoder_conf: list = None #[{sens:x,},...]
     encoder_pins: list = None  #[(A,B),(A2,B2)...]
     echo_pins: list = None #[1,2,3]
+    
     #potentiometer_pin: int = None
-    # #i2c addr
+
+    #i2c addr
     mpu_addr: hex = 0x68#0x69 #3.3v
     si07_addr: hex = 0x40
-    # #motor control
+    
+    #motor control
     control = None
 
     #config flags
@@ -141,6 +144,7 @@ class hardware_control:
     poll_rate = poll_rate
     poll_temp = poll_temp
     window = window
+
     
     #Data Storage
     buffer: asyncio.Queue

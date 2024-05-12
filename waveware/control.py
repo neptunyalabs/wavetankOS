@@ -311,7 +311,7 @@ class wave_control:
         if self.enabled and self.stopped:
             self.set_speed_tasks()
             self.stopped = False
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
         elif not self.stopped:
             print(f'already started!!')
 

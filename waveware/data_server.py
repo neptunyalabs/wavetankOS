@@ -149,7 +149,7 @@ async def get_current(request,hw):
         log.info(f'current {data}')
         if data:
             return web.Response(body=json.dumps(data))
-    return web.Response(text='{}')
+    return web.Response(body='no data!',status=420)
 
 async def get_data(request,hw):
     """
@@ -161,11 +161,12 @@ async def get_data(request,hw):
         if after is not None:
             after = float(after)
             subset = {k:v for k,v in hw.cache.items() if k > after}
-            return web.Response(body=json.dumps(subset))
+            if subset:
+                return web.Response(body=json.dumps(subset))
         else:
             return web.Response(body=json.dumps(hw.cache)) 
 
-    return web.Response(text='no data, turn on DAC')
+    return web.Response(body='no data!',status=420)
 
 #DATA LABELS & LOGGING
 async def reset_labels(request,hw):
