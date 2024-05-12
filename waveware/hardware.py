@@ -481,7 +481,9 @@ class hardware_control:
         pulse_us = 50
         trigger_100ms = [asyncpio.pulse(0,1<<self._echo_trig_pin,pulse_us),
                      asyncpio.pulse(0,1<<self._echo_trig_pin,delay-pulse_us)]
-        
+    
+        await self.pi.set_mode(self._echo_trig_pin, pigpio.OUTPUT)
+
         while True:
             log.info(f'starting trigger task')
             try:        
