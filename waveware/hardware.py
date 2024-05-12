@@ -479,9 +479,10 @@ class hardware_control:
         #TODO: set a repeating waveform on trigger pin 20us on
         delay = int(rate*1E6)
         pulse_us = 50
-        trigger_100ms = [asyncpio.pulse(0,1<<self._echo_trig_pin,pulse_us),
-                     asyncpio.pulse(0,1<<self._echo_trig_pin,delay-pulse_us)]
-    
+        doff = delay-pulse_us
+        trigger_100ms = [asyncpio.pulse(1<<self._echo_trig_pin,0,pulse_us),
+                     asyncpio.pulse(0,1<<self._echo_trig_pin,doff)]
+        print(f'running trigger on pin: {self._echo_trig_pin} | {pulse_us}us@1 > {doff}us@0')
         await self.pi.set_mode(self._echo_trig_pin, pigpio.OUTPUT)
 
         while True:
