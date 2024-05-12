@@ -189,6 +189,9 @@ async def add_note(request,hw):
     #convert to subset
     dt = datetime.datetime.now()
     bdy = await request.json()
+
+    await write_s3(hw,bdy,title='test_note')
+
     return web.Response(body=f'Added Note: {bdy}')
 
 
@@ -269,6 +272,8 @@ async def write_s3(hw,data: dict,title=None):
         data["upload_time"] = str(up_time)
         date = up_time.date()
         time = f"{up_time.hour}-{up_time.minute}-{up_time.second}"
+        
+        #SET THE PATH
         if title is not None and title:
             key = f"{folder}/{hw.labels['title']}/{date}/{title}_{time}.json"
         else:
