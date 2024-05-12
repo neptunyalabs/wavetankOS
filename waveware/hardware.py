@@ -262,11 +262,14 @@ class hardware_control:
         
 
     def create_sensor_tasks(self):
+        """starts asyncio tasks for sensor peripherals"""
         loop = asyncio.get_event_loop()
         if self.imu_ready:
             self.imu_read_task = loop.create_task(self.imu_task())
         if self.temp_ready:
             self.temp_task = loop.create_task(self.temp_task())
+        
+        self.echo_trigger_task = loop.create_task(self.trigger_task())
         if DEBUG:
             self.print_task = loop.create_task(self.print_data())        
 
@@ -471,6 +474,34 @@ class hardware_control:
 
             self._cb_rise.append(await self.pi.callback(echo_pin, asyncpio.RISING_EDGE, self._rise))
             self._cb_fall.append(await self.pi.callback(echo_pin, asyncpio.FALLING_EDGE, self._fall))
+
+    async def trigger_task(self,rate=0.1):
+        #TODO: set a repeating waveform on trigger pin 20us on
+        delay = int(rate*1E6)
+        pulse_us = 50
+        trigger_100ms = [asyncpio.pulse(0,1<<self._echo_trig_pin,pulse_us),
+                     asyncpio.pulse(0,1<<self._echo_trig_pin,delay-pulse_us)]
+        
+        while True:
+            log.info(f'starting trigger task')
+            try:        
+                await self.pi.wave_add_generic(trigger_100ms)
+                self.trigger_wave = await self.pi.wave_create()
+                await self.pi.wave_send_repeat(self.trigger_wave)
+
+                while self.pi.wave_tx_busy():
+                    await asyncio.sleep(1)
+
+            except Exception as e:
+                log.error('issue in trigger task',exc_info=e)
+            
+            await asyncio.sleep(1)
+
+
+
+        
+
+
 
     def _rise(self, gpio, level, tick):
         self.last[gpio]['rise'] = tick

@@ -276,13 +276,16 @@ def update_graphs(n,on):
                 log.info(f'got bad response: {new_data}')
 
             #dataframe / index
-            tm = time.perf_counter()        
-            df = pd.DataFrame.from_dict(list(memcache.values()))
+            tm = time.perf_counter()    
+            data = list(memcache.values())    
+            print(data[0:4])
+            df = pd.DataFrame.from_dict(data)
+            print(df)
             df.set_index('timestamp')
             df.sort_index()
 
             #adjust to present
-            print(df)
+            
             print(df.columns)
             df['timestamp']=df['timestamp']-tm
 
@@ -308,13 +311,13 @@ def update_graphs(n,on):
     raise dash.exceptions.PreventUpdate
 
 
-def format_value(k,dat):
-    if dat:
+def format_value(k,data):
+    if data:
         if k in e_sensors:
-            return float(Decimal(data[k]).quantize(mm_accuracy_ech))
+            return float(Decimal(str(data)).quantize(mm_accuracy_ech))
         else:
-            return float(Decimal(data[k]).quantize(mm_accuracy_enc))
-    return dat
+            return float(Decimal(str(data)).quantize(mm_accuracy_enc))
+    return data
 
 
 #all_sys_vars get update in order by data
