@@ -231,8 +231,15 @@ app.layout = html.Div(
 
 
 
-
-
+axes_style = {
+                "linecolor":"white",
+                "gridcolor":"white"
+                }
+layout_style = {
+            "plot_bgcolor": "rgba(0, 0, 0, 0)",
+            "paper_bgcolor": "rgba(0, 0, 0, 0)",
+            "font_color":"white",
+            }
 
 
 
@@ -247,6 +254,7 @@ def update_graphs(n,on):
     begin = time.perf_counter()
     if on:
         try:
+            #TODO: add synchronization via diskcache... in background thread?
             if memcache:
                 #we got data so lets do the query
                 max_ts = max(list(memcache.keys()))
@@ -267,44 +275,28 @@ def update_graphs(n,on):
             else:
                 log.info(f'got bad response: {new_data}')
 
+            #dataframe / index
             tm = time.perf_counter()        
             df = pd.DataFrame.from_dict(list(memcache.values()))
+            df.set_index('timestamp')
+            df.sort_index()
+
             #adjust to present
             print(df)
+            print(df.columns)
             df['timestamp']=df['timestamp']-tm
 
-            fig_pr = px.scatter(df,x='timestamp',y=z_sensors)#trendline='lowess',trendline_options=dict(frac=1./10.))
-            fig_pr.update_layout({
-            "plot_bgcolor": "rgba(0, 0, 0, 0)",
-            "paper_bgcolor": "rgba(0, 0, 0, 0)",
-            "font_color":"white",
-            })        
-            fig_pr.update_xaxes({
-                "linecolor":"white",
-                "gridcolor":"white"
-                }) 
+            fig_pr = px.scatter(df,x='timestamp',y=df[z_sensors])#trendline='lowess',trendline_options=dict(frac=1./10.))
+            fig_pr.update_layout(layout_style)
+            fig_pr.update_xaxes(axes_style)
 
-            fig_speed = plotly.express.line(df,x='timestamp',y=e_sensors)
-            fig_speed.update_layout({
-            "plot_bgcolor": "rgba(0, 0, 0, 0)",
-            "paper_bgcolor": "rgba(0, 0, 0, 0)",
-            "font_color":"white",
-            })
-            fig_speed.update_xaxes({
-                "linecolor":"white",
-                "gridcolor":"white"
-                })        
+            fig_speed = plotly.express.line(df,x='timestamp',y=df[e_sensors])
+            fig_speed.update_layout(layout_style)
+            fig_speed.update_xaxes(axes_style)        
 
-            fig_alph = plotly.express.line(df,x='timestamp',y=z_wave_parms)
-            fig_alph.update_layout({
-            "plot_bgcolor": "rgba(0, 0, 0, 0)",
-            "paper_bgcolor": "rgba(0, 0, 0, 0)",
-            "font_color":"white",
-            })
-            fig_alph.update_xaxes({
-                "linecolor":"white",
-                "gridcolor":"white"
-                })
+            fig_alph = plotly.express.line(df,x='timestamp',y=df[z_wave_parms])
+            fig_alph.update_layout(layout_style)
+            fig_alph.update_xaxes(axes_style)
                     
             log.info(f'returning 3 graphs {time.perf_counter()-begin}')
             return [fig_pr,fig_speed,fig_alph]

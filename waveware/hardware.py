@@ -509,7 +509,7 @@ class hardware_control:
                     out[f'e{i+1}_ts'] = 0
 
             for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
-                out[f'z{i}'] = self.last.get(f'pos_enc_{i}',0)
+                out[f'z{i+1}'] = self.last.get(f'pos_enc_{i}',0)
 
         else:
             #FAKENESS
@@ -563,7 +563,6 @@ class hardware_control:
         while True:
             try:
                 if not self.active:
-                    log.info(f'print sleep')
                     await asyncio.sleep(intvl)
                     continue
 
@@ -619,18 +618,18 @@ class hardware_control:
             except Exception as e:
                 log.error(str(e), exc_info=1)
 
-    async def mark_zero(self):
+    async def mark_zero(self,cal_time=1,delay=1./1000.):
         """average zeros over a second"""
-        mark_zero = {}
         lt = st = time.perf_counter()
         bs = {}
-        while (ct:=time.perf_counter() - st) < 1:
+        while (ct:=time.perf_counter() - st) < cal_time:
             d = self.output_data(add_bias=False)
             tm = time.perf_counter()
             dt = tm-lt
             lt = tm
+            #lowpass influence dt/(t-t_start)
             a = dt/ct
-            b = 1-a
+            b = 1-a 
             for k,rec in d.items():
                 val = rec if rec is not None else 0
                 if k not in FAKE_BIAS:
@@ -640,6 +639,8 @@ class hardware_control:
                 else:
                     
                     bs[k] = bs[k]*b + val*a
+
+            await asyncio.sleep(delay)
                 
         self.zero_biases = bs
 

@@ -173,11 +173,10 @@ async def set_meta(request,hw):
 
 
 async def add_note(request,hw):
-    
     #convert to subset
-    requests.get('')
     dt = datetime.datetime.now()
-    return web.Response(body='Added Note: {}')
+    bdy = await request.json()
+    return web.Response(body=f'Added Note: {bdy}')
 
 
 async def test_pins(request,hw):

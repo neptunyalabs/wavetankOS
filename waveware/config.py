@@ -55,7 +55,7 @@ REMOTE_HOST = os.environ.get('EMBEDDED_SRV_URL',f'http://localhost:{embedded_srv
 
 DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
 
-log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}')
+log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}')
 
 path = pathlib.Path(__file__)
 fdir = path.parent
