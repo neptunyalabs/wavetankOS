@@ -89,9 +89,9 @@ class wave_control:
         self.dt_stop_and_wait = 60
 
         #setup drive mode first
-        self.drive_mode = 'cal'
+        self.drive_mode = 'stop'
         self.mode_changed = asyncio.Future()
-        self.set_mode('cal')# #always start in calibration mode
+        self.set_mode('stop')# #always start in calibration mode
 
         self.force_cal =  conf.get('force_cal',False)
         self.wave = conf.get('wave',regular_wave())
@@ -500,7 +500,7 @@ class wave_control:
         assert self.adc_ready, f'cannot run without feedback!'
 
         loop = asyncio.get_event_loop()
-        self.set_mode('off')
+        self.set_mode('stop')
         self.started = asyncio.Future()
         
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
