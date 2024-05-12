@@ -40,191 +40,7 @@ app = dash.Dash(
     external_stylesheets=external_stylesheets,
 )
 app.title = TITLE = "WAVE TANK DASHBOARD"
-
-
-
-
-# TODO: 1. Wave Measure Plot w/ act position and ultrasonic distance measurements
-# TODO: 2. ref height / mode selection
-# TODO: 3. pid control variables and cmd speed and feedback voltage
-# TODO: 4. wave input config settings
-# TODO: 5. add range limit slider for bounds
-
-
-
-app.layout = html.Div(
-    [
-        # HEADER / Toolbar
-        html.Div(
-            [
-                html.Div(
-                    [
-                        #html.H4(TITLE, className="app__header__title"),
-                        html.Img(src='https://img1.wsimg.com/isteam/ip/3f70d281-e9f0-4171-94d1-bfd90bbedd4e/Neptunya_LogoTagline_Black_SolidColor_margin.png/:/cr=t:0%25,l:0%25,w:100%25,h:100%25/rs=h:150'),
-                        html.P(
-                            "This Dashboard Displays current values from the neptunya waveware system when turned on",
-                            className="app__header__title--grey",
-                        ),
-                    ],
-                    className="app__header__desc two-third column",
-                ),
-                html.Div(
-                    [
-                        html.Button(
-                            "Calibrate".upper(),
-                            id="calibrate-btn",
-                            style=btn_header,
-                        )
-                    ]
-                ),  
-                html.Div(
-                    [
-                        html.Button(
-                            "Zero".upper(),
-                            id="zero-btn",
-                            style=btn_header,
-                        )
-                    ]
-                ),
-                html.Div(
-                    [
-                        # html.H6(
-                        #     
-                        #     id="daq_msg",
-                        #     style={"text-align": "center"},
-                        # ),
-                        daq.BooleanSwitch(label="DAC ON/OFF",on=False, id="daq_on_off"),
-                    ],
-                    className="column",
-                ),                
-                html.Div([daq.StopButton(id="stop-btn", buttonText="STOP")]),                
-                html.Div(
-                    [
-                        daq.PowerButton(label="WAVE ON/OFF",on=False, id="motor_on_off"),
-                    ],
-                    className="one-third column",
-                ),         
-            ],
-            className="app__header",
-        ),
-        # BODY
-        html.Div([
-            # READOUTS
-            html.Div([
-                html.Div([
-                    html.H6("TEST NAME:",className="graph__title"),
-                    html.Div([dcc.Input("Record Data With This Title", id="title-in", style={'width':'80%','padding-left':'1%','justify-content':'left'}),
-                    html.Button("RUN",id='test-log-send',style={'background-color':'#FFFFFF','height':'40px','padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
-                    style={'displaty':'flex'}),
-                    dcc.RadioItems(
-                            [mode_input_parms[k] for k in wave_drive_modes],
-                            #[k for k in wave_drive_modes],
-                            value=wave_drive_modes[0],
-                            id='mode-select',
-                            inline=True,
-                            inputStyle = {'width':f'{(80)/M}%', 'padding':'0 3% 3% 0'},
-                            labelStyle={'width':f'{(80)/M}%','padding':'0 3% 3% 0'},
-                            style={'width':'100%','background':triton_bk,'display':'inline-block'}
-                        ),
-                    html.Div([
-                        html.Div([
-                                input_card(**wave_input_parms[k]) for k in wave_inputs if k in wave_input_parms
-                                ])
-                        ],
-                        style={
-                        "display": "table-row",
-                        "width": "100%",
-                        "justify-content":"center"
-                        })
-                    ],
-                    style={
-                        "display": "table",
-                        "width": "100%",
-                        "height": "250px",
-                    },
-                    className="graph__container first",
-                ),
-
-                # Write Test Log
-                dcc.Tabs([
-                    dcc.Tab(label='TEST LOG',children=[html.Div(
-                        [
-                            dcc.Textarea(id='test-log',value='',style={'width': '100%', 'height': "20%"}),
-                            html.Button("record".upper(),id='test-log-send',style={'background-color':'#FFFFFF','height':'30px','padding-top':'0%','padding-bottom':'5%'})
-                        ]
-                    )]),
-                    dcc.Tab(label='CONSOLE',children=[html.Div(
-                        [
-                            dcc.Textarea(id='console',value='',style={'width': '100%', 'height': "20%"}),
-                        ]
-                    )]),                                 
-                ]),
-                html.Div(
-                    [
-                    # Station 1
-                    html.H6("Wave Gen Control:".upper(),className="graph__title"),
-                    readout_card("z_cur"),
-                    readout_card("z_cmd"),
-                    readout_card("z_wave"),
-                    readout_card("v_cur"),
-                    readout_card("v_cmd"),
-                    readout_card("v_wave"),                        
-                    
-                    html.H6("Encoder Z 1-4:".upper(),className="graph__title"),
-                    readout_card("z1"),
-                    readout_card("z2"),
-                    readout_card("z3"),
-                    readout_card("z4"),
-
-                    html.H6("Echo Sensor Z 1-4:".upper(),className="graph__title"),
-                    readout_card("e1"),
-                    readout_card("e2"),
-                    readout_card("e3"),
-                    readout_card("e4"),
-                    ]
-                ),
-
-                html.Div(
-                    [
-                    html.H6("Read / Edit Values:".upper(),className="edit_title",style={'display':'none'}), dash_table.DataTable(  data=[],
-                                columns=[],
-                                page_action='none',
-                                style_table={'height': '100px', 'overflowY': 'auto','width':'90%'})
-                ])               
-            ],
-            className=" column histogram__direction",
-            style={'width':'25%'}
-            ),
-            # PLOTS
-            html.Div(
-                [
-                    generate_plot("Encoder Z 1-4 (mm)".upper()),
-                    generate_plot("Echo Height (mm)".upper()), #TODO: wave plot
-                    generate_plot("Wave Generator (m),(m/s)".upper()),
-                    #TODO: test set overview
-                    
-                ],
-                className="two-thirds column wind__speed__container",
-            ),
-        ],
-        className="app__content body",
-    ),
-    dcc.Interval(
-    id=f"graph-update",
-    interval=2.5*1000,
-    n_intervals=0,
-    ),
-    dcc.Interval(
-    id=f"num-raw-update",
-    interval=1*500.,
-    n_intervals=0,
-    ),    
-    html.Div(id="hidden-div", style={"display":"none"})
-    ],
-    className="app__container body",
-)
-
-
+app.layout = DASH_LAY
 
 
 def control_status():
@@ -297,8 +113,6 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
     current = [m_on_old,d_on_old]
     
     
-    #get the trigger
-    #print('trig',ctx.triggered)
     triggers = [t["prop_id"] for t in ctx.triggered]
 
     #get true status
@@ -401,47 +215,35 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
         log.info(f'actions: {actions} setting out: {out}')
     return out
 
-# @app.callback(Output('console','value',allow_duplicate=True),
-#               Input("daq_on_off", "on"),
-#               State('console','value'),
-#               State("daq_on_off", "on"),
-#               prevent_initial_call=True)
-# def turn_on_off_daq(on,console,old_on):
-#     log.info(f"DAQ ON: {on}.")
-#     
-#     if on == old_on:
-#         return
-#     
-#     if on:
-#         requests.get(f"{REMOTE_HOST}/turn_on")
-#         o= "DAC ON"
-#     else:
-#         requests.get(f"{REMOTE_HOST}/turn_off")
-#         o= "DAC OFF"
-#     
-#     return append_log(console,o)
+
+#MAJOR IO (DATA/ MOTOR ENABLE)
+#we need to handle all status at the same time since we call the machine to check, easier to set at same time
+@app.callback( Output('console','value',allow_duplicate=True),
+               Output("motor_on_off", "on"),
+               Output("motor_on_off", "label"),
+               Output("daq_on_off", "on"),
+               Output("daq_on_off", "label"),               
+               Input("num-raw-update","n_intervals"), #on timer
+               Input("motor_on_off", "on"),
+               Input("daq_on_off", "on"),
+               State("motor_on_off", "on"),
+               State("daq_on_off", "on"),
+               State('console','value'),
+               prevent_initial_call=True)
+def update_drive(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
+    """if input is != state then we know a user provided input, if input != current status then call to system should be made to set state
     
-# @app.callback(Output('console','value',allow_duplicate=True),
-#               Input("motor_on_off", "on"),
-#               State('console','value'),
-#               State("motor_on_off", "on"),
-#               prevent_initial_call=True)
-# def dis_and_en_able_motor(set_on,console,old_on):
-#     log.info(f"Set Motor On: {set_on}.")
-#     status = control_status()
-#     
-#     if set_on == old_on:
-#         return append_log(console,f'Motor Already Enabled: {set_on}') 
-# 
-#     if not on:
-#         requests.get(f"{REMOTE_HOST}/control/enable")
-#         o = "Motor Enabled"
-#     else:
-#         requests.get(f"{REMOTE_HOST}/control/disable")
-#         o = "Motor Disabled"
-#     
-#     return append_log(console,o)
+    care should be taken to alighn to the machines end state, which means not taking user triggered action IF the net result would be the machine ending in current state.
+    """
+
+    #the output of this call should expect to not have an update
+    new = [m_on_new,d_on_new]
+    current = [m_on_old,d_on_old]
     
+    
+    return out
+
+
 @app.callback(Output('console','value',allow_duplicate=True),
               Input("stop-btn", "n_clicks"),
               State("motor_on_off", "on"),
