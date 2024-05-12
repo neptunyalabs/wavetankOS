@@ -114,41 +114,41 @@ wave_input_parms = {
                             vertical=True,
                             N=Ninputs
                         ),
-                        'z_ref':dict(
-                            name="z0".upper(),
-                            id="z-ref",
-                            type="number",
-                            min=0,
-                            max=100,
-                            value=50,
-                            step=1,
-                            vertical=True,
-                            N=Ninputs
-                        ),
-                        'z_range':dict(
-                            name="range".upper(),
-                            id="z-range",
-                            type="range",
-                            min=0,
-                            max=100,
-                            verticalHeight=250,#px
-                            value=[33,66],
-                            step=1,
-                            vertical=True,
-                            N=Ninputs
-                        ),
-                        'trq_lim':dict(
-                            name="Torque".upper(),
-                            id="max-torque",
-                            type="number",
-                            min=0,
-                            max=100,
-                            value=0,
-                            step=1,
-                            marks=None,
-                            vertical=True,
-                            N=Ninputs
-                        ), 
+                    'z_ref':dict(
+                        name="z0".upper(),
+                        id="z-ref",
+                        type="number",
+                        min=0,
+                        max=100,
+                        value=50,
+                        step=1,
+                        vertical=True,
+                        N=Ninputs
+                    ),
+                    'z_range':dict(
+                        name="range".upper(),
+                        id="z-range",
+                        type="range",
+                        min=0,
+                        max=100,
+                        verticalHeight=250,#px
+                        value=[33,66],
+                        step=1,
+                        vertical=True,
+                        N=Ninputs
+                    ),
+                    'trq_lim':dict(
+                        name="Torque".upper(),
+                        id="max-torque",
+                        type="number",
+                        min=0,
+                        max=100,
+                        value=0,
+                        step=1,
+                        marks=None,
+                        vertical=True,
+                        N=Ninputs
+                    ), 
                                                
                     }
 
@@ -357,10 +357,10 @@ DASH_LAY = html.Div(
         html.Div([
             # READOUTS
             html.Div([
+                html.H6("DRIVE CONFIG:",className="graph__title"),
                 html.Div([
-                    html.H6("TEST NAME:",className="graph__title"),
                     html.Div([dcc.Input("Record Data With This Title", id="title-in", style={'width':'80%','padding-left':'1%','justify-content':'left'}),
-                    html.Button("RUN",id='test-log-send',style={'background-color':'#FFFFFF','height':'40px','padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
+                    html.Button("RUN",id='drive-set-exec',style={'background-color':'#FFFFFF','height':'40px','padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
                     style={'displaty':'flex'}),
                     dcc.RadioItems(
                             [mode_input_parms[k] for k in wave_drive_modes],
@@ -443,7 +443,7 @@ DASH_LAY = html.Div(
             ),
             # PLOTS
             html.Div(
-                [
+                [   html.H6("",id="current-title",className="graph__title"),
                     generate_plot("Encoder Z 1-4 (mm)".upper()),
                     generate_plot("Echo Height (mm)".upper()), #TODO: wave plot
                     generate_plot("Wave Generator (m),(m/s)".upper()),

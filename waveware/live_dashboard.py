@@ -216,34 +216,29 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
     return out
 
 
-#MAJOR IO (DATA/ MOTOR ENABLE)
-#we need to handle all status at the same time since we call the machine to check, easier to set at same time
+#Set Drive Mode:
+
 @app.callback( Output('console','value',allow_duplicate=True),
-               Output("motor_on_off", "on"),
-               Output("motor_on_off", "label"),
-               Output("daq_on_off", "on"),
-               Output("daq_on_off", "label"),               
-               Input("num-raw-update","n_intervals"), #on timer
-               Input("motor_on_off", "on"),
-               Input("daq_on_off", "on"),
-               State("motor_on_off", "on"),
-               State("daq_on_off", "on"),
+               Output("mode-select", "value"),              
+               Output("title-in", "value"),
+               [Output(k,'value') for k in wave_input_parms],
+               Input("drive-set-exec", "n_clicks"),
+               #[Input(k,'value') for k in wave_inputs],
+               State("title-in", "value"),
+               State("mode-select", "value"),
+               [State(k,'value') for k in wave_input_parms],
                State('console','value'),
                prevent_initial_call=True)
-def update_drive(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
-    """if input is != state then we know a user provided input, if input != current status then call to system should be made to set state
-    
-    care should be taken to alighn to the machines end state, which means not taking user triggered action IF the net result would be the machine ending in current state.
+def update_drive(ms_in,ms_last,console):
+    """When the drive-set-exec button is pressed, all state is sent to server, 
+    If 200 response, data is set otherwise error is logged.
     """
 
-    #the output of this call should expect to not have an update
-    new = [m_on_new,d_on_new]
-    current = [m_on_old,d_on_old]
-    
-    
-    return out
+    return 
 
 
+### CALLS & UTILITY FUNCTIONS
+#EStop
 @app.callback(Output('console','value',allow_duplicate=True),
               Input("stop-btn", "n_clicks"),
               State("motor_on_off", "on"),
@@ -265,9 +260,7 @@ def stop_motor(n_clicks,on,console):
 
     return append_log(console,o)
 
-
-
-#LOGGING FUNCTIONS
+#Zero Cals
 @app.callback(Output('console','value',allow_duplicate=True),
               Input("zero-btn", "n_clicks"),
               State('console','value'),
@@ -282,19 +275,28 @@ def zero_sensors(n_clicks,console):
     else:
         return append_log(console,f'ERROR ZEROING: {resp.status_code}|{resp.text}')
 
-
-
+#MPU_Calibrate
 @app.callback(
     Output('console','value',allow_duplicate=True),
     Output('test-log','value'),
-    Input("calibrate-btn","n_clicks"),
+    Input("test-log-send","n_clicks"),
     State('console','value'),
     State('test-log','value'),
     prevent_initial_call=True
 )
 def log_note(btn,console,test_msg):
-    """requests calibrate and prints the response:"""
-    resp = requests.post(f'{REMOTE_HOST}/log_note',data=str(test_msg))
+    """requests calibrate and prints the response as raw text"""
+
+    log.info(f'GOT LOG: {test_msg}')
+
+    body = {
+        'test_log': test_msg,
+        'sys_status': control_status(),
+        'at': str(datetime.datetime.now(tz=pytz.utc))
+        #TODO: add wave mode data here when status call ready
+    }
+
+    resp = requests.post(f'{REMOTE_HOST}/log_note',data=json.dumps(body))
     cons = append_log(console,resp.text,'LOGGED NOTE')
     return cons,'' #empty log text to signify its sent
         
@@ -307,7 +309,6 @@ def append_log(prv_msgs,msg,section_title=None):
     else:
         print(f'unknown prv: {prv_msgs}')
         
-                
 
     if section_title:
         title = section_title
@@ -326,9 +327,6 @@ def append_log(prv_msgs,msg,section_title=None):
     
 
     out = '\n'.join(b)
-
-    #log.info(f'got {prv_msgs} and {msg} -> {out}')
-
     return out
 
 def de_prop(prv_msgs,dflt):
