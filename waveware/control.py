@@ -302,11 +302,7 @@ class wave_control:
         if not self.enabled:
             if ON_RASPI:
                 val = await self.pi.write(self._motor_en_pin,1)
-                print(f'got val in enable: {val}')
-                if val == 1:
-                    self.enabled = True
-            else:
-                self.enabled = True
+            self.enabled = True
         else:
             print(f'already enabled!')
 
@@ -316,7 +312,7 @@ class wave_control:
             self.reset_speed_tasks()
             self.stopped = False
             await asyncio.sleep(0.5)
-        else:
+        elif not self.stopped:
             print(f'already started!!')
 
     async def disable_control(self):

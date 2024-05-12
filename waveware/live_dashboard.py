@@ -319,7 +319,7 @@ def format_value(k,data):
             return float(Decimal(str(data)).quantize(mm_accuracy_enc))
     return data
 
-
+#TODO; add status (indicator?) output red/green for true/false
 #all_sys_vars get update in order by data
 @app.callback(
     [Output(f'{parm}-display',"value") for parm in all_sys_vars],
@@ -334,9 +334,9 @@ def update_readout(n,on):
             new_data = requests.get(f"{REMOTE_HOST}/getcurrent")
             data = new_data.json()
             if data:
-                print(data) #FIXME: remove
+                #print(data) #FIXME: remove
                 data= [ format_value(k,data[k]) if k in data else 0 for k in all_sys_vars]
-                print(data)
+                #print(data)
                 return data
 
             raise dash.exceptions.PreventUpdate
