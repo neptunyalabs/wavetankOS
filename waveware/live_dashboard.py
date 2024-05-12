@@ -276,7 +276,7 @@ def update_graphs(n,on):
                 log.info(f'got bad response: {new_data}')
 
             #dataframe / index
-            tm = time.perf_counter()    
+            #tm = time.perf_counter()    
             data = list(memcache.values())    
             print(data[0:4])
             df = pd.DataFrame.from_dict(data)
@@ -287,7 +287,8 @@ def update_graphs(n,on):
             #adjust to present
             
             print(df.columns)
-            df['timestamp']=df['timestamp']-tm
+            t = df['timestamp']
+            df['timestamp']=t-t.max()
 
             fig_pr = px.scatter(df,x='timestamp',y=z_sensors)#trendline='lowess',trendline_options=dict(frac=1./10.))
             fig_pr.update_layout(layout_style)
