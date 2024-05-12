@@ -489,7 +489,7 @@ class hardware_control:
                 self.trigger_wave = await self.pi.wave_create()
                 await self.pi.wave_send_repeat(self.trigger_wave)
 
-                while self.pi.wave_tx_busy():
+                while await self.pi.wave_tx_busy():
                     await asyncio.sleep(1)
 
             except Exception as e:
