@@ -563,9 +563,10 @@ class hardware_control:
         while True:
             try:
                 if not self.active:
+                    log.info(f'print sleep')
                     await asyncio.sleep(intvl)
                     continue
-                
+
                 if PLOT_STREAM:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
