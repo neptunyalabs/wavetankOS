@@ -275,9 +275,8 @@ DASH_LAY = html.Div(
             [
                 html.Div(
                     [   
-                        #TODO: replace this with a white logo
                         #html.H4(TITLE, className="app__header__title"),
-                        html.Img(src='https://img1.wsimg.com/isteam/ip/3f70d281-e9f0-4171-94d1-bfd90bbedd4e/Neptunya_LogoTagline_Black_SolidColor_margin.png/:/cr=t:0%25,l:0%25,w:100%25,h:100%25/rs=h:150'),
+                        html.Img(src='assets/Neptunya_LogoTagline_White_SolidColor.png/:/cr=t:0%25,l:0%25,w:100%25,h:100%25/rs=h:150'),
                         html.P(
                             "This Dashboard Displays current values from the neptunya waveware system when turned on",
                             className="app__header__title--grey",

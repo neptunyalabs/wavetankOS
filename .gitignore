@@ -6,3 +6,4 @@ build/*
 *.db
 data_cache
 data_cache/*
+/.idea
