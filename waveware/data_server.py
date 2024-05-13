@@ -235,7 +235,7 @@ async def push_data(hw):
                 }
                 #add items from deque
                 while hw.unprocessed:
-                    row_ts = await hw.unprocessed.pop()
+                    row_ts = hw.unprocessed.pop()
                     if row_ts in hw.cache:
                         row = hw.cache[row_ts]
                         if row:

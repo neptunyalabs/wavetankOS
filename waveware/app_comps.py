@@ -45,8 +45,8 @@ max_ts = 0
 
 mode_input_parms = dict(
                          stop=   {
-                                    "label": html.Div(['OFF'], style={'color': 'WHITE', 'font-size': 20}),
-                                    "value": "OFF",
+                                    "label": html.Div(['STOP'], style={'color': 'WHITE', 'font-size': 20}),
+                                    "value": "STOP",
                                 },
                         center= {
                                     "label": html.Div(['CENTER'], style={'color': 'WHITE', 'font-size': 20}),
