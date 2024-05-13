@@ -37,7 +37,6 @@ def make_app(hw):
             web.get("/getdata", hwfi(get_data,hw)), #works
             web.get("/getcurrent", hwfi(get_current,hw)), #works
 
-            web.post("/set_const", hwfi(set_const,hw)),
             web.post("/log_note", hwfi(add_note,hw)),
 
             #start recording
@@ -56,8 +55,8 @@ def make_app(hw):
             web.get('/control/stop',hwfi(stop_control,hw)), #works
             #web.get('/control/calibrate',hwfi(control_cal,hw)),
             #complex control inputs (post/json)
-            web.post('/control/set_drive',hwfi(set_control_info,hw)),
-            web.get('/control/get_drive',hwfi(get_control_info,hw)),
+            web.post('/control/set',hwfi(set_control_info,hw)),
+            web.get('/control/get',hwfi(get_control_info,hw)),
             web.get('/control/test_pins',hwfi(test_pins,hw)),
             web.get('/control/status',hwfi(ctrl_status,hw)),
         ]
