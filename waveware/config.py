@@ -135,8 +135,8 @@ LABEL_DEFAULT = {
 #3 entries is key,min,max
 editable_parmaters = {
     'title': 'labels.title',
-    'poll-rate': ('hw.poll_rate',1/1000.,1/10.),
-    'temp-rate': ('hw.temp_rate',1,600),
+    #'poll-rate': ('hw.poll_rate',1/1000.,1/10.),
+    #'temp-rate': ('hw.temp_rate',1,600),
     'wave-hs': 'control.wave.hs',
     'wave-ts': 'control.wave.ts',
     'kp-gain': ('control.kzp_sup',-1000,1000),

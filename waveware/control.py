@@ -339,7 +339,7 @@ class wave_control:
         self.stopped = True
         await self.sleep(0.1)
 
-        self.set_mode('off')
+        self.set_mode('stop')
 
         if hasattr(self,'speed_off_task') and not self.speed_off_task.cancelled:
             self.speed_off_task.cancel()
@@ -436,7 +436,7 @@ class wave_control:
                     not self.fail_st])
     
     def set_mode(self,new_mode):
-        assert new_mode in drive_modes,'bad drive mode! choose: {drive_modes}'
+        assert new_mode in drive_modes,f'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
             #log.info(f'same drive mode: {new_mode}')
