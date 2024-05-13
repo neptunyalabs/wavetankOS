@@ -334,7 +334,7 @@ class wave_control:
             loop.run_until_complete(self._close())
         self.stopped = True
 
-    async def  (self):
+    async def _stop(self):
         
         self.stopped = True
         await self.sleep(0.1)
