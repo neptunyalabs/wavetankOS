@@ -104,13 +104,46 @@ rw = regular_wave()
 control_conf = dict(wave=rw,force_cal='-fc' in sys.argv)
 
 #PINS
+#parameter groupings
+z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
+z_sensors = [f'z{i+1}' for i in range(4)]
+e_sensors = [f'e{i+1}' for i in range(4)]
+
+wave_drive_modes = ['stop','center','wave']
+M = len(wave_drive_modes)
+mode_dict = {i:v.upper() for i,v in enumerate(wave_drive_modes)}
+
+wave_inputs = ['mode','wave-ts','wave-hs','z-ref','z-range','trq-lim']
+Ninputs = len(wave_inputs)
+
+all_sys_vars = z_wave_parms+z_sensors+e_sensors #output only
+all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
+
 LABEL_DEFAULT = {
     "title": "test",
-    "hs_in": 0/1000., #m
-    "ts-in": 10.0, #s
-    "trq_pct": 0,
+    "wave-hs": 0/1000., #m
+    "wave-ts": 10.0, #s
+    "trq-lim": 0,
     "kp-gain":0,
     "ki-gain":0,
     "kd-gain":0,
 
+}
+
+#list url/attr name lookups
+#1 entry is basic lookup no lims
+#3 entries is key,min,max
+editable_parmaters = {
+    'title': 'labels.title',
+    'poll-rate': ('hw.poll_rate',1/1000.,1/10.),
+    'temp-rate': ('hw.temp_rate',1,600),
+    'wave-hs': 'control.wave.hs',
+    'wave-ts': 'control.wave.ts',
+    'kp-gain': ('control.kzp_sup',-1000,1000),
+    'kp-gain': ('control.kzi_err',-1000,1000),
+    'cntl-dt': ('control.control_interval',1/1000.,1/100.),
+    'trq-lim': ('control.t_command',0,100),
+    'trq-lim': ('control.t_command',0,100),
+    'dz-p-rot': 'control.dz_per_rot',
+    'step-p-rot': 'control.dz_per_rot',
 }

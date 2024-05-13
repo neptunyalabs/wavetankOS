@@ -43,38 +43,6 @@ PLOTS = []
 max_ts = 0
 
 
-#parameter groupings
-z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
-z_sensors = [f'z{i+1}' for i in range(4)]
-e_sensors = [f'e{i+1}' for i in range(4)]
-
-wave_drive_modes = ['stop','center','wave']
-M = len(wave_drive_modes)
-mode_dict = {i:v.upper() for i,v in enumerate(wave_drive_modes)}
-
-wave_inputs = ['mode','wave-ts','wave-hs','z_ref','z_range','trq_lim']
-Ninputs = len(wave_inputs)
-
-all_sys_vars = z_wave_parms+z_sensors+e_sensors #output only
-all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
-
-# mode_input_parms = dict(
-#                             name="Mode".upper(),
-#                             id="mode-slider",
-#                             type="radio",
-#                             min=0,
-#                             max=len(wave_drive_modes)-1,
-#                             value=0,
-#                             step=None,
-#                             marks=mode_dict,
-#                             tooltip={
-#                                     "always_visible": True,
-#                                     "placement": "left",
-#                                     "template": "{value}"
-#                                 },
-#                             N=Ninputs
-#                         )
-
 mode_input_parms = dict(
                          stop=   {
                                     "label": html.Div(['OFF'], style={'color': 'WHITE', 'font-size': 20}),
@@ -114,7 +82,7 @@ wave_input_parms = {
                             vertical=True,
                             N=Ninputs
                         ),
-                    'z_ref':dict(
+                    'z-ref':dict(
                         name="z0".upper(),
                         id="z-ref",
                         type="number",
@@ -125,7 +93,7 @@ wave_input_parms = {
                         vertical=True,
                         N=Ninputs
                     ),
-                    'z_range':dict(
+                    'z-range':dict(
                         name="range".upper(),
                         id="z-range",
                         type="range",
@@ -137,9 +105,9 @@ wave_input_parms = {
                         vertical=True,
                         N=Ninputs
                     ),
-                    'trq_lim':dict(
+                    'trq-lim':dict(
                         name="Torque".upper(),
-                        id="max-torque",
+                        id="trq-lim",
                         type="number",
                         min=0,
                         max=100,
@@ -182,7 +150,7 @@ def input_card(name, id="",N=1, type="number", **kwargs):
     height = kwargs.pop('height','200px')
 
     mark = id if id else name.lower().split("(")[0].strip().replace(" ", "-")
-    inp = {"id": f"{mark}-input", "type": type, "style": {"width": width}}
+    inp = {"id": f"{mark.replace('_','-')}-input", "type": type, "style": {"width": width}}
 
     widget = dcc.Input
     if type == "number":
@@ -202,7 +170,9 @@ def input_card(name, id="",N=1, type="number", **kwargs):
                         "always_visible": True,
                         "template": "{value}%",
                         'placement':'left'
-                    })
+                    },
+                    id=inp['id']
+                    )
 
 
   
@@ -365,7 +335,7 @@ DASH_LAY = html.Div(
                     dcc.RadioItems(
                             [mode_input_parms[k] for k in wave_drive_modes],
                             #[k for k in wave_drive_modes],
-                            value=wave_drive_modes[0],
+                            value=wave_drive_modes[0].upper(),
                             id='mode-select',
                             inline=True,
                             inputStyle = {'width':f'{(80)/M}%', 'padding':'0 3% 3% 0'},

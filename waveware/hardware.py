@@ -211,7 +211,6 @@ class hardware_control:
             
         self.control.setup()
 
-
     async def _setup_hardware(self):
         if not hasattr(self.pi,'connected'):
             log.info(f'control connecting to pigpio')  
@@ -531,6 +530,73 @@ class hardware_control:
             return dobj['dt'] * self.sound_conv
         return 0
 
+
+    def set_parameters(self,**kw):
+        #labels holds all high level status
+        kw = {k:v for k,v in kw.items() if k in editable_parmaters}
+        log.info(f"setting control info: {kw}")
+
+        #longest to shortest first, ensure match on appropriate child first
+        comps = {
+        'control.wave.' : self.control.wave,
+        'control.' : self.control,
+        'hw.' : self,
+        }
+
+        #create lambdas to set values at end, ensuring intermediate validation doesnt partial update
+        set_procedures = []
+
+        def set_later(cmp,k,v):
+            cb = lambda *a: setattr(cmp,k,v)
+            return cb
+
+        #TODO set parameters via editable dict
+        for k,v in kw.items():
+            if isinstance(v,str):
+                #log.info(f'skippings str:{k}')
+                continue #bye, titles ect
+            elif not isinstance(v,(float,int,bool)):
+                log.info(f'bad value for: {k}|{v}')
+            
+            ep = editable_parmaters[k]
+            if len(ep) == 1:
+                hwkey = ep
+                mn,mx = None,None
+            elif len(ep) == 3:
+                hwkey,mn,mx = ep #min and max, numeric
+            else:
+                return f'{k} parameter entry, wrong format, 1/3 items:  {ep}'
+            
+            cmp = None
+            prm = None
+            for ck,cmp in comps.items():
+                if hwkey.startswith(ck):
+                    prm = hwkey.split('.')[-1]
+                    break #should be a cmp here, since we've parsed from editprm
+
+            if cmp is None:
+                raise ValueError(f'no component found! {k}| {hwkey} | ')
+
+            #do validations
+            if mn is not None:
+                if mn > v:
+                    return f'{k} value {v} is less than min: {mn}'
+            if mx is not None:
+                if mx < v:
+                    return f'{k} value {v} is greater than max: {mx}'
+            
+            #finally determine which items to set
+            set_procedures.append(set_later(cmp,prm,v))
+
+        for sp in set_procedures:
+            sp()
+
+        #match raw update
+        self.labels.update(kw)
+
+    def parameters(self):
+        return self.labels.copy()
+
     def output_data(self,add_bias=True):
         out = {'timestamp':time.perf_counter()}
         if ON_RASPI:
@@ -599,6 +665,9 @@ class hardware_control:
             for k,bs in self.zero_biases.items():
                 if k in out:
                     out[k] = out[k] - bs                    
+
+        #Add labels
+        out.update(self.parameters())
 
         return out 
 

@@ -56,7 +56,8 @@ def make_app(hw):
             web.get('/control/stop',hwfi(stop_control,hw)), #works
             #web.get('/control/calibrate',hwfi(control_cal,hw)),
             #complex control inputs (post/json)
-            web.post('/control/set_inputs',hwfi(set_inputs,hw)),
+            web.post('/control/set_drive',hwfi(set_control_info,hw)),
+            web.get('/control/get_drive',hwfi(get_control_info,hw)),
             web.get('/control/test_pins',hwfi(test_pins,hw)),
             web.get('/control/status',hwfi(ctrl_status,hw)),
         ]
@@ -104,11 +105,6 @@ async def run_wave(request,hw):
     resp = web.Response(text='Wave Started')
     return resp
 
-async def set_inputs(request,hw):
-    pass #TODO
-
-async def set_const(request,hw):
-    pass #TODO
 
 async def stop_control(request,hw):
     assert not hw.control.stopped
@@ -169,20 +165,18 @@ async def get_data(request,hw):
     return web.Response(body='no data!',status=420)
 
 #DATA LABELS & LOGGING
-async def reset_labels(request,hw):
-    log.info("resetting labels")
-    hw.update_labels(**LABEL_DEFAULT)
-    return web.Response(body=json.dumps(hw.labels))
 
+async def set_control_info(request,hw):
+    params = {k:float(v.strip()) if k.replace('.','').isalpha() else v for k,v in request.query.copy().items() }
 
-async def set_meta(request,hw):
-    
-    #convert to subset
-    params = {k:float(v.strip()) if k.isalpha() else v for k,v in request.query.copy().items() if k in hw.labels and v}
-    log.info(f"setting labels: {params}")
-    hw.update_labels(**params)
+    out = hw.set_parameters(**params)
+    if out is True:
+        web.Response(body='success')
+    else:
+        web.Response(body='validation error: {out}',status=400)
 
-    return web.Response(body=json.dumps(hw.labels))
+async def get_control_info(request,hw):
+    return web.Response(body=json.dumps(hw.parameters()))
 
 
 async def add_note(request,hw):
@@ -198,14 +192,21 @@ async def add_note(request,hw):
 async def test_pins(request,hw):
 
     pi = hw.pi
+    out = {}
 
     #control
     obj = hw.control
+    fails = False
     for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin]:
         try:
-            await pi.write(pin,0)
+            val = await pi.write(pin,0)
+            out[pin] = val
+            #TODO: assert ok!
         except Exception as e:
+            fails = True
             log.info(f'issue on pin: {pin}| {e}')
+
+    return web.Response(body=json.dumps(out),status=200 if not fails else 411)
 
 
 
@@ -235,7 +236,7 @@ async def push_data(hw):
                 }
                 #add items from deque
                 while hw.unprocessed:
-                    row_ts = hw.unprocessed.pop()
+                    row_ts = await hw.unprocessed.pop()
                     if row_ts in hw.cache:
                         row = hw.cache[row_ts]
                         if row:

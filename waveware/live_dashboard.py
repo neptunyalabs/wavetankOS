@@ -198,15 +198,12 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
             log.info(f'update status: {status} for triggers: {triggers}')
             log.info(f'actions: {actions} setting out: {out}')
 
-
-
     #TODO: final check?   
     #elif user_input:
     #    #check status again after calls
     #    status = control_status()
 
     if actions:
-        print('adding', console,actions)
         console = append_log(console,actions)
         out[0] = console
 
@@ -221,20 +218,41 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
 @app.callback( Output('console','value',allow_duplicate=True),
                Output("mode-select", "value"),              
                Output("title-in", "value"),
-               [Output(k,'value') for k in wave_input_parms],
+               [Output(f'{k}-input','value') for k in wave_input_parms],
                Input("drive-set-exec", "n_clicks"),
-               #[Input(k,'value') for k in wave_inputs],
-               State("title-in", "value"),
+               Input("graph-update","n_intervals"),
+               #[Input(k,'value') for k in wave_inputs], #consider this...
                State("mode-select", "value"),
-               [State(k,'value') for k in wave_input_parms],
+               State("title-in", "value"),
                State('console','value'),
+                [State(f'{k}-input','value') for k in wave_input_parms],
                prevent_initial_call=True)
-def update_drive(ms_in,ms_last,console):
+
+def update_drive(n_clk,g_int,ms_last,title_in,console,*wave_input):
     """When the drive-set-exec button is pressed, all state is sent to server, 
     If 200 response, data is set otherwise error is logged.
     """
+    triggers = [t["prop_id"] for t in ctx.triggered]
 
-    return 
+    print(f'args for trigger: {triggers}')
+    print(n_clk,g_int,ms_last,title_in,*wave_input)
+
+
+    if 'graph-update.n_intervals' in triggers and len(triggers) == 1:
+        #check embedded device state and set output reflecting embedded
+        #current =#TODO: make call get_drive_parms at /control/get_drive_parms
+        pass
+        #return updates when worthy, or raise preventupdate if nesicary
+    
+    #otherwise it was a click!
+    if 'drive-set-exec.n_clicks' in triggers:
+        #set current state as defined
+        pass
+
+    #return console, mode, title-, wave_outputs
+    raise dash.exceptions.PreventUpdate
+
+
 
 
 ### CALLS & UTILITY FUNCTIONS
@@ -293,7 +311,7 @@ def log_note(btn,console,test_msg):
         'test_log': test_msg,
         'sys_status': control_status(),
         'at': str(datetime.datetime.now(tz=pytz.utc))
-        #TODO: add wave mode data here when status call ready
+        #more info added at state
     }
 
     resp = requests.post(f'{REMOTE_HOST}/log_note',data=json.dumps(body))

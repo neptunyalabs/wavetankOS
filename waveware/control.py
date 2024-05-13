@@ -334,10 +334,12 @@ class wave_control:
             loop.run_until_complete(self._close())
         self.stopped = True
 
-    async def _stop(self):
+    async def  (self):
         
         self.stopped = True
         await self.sleep(0.1)
+
+        self.set_mode('off')
 
         if hasattr(self,'speed_off_task') and not self.speed_off_task.cancelled:
             self.speed_off_task.cancel()
