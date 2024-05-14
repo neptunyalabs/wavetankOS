@@ -276,7 +276,8 @@ DASH_LAY = html.Div(
                 html.Div(
                     [   
                         #html.H4(TITLE, className="app__header__title"),
-                        html.Img(src='assets/Neptunya_LogoTagline_White_SolidColor.png/:/cr=t:0%25,l:0%25,w:100%25,h:100%25/rs=h:150'),
+                        #DASH served from assets folder
+                        html.Img(src='assets/Neptunya_LogoTagline_White_SolidColor.png'),
                         html.P(
                             "This Dashboard Displays current values from the neptunya waveware system when turned on",
                             className="app__header__title--grey",
