@@ -6,3 +6,6 @@ build/*
 *.db
 data_cache
 data_cache/*
+
+#PyCharm IDE
+/.idea
