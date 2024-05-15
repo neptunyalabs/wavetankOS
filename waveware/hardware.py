@@ -614,7 +614,10 @@ class hardware_control:
             segs = hwkey.split('.')
             kv = segs[-1]
             pre = '.'.join(segs[:-1])
-            out[k] = getattr(comps[pre],kv)
+            if pre in comps:
+                out[k] = getattr(comps[pre],kv)
+            else:
+                print(f'got bad pre: {pre} | {k} | {token}')
 
         return out
 
