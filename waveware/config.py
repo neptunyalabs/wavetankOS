@@ -132,7 +132,7 @@ LABEL_DEFAULT = {
 }
 
 #editable inputs are the difference of wave_inputs and label_defaults
-prevent_edit = ['title'] #list to exclude from table edits
+prevent_table = ['title'] #list to exclude from table edits
 edit_inputs = {k:v for k,v in LABEL_DEFAULT.items() if k not in wave_inputs}
 
 #list url/attr name lookups
@@ -161,3 +161,5 @@ _s_lp = set(LABEL_DEFAULT.keys())
 su = set.union(_s_ep,_s_lp)
 si = set.intersection(_s_ep,_s_lp)
 assert _s_ep == _s_lp , f'Must Be Equal| Diff: {su.difference(si)}'
+
+table_parms = {k:v for k,v in edit_inputs.items() if k not in prevent_table}

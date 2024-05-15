@@ -166,12 +166,15 @@ def input_card(name, id="",N=1, type="number", **kwargs):
         widget = dcc.RangeSlider
 
         inp = dict( marks=None,
+                    allowCross=False,
                     tooltip={
                         "always_visible": True,
                         "template": "{value}%",
                         'placement':'left'
                     },
-                    id=inp['id']
+                    #style={'padding': '0px 0px 0px 25px'}, #doesn't work
+                    id=inp['id'],
+
                     )
 
 
@@ -336,8 +339,8 @@ DASH_LAY = html.Div(
             html.Div([
                 html.H6("DRIVE CONFIG:",className="graph__title"),
                 html.Div([
-                    html.Div([dcc.Input("Record Data With This Title", id="title-in", style={'width':'80%','padding-left':'1%','justify-content':'left'}),
-                    html.Button("RUN",id='drive-set-exec',style={'background-color':'#FFFFFF','height':'40px','padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
+                    html.Div([dcc.Input("Record Data With This Title", id="title-in", style={'width':'75%','padding-right':'1%','justify-content':'left'}),
+                    html.Button("RUN",id='drive-set-exec',style={'background-color':'#FFFFFF','height':'38px','width':"24%",'padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
                     style={'displaty':'flex'}),
                     dcc.RadioItems(
                             [mode_input_parms[k] for k in wave_drive_modes],
@@ -367,7 +370,42 @@ DASH_LAY = html.Div(
                     },
                     className="graph__container first",
                 ),
-
+                html.Div(
+                    [
+                    html.H6("Read / Edit Values:".upper(),className="edit_title",style={'display':'none'}), dash_table.DataTable(  data=[{'key':k,'val':v} for k,v in table_parms.items()],
+                                columns=[{'id':'key','name':'Parm','deletable': False,'renamable': False,'editable': False},
+                                         {'id':'val','name':'Val','deletable': False,'renamable': False,'editable': True}],
+                                page_action='none',
+                                id='edit-control-table',
+                                style_table={'height': '100%', 'overflowY': 'auto','width':'100%'},
+                                editable=True,
+                                style_cell={
+                                    # 'padding': '5px'
+                                    'backgroundColor': 'white',
+                                    'color': triton_bk,
+                                    'textAlign': 'left',
+                                },
+                                style_header={
+                                    'backgroundColor': 'white',
+                                    'color': triton_bk,
+                                    'fontWeight': 'bold'
+                                },
+                                css=[
+                                    {"selector": ".dash-spreadsheet-container table", "rule": '--text-color: black !important'},
+                                ],
+                                style_data_conditional=[
+                                    {
+                                        "if": {"state": "active"},  # 'active' | 'selected'
+                                        "backgroundColor": nept_bk2,
+                                        "border": "3px solid white",
+                                        "color": triton_bk,
+                                    },{
+                                        "if": {"state": "selected"},
+                                        # "backgroundColor": "rgba(255,255,255, 0.1)",
+                                        "backgroundColor": "white",
+                                    },
+                                ],)
+                ]),
                 # Write Test Log
                 dcc.Tabs([
                     dcc.Tab(label='TEST LOG',children=[html.Div(
@@ -406,14 +444,6 @@ DASH_LAY = html.Div(
                     readout_card("e4"),
                     ]
                 ),
-
-                html.Div(
-                    [
-                    html.H6("Read / Edit Values:".upper(),className="edit_title",style={'display':'none'}), dash_table.DataTable(  data=[],
-                                columns=[],
-                                page_action='none',
-                                style_table={'height': '100px', 'overflowY': 'auto','width':'90%'})
-                ])               
             ],
             className=" column histogram__direction",
             style={'width':'25%'}

@@ -221,15 +221,17 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
                [Output(f'{k}-input','value') for k in wave_input_parms],
                Input("drive-set-exec", "n_clicks"),
                Input("graph-update","n_intervals"),
-               #[Input(k,'value') for k in wave_inputs], #consider this...
                State("mode-select", "value"),
                State("title-in", "value"),
                State('console','value'),
                State("motor_on_off", "on"),
+               [State('edit-control-table','data'),
+                State('edit-control-table','columns')],               
                 [State(f'{k}-input','value') for k in wave_input_parms],
+
                prevent_initial_call=True)
 
-def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
+def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,*wave_input):
     """When the drive-set-exec button is pressed, all state is sent to server, 
     If 200 response, data is set otherwise error is logged.
     """
@@ -238,12 +240,17 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
     print(f'args for trigger: {triggers}')
     print(n_clk,g_int,ms_last,title_in,*wave_input)
 
+    if not motor_on:
+        #TODO: add note to console
+        raise dash.exceptions.PreventUpdate
+
     st_parms = {k:w for k,w in zip(wave_input_parms,wave_input)}
     st_parms['title'] = title_in
     st_parms['mode-select'] = ms_last
 
     #separte edit field parameters
-    ed_parms = {}
+    tb_data = {d['key']:d['val'] for d in tb_data}
+    ed_parms = {**tb_data}
     for ed_in in edit_inputs:
         if ed_in in st_parms:
             ed_parms[ed_in] = st_parms.pop(ed_in)
@@ -261,6 +268,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
     if 'graph-update.n_intervals' in triggers and len(triggers) == 1:
         #check embedded device state and set output reflecting embedded
         updates = {}
+        print(pkg,st_parms,ed_parms)
         for k,cval in rm_parms.items():
             if k in st_parms:
                 st = st_parms[k]
@@ -268,7 +276,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
                     #TODO: provide update output
                     #print('diff ',k,st,cval)
                     updates[k] = cval
-            else:
+            elif k not in ed_parms:
                 print(f'missing status: {k}')
         
         if updates:
