@@ -538,9 +538,9 @@ class hardware_control:
 
         #longest to shortest first, ensure match on appropriate child first
         comps = {
-        'control.wave.' : self.control.wave,
-        'control.' : self.control,
-        'hw.' : self,
+        'control.wave' : self.control.wave,
+        'control' : self.control,
+        'hw' : self,
         }
 
         #create lambdas to set values at end, ensuring intermediate validation doesnt partial update
@@ -600,9 +600,9 @@ class hardware_control:
         
         #longest to shortest first, ensure match on appropriate child first
         comps = {
-        'control.wave.' : self.control.wave,
-        'control.' : self.control,
-        'hw.' : self,
+        'control.wave' : self.control.wave,
+        'control' : self.control,
+        'hw' : self,
         }
 
         for k,token in editable_parmaters.items():
