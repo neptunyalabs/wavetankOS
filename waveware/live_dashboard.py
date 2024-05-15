@@ -229,7 +229,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
                 [State(f'{k}-input','value') for k in wave_input_parms],
                prevent_initial_call=True)
 
-def update_drive(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
+def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
     """When the drive-set-exec button is pressed, all state is sent to server, 
     If 200 response, data is set otherwise error is logged.
     """
@@ -238,12 +238,38 @@ def update_drive(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
     print(f'args for trigger: {triggers}')
     print(n_clk,g_int,ms_last,title_in,*wave_input)
 
+    st_parms = {k:w for k,w in zip(wave_input_parms,wave_input)}
+    st_parms['title'] = title_in
+    st_parms['mode-select'] = ms_last
+
+    #separte edit field parameters
+    ed_parms = {}
+    for ed_in in edit_inputs:
+        if ed_in in st_parms:
+            ed_parms[ed_in] = st_parms.pop(ed_in)
+
+    #make call to control status
+    current = requests.get(f'{REMOTE_HOST}/control/get')
+    rm_parms = {k:v for k,v in json.loads(current.text).items()}
 
     if 'graph-update.n_intervals' in triggers and len(triggers) == 1:
         #check embedded device state and set output reflecting embedded
-        #current =#TODO: make call get_drive_parms at /control/get_drive_parms
-        pass
-        #return updates when worthy, or raise preventupdate if nesicary
+        updates = {}
+        for k,cval in rm_parms.items():
+            if k in st_parms:
+                st = st_parms[k]
+                if st != cval:
+                    #TODO: provide update output
+                    #print('diff ',k,st,cval)
+                    updates[k] = cval
+            else:
+                print(f'missing status: {k}')
+        
+        if updates:
+            print(f'got updates: {updates}')
+            #TODO: make display changes
+        
+        raise dash.exceptions.PreventUpdate
     
     #otherwise it was a click!
     if 'drive-set-exec.n_clicks' in triggers:

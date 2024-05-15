@@ -123,27 +123,40 @@ LABEL_DEFAULT = {
     "title": "test",
     "wave-hs": 0/1000., #m
     "wave-ts": 10.0, #s
+    "z-ref": 50,
+    "z-range": [33,66],
     "trq-lim": 0,
     "kp-gain":0,
     "ki-gain":0,
     "kd-gain":0,
-
 }
+
+#editable inputs are the difference of wave_inputs and label_defaults
+prevent_edit = ['title'] #list to exclude from table edits
+edit_inputs = {k:v for k,v in LABEL_DEFAULT.items() if k not in wave_inputs}
 
 #list url/attr name lookups
 #1 entry is basic lookup no lims
 #3 entries is key,min,max
 editable_parmaters = {
     'title': 'labels.title',
+    'wave-hs': ('control.wave.hs',0,0.3),
+    'wave-ts': ('control.wave.ts',1,10),
+    'z-ref': ('control.set_zref',0,100),
+    'z-range': ('control.set_zrange',0,100),    
+    'kp-gain': ('control.kp_zerr',-1000,1000),
+    'ki-gain': ('control.ki_zerr',-1000,1000),
+    'kd-gain': ('control.kd_zerr',-1000,1000),
+    'trq-lim': ('control.t_command',0,100),
+    
+    #'cntl-dt': ('control.control_interval',1/1000.,1/100.),    
     #'poll-rate': ('hw.poll_rate',1/1000.,1/10.),
-    #'temp-rate': ('hw.temp_rate',1,600),
-    'wave-hs': 'control.wave.hs',
-    'wave-ts': 'control.wave.ts',
-    'kp-gain': ('control.kzp_sup',-1000,1000),
-    'kp-gain': ('control.kzi_err',-1000,1000),
-    'cntl-dt': ('control.control_interval',1/1000.,1/100.),
-    'trq-lim': ('control.t_command',0,100),
-    'trq-lim': ('control.t_command',0,100),
-    'dz-p-rot': 'control.dz_per_rot',
-    'step-p-rot': 'control.dz_per_rot',
+    #'temp-rate': ('hw.temp_rate',1,600),    
+    #'dz-p-rot': 'control.dz_per_rot',
+    #'step-p-rot': 'control.dz_per_rot',
 }
+_s_ep = set(editable_parmaters.keys())
+_s_lp = set(LABEL_DEFAULT.keys())
+su = set.union(_s_ep,_s_lp)
+si = set.intersection(_s_ep,_s_lp)
+assert _s_ep == _s_lp , f'Must Be Equal| Diff: {su.difference(si)}'

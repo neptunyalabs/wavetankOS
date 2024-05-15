@@ -72,8 +72,9 @@ class wave_control:
     wave: regular_wave
     control_interval: float = 10./1000 #valid on linux, windows is 15ms
 
-    kzp_sup = 0.0#/T
-    kzi_err = 0.1
+    kp_zerr = 0.0
+    ki_zerr = 0.0
+    kd_zerr = 0.0
     
     min_dt = 25
     pulse_dt = 100

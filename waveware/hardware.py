@@ -541,7 +541,7 @@ class hardware_control:
         }
 
         #create lambdas to set values at end, ensuring intermediate validation doesnt partial update
-        set_procedures = []
+        set_procedures = {}
 
         def set_later(cmp,k,v):
             cb = lambda *a: setattr(cmp,k,v)
@@ -583,16 +583,39 @@ class hardware_control:
                     return f'{k} value {v} is greater than max: {mx}'
             
             #finally determine which items to set
-            set_procedures.append(set_later(cmp,prm,v))
+            set_procedures[k] = set_later(cmp,prm,v)
 
-        for sp in set_procedures:
+        for k,sp in set_procedures.items():
+            print('setting ',k)
             sp()
 
         #match raw update
         self.labels.update(kw)
 
     def parameters(self):
-        return self.labels.copy()
+        out = {}
+        
+        #longest to shortest first, ensure match on appropriate child first
+        comps = {
+        'control.wave.' : self.control.wave,
+        'control.' : self.control,
+        'hw.' : self,
+        }
+
+        for k,token in editable_parmaters.items():
+            if len(token) == 1:
+                hwkey = ep
+                mn,mx = None,None
+            elif len(token) == 3:
+                hwkey,mn,mx = ep #min and max, numeric
+            else:
+                return f'{k} parameter entry, wrong format, 1/3 items:  {ep}'
+            segs = hwkey.split('.')
+            kv = segs[-1]
+            pre = '.'.join(segs[:-1])
+            out[k] = getattr(comps[pre],kv)
+
+        return out
 
     def output_data(self,add_bias=True):
         out = {'timestamp':time.perf_counter()}
