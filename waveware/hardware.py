@@ -158,7 +158,7 @@ class hardware_control:
         self.start_time = time.perf_counter()
         self.last_time = None
 
-        self.title = f'Test At {datetime.datetime.isoformat()}'
+        self.title = f'Test At {datetime.datetime.now().isoformat()}'
 
         self.is_fake_init = lambda: True if (time.perf_counter() - self.start_time) <  FAKE_INIT_TIME else False
 
