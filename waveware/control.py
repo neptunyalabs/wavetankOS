@@ -174,7 +174,10 @@ class wave_control:
         self.act_max_speed = 0.01
         
         self.upper_v = 3.3-tol
-        self.lower_v = tol     
+        self.lower_v = tol
+        self.zero_frac = 0.5
+        self.lower_frac = 0.33
+        self.upper_frac = 0.66
         self.vref_0 = (self.upper_v+self.lower_v)/2
 
         self._step_time = self.min_dt
