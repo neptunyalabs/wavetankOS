@@ -250,7 +250,13 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
 
     #make call to control status
     current = requests.get(f'{REMOTE_HOST}/control/get')
-    rm_parms = {k:v for k,v in json.loads(current.text).items()}
+    if current.status_code == 200:
+        pkg = current.json()
+        print(pkg)
+        rm_parms = {k:v for k,v in pkg.items()}
+    else:
+        print(f'bad rmt response: {current.text}')
+        raise dash.exceptions.PreventUpdate
 
     if 'graph-update.n_intervals' in triggers and len(triggers) == 1:
         #check embedded device state and set output reflecting embedded

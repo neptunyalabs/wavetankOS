@@ -603,13 +603,14 @@ class hardware_control:
         }
 
         for k,token in editable_parmaters.items():
-            if len(token) == 1:
-                hwkey = ep
+            if len(token) == 1 or isinstance(token,str):
+                hwkey = token
                 mn,mx = None,None
             elif len(token) == 3:
-                hwkey,mn,mx = ep #min and max, numeric
+                hwkey,mn,mx = token #min and max, numeric
             else:
-                return f'{k} parameter entry, wrong format, 1/3 items:  {ep}'
+                print(f'{k} parameter entry, wrong format, 1/3 items:  {token}')
+                continue
             segs = hwkey.split('.')
             kv = segs[-1]
             pre = '.'.join(segs[:-1])
