@@ -176,7 +176,6 @@ class wave_control:
         self.upper_v = 3.3-tol
         self.lower_v = tol     
         self.vref_0 = (self.upper_v+self.lower_v)/2
-        self.zero_fb_volts = self.vref_0
 
         self._step_time = self.min_dt
         self._step_cint = 1
@@ -557,7 +556,7 @@ class wave_control:
                             raw_adc -= 65535
 
                         self.feedback_volts = vnow = (raw_adc/32767)*VR
-                        self.z_cur = (vnow - self.zero_fb_volts)*self.dzdvref
+                        self.z_cur = (vnow - self.safe_vref_0)*self.dzdvref
 
                         if feedback_futr is not None:
                             feedback_futr.set_result(True)
@@ -595,7 +594,7 @@ class wave_control:
                     await self.sleep(wait)
                     #fake integration w
                     self.z_cur = self.z_cur+self.v_command*(1+0.04*(0.5-random.random()))*wait
-                    self.feedback_volts = (self.z_cur*self.dzdvref)+ self.zero_fb_volts
+                    self.feedback_volts = (self.z_cur*self.dzdvref)+ self.safe_vref_0
 
                     if feedback_futr is not None:
                         feedback_futr.set_result(True)
@@ -701,7 +700,7 @@ class wave_control:
     #Center        
     async def center_head(self,vmove=0.01,find_tol = 0.025,set_mode=False):
         fv = self.feedback_volts
-        dv=self.vref_0-fv
+        dv=self.safe_vref_0-fv
 
         if abs(dv) < find_tol:
             self.v_cmd = 0
@@ -880,7 +879,7 @@ class wave_control:
         self.dzdvref = self.dz_range/self.dvref_range  
         
         #offset defaults to center
-        self.vref_0 = (self.upper_v+self.lower_v)/2 #center
+        self.vz0_ref = 50
 
         log.info(f'center before run')
         await self.center_head_program()
@@ -894,7 +893,7 @@ class wave_control:
         self.set_mode(default_mode)
 
     def save_cal_file(self,**kw):
-        data = {'coef_2':self.coef_2,'coef_10':self.coef_10,'coef_100':self.coef_100,'upper_v':self.upper_v,'lower_v':self.lower_v,'z_cur_vcal':self.z_cur_vcal,'vref_0':self.vref_0,'dzdvref':self.dzdvref,'dvref_range':self.dvref_range,**kw}
+        data = {'coef_2':self.coef_2,'coef_10':self.coef_10,'coef_100':self.coef_100,'upper_v':self.upper_v,'lower_v':self.lower_v,'z_cur_vcal':self.z_cur_vcal,'vref_0':self.safe_vref_0,'dzdvref':self.dzdvref,'dvref_range':self.dvref_range,**kw}
         log.info(f'saving cal data! {data}')
         with open(os.path.join(control_dir,'wave_cal.json'),'w') as fp:
             fp.write(json.dumps(data))
@@ -964,7 +963,46 @@ class wave_control:
         await self.sleep(self.control_interval)
                     
 
-    #FEEDBACK
+    #Saftey & FEEDBACK
+    #safe bounds and references
+    @property
+    def safe_upper_v(self):
+        ul = self.upper_v - self.lower_v
+        return ul * self.upper_frac + self.lower_v
+    
+    @property
+    def safe_lower_v(self):
+        ul = self.upper_v - self.lower_v
+        return ul * self.lower_frac + self.lower_v
+    
+    @property
+    def safe_range(self):
+        return (int(self.lower_frac*100),int(self.upper_frac*100))
+    
+    @safe_range.setter
+    def safe_range(self,inv):
+        lv,uv = inv
+        ck,lvs,uvs = editable_parmaters['z-range']
+        #dont allow zero cross
+        self.lower_frac = min(max(int(lv),lvs),50)/100.
+        self.upper_frac = min(max(int(uv),50),uvs)/100.
+            
+    @property
+    def safe_vref_0(self):
+        ul = self.upper_v - self.lower_v
+        lv = ul * self.lower_frac
+        uv = ul * self.upper_frac
+        return (uv-lv) * self.zero_frac + self.lower_v
+    
+    @property
+    def vz0_ref(self):
+        return int(self.zero_frac*100)
+
+    @vz0_ref.setter
+    def vz0_ref(self,inv):
+        ck,lv,uv = editable_parmaters['z-ref']
+        self.zero_frac = min(max(int(inv),lv),uv)/100.
+
     @property
     def maybe_stuck(self,tol_maybestuck=0.01):
         if abs(self._coef_2) < tol_maybestuck and self.step_count > 1000:
@@ -1095,8 +1133,8 @@ class wave_control:
         if v_cur is None:
             return 0 #wait till feedback
         
-        dvl = (self.upper_v-v_cur)
-        dvu = (v_cur-self.lower_v) 
+        dvl = (self.safe_upper_v-v_cur)
+        dvu = (v_cur-self.safe_lower_v) 
         
         if dvl < self.v_active_tol or dvu < self.v_active_tol:
             Kspd = min(self.act_max_speed,abs(vdmd))

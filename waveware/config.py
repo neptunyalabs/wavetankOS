@@ -142,18 +142,19 @@ editable_parmaters = {
     'title': 'labels.title',
     'wave-hs': ('control.wave.hs',0,0.3),
     'wave-ts': ('control.wave.ts',1,10),
-    'z-ref': ('control.set_zref',0,100),
-    'z-range': ('control.set_zrange',0,100),    
+    'z-ref': ('control.set_vref',10,90),
+    'z-range': ('control.safe_range',0,100),    
     'kp-gain': ('control.kp_zerr',-1000,1000),
     'ki-gain': ('control.ki_zerr',-1000,1000),
     'kd-gain': ('control.kd_zerr',-1000,1000),
     'trq-lim': ('control.t_command',0,100),
-    
+
     #'cntl-dt': ('control.control_interval',1/1000.,1/100.),    
     #'poll-rate': ('hw.poll_rate',1/1000.,1/10.),
     #'temp-rate': ('hw.temp_rate',1,600),    
     #'dz-p-rot': 'control.dz_per_rot',
     #'step-p-rot': 'control.dz_per_rot',
+    #dzdvref
 }
 _s_ep = set(editable_parmaters.keys())
 _s_lp = set(LABEL_DEFAULT.keys())
