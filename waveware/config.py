@@ -142,7 +142,7 @@ editable_parmaters = {
     'title': 'hw.title',
     'wave-hs': ('control.wave.hs',0,0.3),
     'wave-ts': ('control.wave.ts',1,10),
-    'z-ref': ('control.set_vref',10,90),
+    'z-ref': ('control.vz0_ref',10,90),
     'z-range': ('control.safe_range',0,100),    
     'kp-gain': ('control.kp_zerr',-1000,1000),
     'ki-gain': ('control.ki_zerr',-1000,1000),
