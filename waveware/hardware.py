@@ -140,6 +140,7 @@ class hardware_control:
     control = None
 
     #config flags
+    title: str
     active = False
     poll_rate = poll_rate
     poll_temp = poll_temp
@@ -156,6 +157,8 @@ class hardware_control:
     def  __init__(self,encoder_ch:list,echo_ch:list,dir_pin:int,step_pin:int,speedpwm_pin:int,adc_alert_pin:int,hlfb_pin:int,motor_en_pin:int,echo_trig_pin:int,torque_pwm_pin:int,winlen = 1000,enc_conf = None,cntl_conf=None):
         self.start_time = time.perf_counter()
         self.last_time = None
+
+        self.title = f'Test At {datetime.datetime.isoformat()}'
 
         self.is_fake_init = lambda: True if (time.perf_counter() - self.start_time) <  FAKE_INIT_TIME else False
 
