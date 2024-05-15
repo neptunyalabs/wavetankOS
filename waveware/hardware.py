@@ -327,7 +327,7 @@ class hardware_control:
             task = asyncio.to_thread(self.imu_calibrate)
             task.add_done_callback(self.reset_std_in)
             for i in range(6):
-                #TODO: add user control here vs 10second blocks
+                #TODO: add user control here vs 10 second blocks
                 w = 10*(i + 1)
                 loop.call_later(w,self.reset_stdin)
             await task
@@ -338,9 +338,6 @@ class hardware_control:
             self.reset_std_in()
 
         self.active_mpu_cal = False
-        
-        log.info(f'saving calibration file')
-        self.imu.saveCalibDataToFile(self.mpu_cal_file)
 
     def reset_stdin(self):
         self.wt.write('go\r\n'.encode())
@@ -761,15 +758,21 @@ def main():
     from waveware.control import regular_wave
     import sys
     
-
     rw = regular_wave()
     hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
     hw.setup()
-    hw.run()
+
+    print(sys.argv)
+    if '--do-mpu-cal' in sys.argv:
+        hw.imu_calibrate()
+    else:    
+        hw.run()
 
     
 if __name__ == '__main__':
-    main()
+
+
+        main()
 
 
 

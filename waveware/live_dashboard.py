@@ -194,7 +194,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
             out[3] = False
             out[4] = "DAC Disabled"  
 
-        if actions:
+        if DEBUG and actions:
             log.info(f'update status: {status} for triggers: {triggers}')
             log.info(f'actions: {actions} setting out: {out}')
 
@@ -214,7 +214,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
 
 
 #Set Drive Mode:
-
+#
 @app.callback( Output('console','value',allow_duplicate=True),
                Output("mode-select", "value"),              
                Output("title-in", "value"),
@@ -225,10 +225,11 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
                State("mode-select", "value"),
                State("title-in", "value"),
                State('console','value'),
+               State("motor_on_off", "on"),
                 [State(f'{k}-input','value') for k in wave_input_parms],
                prevent_initial_call=True)
 
-def update_drive(n_clk,g_int,ms_last,title_in,console,*wave_input):
+def update_drive(n_clk,g_int,ms_last,title_in,console,motor_on,*wave_input):
     """When the drive-set-exec button is pressed, all state is sent to server, 
     If 200 response, data is set otherwise error is logged.
     """

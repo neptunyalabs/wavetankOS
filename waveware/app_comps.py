@@ -275,25 +275,31 @@ DASH_LAY = html.Div(
             [
                 html.Div(
                     [   
-                        #html.H4(TITLE, className="app__header__title"),
-                        #DASH served from assets folder
-                        html.Img(src='assets/Neptunya_LogoTagline_White_SolidColor.png'),
-                        html.P(
-                            "This Dashboard Displays current values from the neptunya waveware system when turned on",
-                            className="app__header__title--grey",
-                        ),
+                    #html.H4(TITLE, className="app__header__title"),
+                    #DASH served from assets folder
+                    html.Img(src='assets/Neptunya_LogoTagline_White_SolidColor.png',style={'width':'66%'}),
+                    html.P(
+                        "Turn on Data Aquisition (DAC) to record data to S3.",
+                        className="app__header__title--grey",
+                    ),
+                    html.P("Enable Wave Motor before setting the Run Mode.",
+                        className="app__header__title--grey",
+                    ),
+                    html.P("Always keep your hands away from the wave drive or any other pinch points while the motor is enabled and powered on",
+                        className="app__header__title--grey",
+                    ),
                     ],
                     className="app__header__desc two-third column",
                 ),
-                html.Div(
-                    [
-                        html.Button(
-                            "Calibrate".upper(),
-                            id="calibrate-btn",
-                            style=btn_header,
-                        )
-                    ]
-                ),  
+                # html.Div( #TODO: interactive calibration, for now use mpu
+                #     [
+                #         html.Button(
+                #             "Calibrate".upper(),
+                #             id="calibrate-btn",
+                #             style=btn_header,
+                #         )
+                #     ]
+                # ),  
                 html.Div(
                     [
                         html.Button(
