@@ -123,7 +123,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
 
     mode = status['drive_mode']
     mode = mode if mode.lower() != 'cal' else 'center'
-    mode_id = wave_drive_modes.index(mode)
+    mode_id = wave_drive_modes.index(mode.lower())
     motor_on = not status['motor_stopped']
     dac_on = status['dac_active']
 
@@ -246,7 +246,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
     #get state from wave input
     st_parms = {k:w for k,w in zip(wave_input_parms,wave_input)}
     st_parms['title'] = title_in
-    st_parms['mode-select'] = ms_last
+    st_parms['mode'] = ms_last
 
     #separte edit field parameters
     tb_data = {d['key']:d['val'] for d in tb_data}
