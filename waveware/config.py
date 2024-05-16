@@ -84,7 +84,7 @@ for k,p in pins_kw.items():
 #WAVE OBJ
 class regular_wave:
 
-    def __init__(self,Hs=0.01,Ts=5) -> None:
+    def __init__(self,Hs=0.0,Ts=10) -> None:
         self.hs = Hs
         self.ts = Ts
         self.update()

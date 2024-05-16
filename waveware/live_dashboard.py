@@ -297,6 +297,8 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
     
     #otherwise it was a click!
     if 'drive-set-exec.n_clicks' in triggers:
+        #update
+        log.info(f'updating with: {st_parms}| {tb_data} | {ed_parms}')
 
         #check updates    
         updates = {}
