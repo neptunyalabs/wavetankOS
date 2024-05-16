@@ -616,10 +616,10 @@ class hardware_control:
         if not set_procedures and kw:
             raise ValueError(f'no procedures used for {kw}')
 
-        log.info(f'setting {set_procedures}')
+        if DEBUG: log.info(f'setting {set_procedures}')
         for k,sp in set_procedures.items():
             v = sp()
-            log.info(f'set {k}|{v}')
+            if DEBUG: log.info(f'set {k}|{v}')
             
 
         #match raw update

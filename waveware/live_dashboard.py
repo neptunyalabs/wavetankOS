@@ -213,7 +213,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
 
 
 #Set Drive Mode:
-fixed_order = ['console','mode-select','title','tb_data']
+fixed_order = ['console','mode','title','tb_data']
 Nfo = len(fixed_order)
 order = fixed_order+list(wave_input_parms)
 @app.callback( Output('console','value',allow_duplicate=True),
@@ -282,6 +282,8 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
                 if k in tb_data:
                     tb_data[k] = cval
                     order[Nfo-1] = tb_data #keep updating is fine
+                else:
+                    updates[k] = cval
             elif k not in ed_parms:
                 log.info(f'missing status: {k}')  
 
@@ -291,8 +293,8 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
                 output[order.index(k)] = v
 
         o = {k:v for k,v in zip(order,output) if v is not no_update}
-        if DEBUG: 
-            log.info(f'setting output: {o}')
+        if DEBUG:
+            log.info(f'setting output: {o} from {output}')
 
         return output
     
