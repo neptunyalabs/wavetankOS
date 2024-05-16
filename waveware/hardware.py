@@ -535,9 +535,6 @@ class hardware_control:
             return dobj['dt'] * self.sound_conv
         return 0
 
-    def call_later(f,*a,**kw):
-        return lambda *__a: f(*a,**kw)
-
     def set_parameters(self,**params):
         #labels holds all high level status
         kw = {k:v for k,v in params.items() if k in editable_parmaters}
@@ -558,6 +555,9 @@ class hardware_control:
                 setattr(cmp,k,v)
                 return v
             return cb
+        
+        def call_later(f,*a,**kw):
+            return lambda *__a: f(*a,**kw)        
 
         #Set Parameters When Appropriate
         for k,v in kw.items():
@@ -565,7 +565,7 @@ class hardware_control:
             #Handle Special Cases
             if k == 'mode':
                 log.info(f'user set mode! {v}')
-                set_procedures[k] = self.call_later(self.control.set_mode,v)
+                set_procedures[k] = call_later(self.control.set_mode,v)
                 continue
 
 
