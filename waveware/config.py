@@ -13,7 +13,8 @@ from math import cos,sin
 from decimal import Decimal
 from waveware.data import *
 
-logging.basicConfig(level=logging.INFO)
+BASIC_LOG_FMT = "%(asctime)s|%(message)s"
+logging.basicConfig(level=logging.INFO,format=BASIC_LOG_FMT)
 log = logging.getLogger("conf")
 
 mm_accuracy_enc = Decimal('1e-3')

@@ -19,6 +19,9 @@ import random
 
 # Get I2C bus
 
+log = logging.getLogger('cntl')
+
+
 control_dir = pathlib.Path(__file__).parent
 
 class MovementError(Exception): pass
@@ -121,6 +124,7 @@ class wave_control:
             log.info(f'control making pi: {pi}')
             self.pi = pi
         else:
+            log.info(f'adding pi: {pi}')
             self.pi = pi
 
         self.reset()
