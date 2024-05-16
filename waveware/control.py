@@ -222,9 +222,12 @@ class wave_control:
 
 
 
-    def setup(self,i2c=False):
+    def setup(self,i2c=False,cntl=False):
         self.start = None
         loop = asyncio.get_event_loop()
+
+        if cntl:
+            self.setup_control()
 
         if i2c:
             self.setup_i2c()
@@ -1312,6 +1315,6 @@ if __name__ == '__main__':
 
     rw = regular_wave()
     sc = wave_control(4,6,12,7,13,11,10,19,wave=rw,force_cal='-fc' in sys.argv)
-    sc.setup(i2c=True)
+    sc.setup(i2c=True,cntl=True)
     sc.run() 
 
