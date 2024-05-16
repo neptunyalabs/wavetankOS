@@ -562,7 +562,7 @@ class hardware_control:
 
             #Handle Special Cases
             if k == 'mode':
-                log.info(f'setting mode! {v}')
+                log.info(f'user set mode! {v}')
                 set_procedures[k] = lambda *a: self.control.set_mode(v)
                 continue
 
