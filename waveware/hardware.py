@@ -549,16 +549,19 @@ class hardware_control:
            }
         
         if DEBUG:
-            d = {}
-            d['speed_tsk'] = not self.control.speed_pwm_task.cancelled()
-            d['steps_tsk'] = not self.control.speed_step_task.cancelled()
-            d['goal_tsk'] = not self.control.speed_off_task.cancelled()
-            d['fbck_tsk'] = not self.control.feedback_task.cancelled()
-            d['goal_tsk'] = not self.control.goals_task.cancelled()
-            d['stop_tsk'] = not self.control.stop_task.cancelled()
-            d['cent_tsk'] = not self.control.center_task.cancelled()
-            d['cal_tsk'] = not self.control.cal_task.cancelled()
-            basic['tasks'] = d
+            try:
+                d = {}
+                d['speed_tsk'] = not self.control.speed_pwm_task.cancelled()
+                d['steps_tsk'] = not self.control.speed_step_task.cancelled()
+                d['goal_tsk'] = not self.control.speed_off_task.cancelled()
+                d['fbck_tsk'] = not self.control.feedback_task.cancelled()
+                d['goal_tsk'] = not self.control.goals_task.cancelled()
+                d['stop_tsk'] = not self.control.stop_task.cancelled()
+                d['cent_tsk'] = not self.control.center_task.cancelled()
+                d['cal_tsk'] = not self.control.cal_task.cancelled()
+                basic['tasks'] = d
+            except Exception as e:
+                pass
         return basic
     
     def set_parameters(self,**params):
