@@ -248,26 +248,21 @@ class wave_control:
     def set_speed_tasks(self,d_fb=None):
         #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
-        def check_failure(res,typ):
-            try:
-                res.result()
-            except Exception as e:
-                log.info(f'{typ} failure: {e}')
-                traceback.print_tb(e.__traceback__) 
+
         
         if DEBUG: log.info(f'set tasks ex feedback / speed / pwm & steps')
 
         self.feedback_task = loop.create_task(self.feedback(d_fb))
-        self.feedback_task.add_done_callback(check_failure,'feedbck task') 
+        self.feedback_task.add_done_callback(check_failure('feedbck task') 
 
         self.speed_off_task = loop.create_task(self.speed_control_off())
-        self.speed_off_task.add_done_callback(check_failure, 'speed off tsk')
+        self.speed_off_task.add_done_callback(check_failure( 'speed off tsk'))
 
         self.speed_pwm_task = loop.create_task(self.speed_pwm_control())
-        self.speed_pwm_task.add_done_callback(check_failure, 'speed pwm tsk')
+        self.speed_pwm_task.add_done_callback(check_failure('speed pwm tsk'))
 
         self.speed_step_task = loop.create_task(self.step_speed_control())
-        self.speed_step_task.add_done_callback(check_failure, 'speed steps')
+        self.speed_step_task.add_done_callback(check_failure('speed steps'))
 
     def startup(self,await_feedback=True,go_on_feedback=True):
         log.info(f'start control fb: {await_feedback}| {go_on_feedback}')

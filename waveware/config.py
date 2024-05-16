@@ -65,7 +65,14 @@ path = pathlib.Path(__file__)
 fdir = path.parent
 cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
 
-
+def check_failure(typ):
+    def f(res):
+        try:
+            res.result()
+        except Exception as e:
+            log.info(f'{typ} failure: {e}')
+            traceback.print_tb(e.__traceback__) 
+    return f
 
 #PINS
 encoder_pins = [(17,18),(27,22),(23,24),(25,5)]
