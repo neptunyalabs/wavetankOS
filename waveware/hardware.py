@@ -531,10 +531,10 @@ class hardware_control:
         return 0
 
 
-    def set_parameters(self,**kw):
+    def set_parameters(self,**params):
         #labels holds all high level status
-        kw = {k:v for k,v in kw.items() if k in editable_parmaters}
-        log.info(f"setting control info: {kw}")
+        kw = {k:v for k,v in params.items() if k in editable_parmaters}
+        log.info(f"setting control info: {kw} from {params}")
 
         #longest to shortest first, ensure match on appropriate child first
         comps = {
@@ -557,6 +557,7 @@ class hardware_control:
             if isinstance(v,str):
                 log.info(f'skippings str:{k}')
                 continue #bye, titles ect
+
             elif not isinstance(v,(float,int,bool)):
                 log.info(f'bad value for: {k}|{v}')
             
@@ -588,6 +589,7 @@ class hardware_control:
                     return f'{k} value {v} is greater than max: {mx}'
             
             #finally determine which items to set
+            log.info(f'setting cb later: {prm} = {v}')
             set_procedures[k] = set_later(cmp,prm,v)
 
         if not set_procedures and kw:
