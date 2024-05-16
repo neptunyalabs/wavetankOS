@@ -206,12 +206,17 @@ class hardware_control:
     #Run / Setup
     #Setup & Shutdown
     def setup(self):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._setup_hardware())    
+        if ON_RASPI:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self._setup_hardware())    
 
         if ON_RASPI:
             self.setup_i2c()
-            
+        else:
+            self.temp_ready = False
+            self.imu_ready = False
+            self.control.adc_ready = True
+
         self.control.setup()
 
     async def _setup_hardware(self):
@@ -488,7 +493,7 @@ class hardware_control:
         doff = delay-pulse_us
         trigger_100ms = [asyncpio.pulse(1<<self._echo_trig_pin,0,pulse_us),
                      asyncpio.pulse(0,1<<self._echo_trig_pin,doff)]
-        print(f'running trigger on pin: {self._echo_trig_pin} | {pulse_us}us@1 > {doff}us@0')
+        log.info(f'running trigger on pin: {self._echo_trig_pin} | {pulse_us}us@1 > {doff}us@0')
         await self.pi.set_mode(self._echo_trig_pin, pigpio.OUTPUT)
 
         while True:
@@ -623,7 +628,7 @@ class hardware_control:
             elif len(token) == 3:
                 hwkey,mn,mx = token #min and max, numeric
             else:
-                print(f'{k} parameter entry, wrong format, 1/3 items:  {token}')
+                log.info(f'{k} parameter entry, wrong format, 1/3 items:  {token}')
                 continue
             segs = hwkey.split('.')
             kv = segs[-1]
@@ -631,7 +636,7 @@ class hardware_control:
             if pre in comps:
                 out[k] = getattr(comps[pre],kv)
             else:
-                print(f'got bad pre: {pre} | {k} | {token}')
+                log.info(f'got bad pre: {pre} | {k} | {token}')
 
         return out
 
@@ -803,7 +808,7 @@ def main():
     hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
     hw.setup()
 
-    print(sys.argv)
+    log.info(sys.argv)
     if '--do-mpu-cal' in sys.argv:
         hw.imu_calibrate()
     else:    

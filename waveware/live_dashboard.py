@@ -214,6 +214,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
 
 #Set Drive Mode:
 fixed_order = ['console','mode-select','title','tb_data']
+Nfo = len(fixed_order)
 order = fixed_order+list(wave_input_parms)
 @app.callback( Output('console','value',allow_duplicate=True),
                Output("mode-select", "value"),              
@@ -236,11 +237,11 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
     """
     triggers = [t["prop_id"] for t in ctx.triggered]
 
-    #print(f'args for trigger: {triggers}')
-    #print(n_clk,g_int,ms_last,title_in,*wave_input)
+    #log.info(f'args for trigger: {triggers}')
+    #log.info(n_clk,g_int,ms_last,title_in,*wave_input)
 
     #by default all changes will be nothing!
-    output = [no_update]*(len(fixed_order)+len(wave_input_parms))
+    output = [no_update]*(Nfo+len(wave_input_parms))
 
     #get state from wave input
     st_parms = {k:w for k,w in zip(wave_input_parms,wave_input)}
@@ -260,7 +261,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
         pkg = current.json()
         rm_parms = {k:v for k,v in pkg.items()}
     else:
-        print(f'bad rmt response: {current.text}')
+        log.info(f'bad rmt response: {current.text}')
         raise dash.exceptions.PreventUpdate
   
 
@@ -280,17 +281,18 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
             if k in ed_parms:
                 if k in tb_data:
                     tb_data[k] = cval
-                    order[3] = tb_data #keep updating is fine
+                    order[Nfo-1] = tb_data #keep updating is fine
             elif k not in ed_parms:
-                print(f'missing status: {k}')  
+                log.info(f'missing status: {k}')  
 
         if updates:
-            print(f'got updates: {updates}| {ed_parms}')
+            log.info(f'got updates: {updates}| {ed_parms}')
             for k,v in updates.items():
                 output[order.index(k)] = v
+
         o = {k:v for k,v in zip(order,output) if v is not no_update}
         if DEBUG: 
-            print(f'setting output: {o}')
+            log.info(f'setting output: {o}')
         return output
     
     #otherwise it was a click!
@@ -304,7 +306,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
                 if st != cval:
                     updates[k] = st
             elif k not in ed_parms:
-                print(f'missing status: {k}')  
+                log.info(f'missing status: {k}')  
 
         #set the data and record result to console
         updates.update(tb_data)
@@ -392,7 +394,7 @@ def append_log(prv_msgs,msg,section_title=None):
     if isinstance(prv_msgs,str):
         b = prv_msgs.split('\n')
     else:
-        print(f'unknown prv: {prv_msgs}')
+        log.info(f'unknown prv: {prv_msgs}')
         
 
     if section_title:
@@ -523,7 +525,7 @@ def main():
     try:
         srv_host = '0.0.0.0' if ON_RASPI else '127.0.0.1'
 
-        print(f'serving on: {srv_host} with DEBUG={DEBUG}')
+        log.info(f'serving on: {srv_host} with DEBUG={DEBUG}')
 
         app.run_server(debug=DEBUG,host=srv_host)
 

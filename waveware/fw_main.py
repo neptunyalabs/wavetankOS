@@ -92,7 +92,7 @@ class program:
             else:
                 self.dash = None
         except Exception as e:
-            print(f'error in main: {e}')
+            log.info(f'error in main: {e}')
             traceback.print_tb(e.__traceback__)
             sys.exit(1)
 

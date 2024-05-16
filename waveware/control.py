@@ -186,7 +186,7 @@ class wave_control:
 
     #SETUP 
     async def _setup(self):
-        if ON_RASPI: 
+        if ON_RASPI:
             if not hasattr(self.pi,'connected'):
                 con = await self.pi.connect()
                 self.pi.connected = True
@@ -206,7 +206,7 @@ class wave_control:
             await self.pi.write(self._step_pin,0)
             await self.pi.write(self._tpwm_pin,0)
             await self.pi.write(self._vpwm_pin,0)
-            print(f'raspi setup!')   
+            log.info(f'raspi setup!')   
 
 
 
@@ -249,7 +249,7 @@ class wave_control:
         self.speed_step_task.add_done_callback(check_failure)         
 
     def startup(self,await_feedback=True,go_on_feedback=True):
-        print(f'start control fb: {await_feedback}| {go_on_feedback}')
+        log.info(f'start control fb: {await_feedback}| {go_on_feedback}')
         self.start = time.perf_counter()
         loop = asyncio.get_event_loop()
 
@@ -307,7 +307,7 @@ class wave_control:
                 val = await self.pi.write(self._motor_en_pin,1)
             self.enabled = True
         else:
-            print(f'already enabled!')
+            log.info(f'already enabled!')
 
     async def start_control(self):
         await self.enable_control()
@@ -316,7 +316,7 @@ class wave_control:
             self.stopped = False
             await asyncio.sleep(1)
         elif not self.stopped:
-            print(f'already started!!')
+            log.info(f'already started!!')
 
     async def disable_control(self):
         log.info('disabiling motor!')
