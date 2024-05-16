@@ -121,10 +121,10 @@ class wave_control:
         #setup pi if one isn't provided
         if pi is None:
             pi = asyncpio.pi()
-            log.info(f'control making pi: {pi}')
+            log.info(f'control making pi: {str(pi)}')
             self.pi = pi
         else:
-            log.info(f'adding pi: {pi}')
+            log.info(f'adding pi: {str(pi)}')
             self.pi = pi
 
         self.reset()
