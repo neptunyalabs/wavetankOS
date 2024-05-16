@@ -459,6 +459,7 @@ class wave_control:
                     not self.fail_st])
     
     def set_mode(self,new_mode):
+        new_mode = new_mode.strip().lower()
         assert new_mode in drive_modes,f'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.drive_mode:
