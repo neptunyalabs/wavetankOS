@@ -119,12 +119,13 @@ class wave_control:
         #TODO: setup high/low interrupt on hlfb for ppr or torque / speed ect
 
         #setup pi if one isn't provided
+        #FIXME; cant print un-connected pi
         if pi is None:
             pi = asyncpio.pi()
-            log.info(f'control making pi: {str(pi)}')
+            log.info(f'control making pi: {type(pi)}|{id(pi)}')
             self.pi = pi
         else:
-            log.info(f'adding pi: {str(pi)}')
+            log.info(f'adding pi: {type(pi)}|{id(pi)}')
             self.pi = pi
 
         self.reset()
