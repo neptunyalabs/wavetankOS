@@ -288,7 +288,7 @@ class wave_control:
     def run(self):
         #self.stopped = False
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.start_control)
+        loop.run_until_complete(self.start_control())
         self.startup(await_feedback=True)
 
         try:
