@@ -376,9 +376,9 @@ class wave_control:
             log.info(f'setting pwm off')
             try:
                 pt = await self.pi.set_PWM_dutycycle(self._vpwm_pin,0)
-                vpt = await self.pi.write(self._vpwm_pin,0)
+                #vpt = await self.pi.write(self._vpwm_pin,0)
                 vt = await self.pi.set_PWM_dutycycle(self._tpwm_pin,0)
-                tp = await self.pi.write(self._tpwm_pin,0)
+                #tp = await self.pi.write(self._tpwm_pin,0)
             except Exception as e:
                 log.info(f'exception turning off pwm: {e}')      
 
