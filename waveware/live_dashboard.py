@@ -216,7 +216,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
 fixed_order = ['console','mode','title','tb_data']
 Nfo = len(fixed_order)
 order = fixed_order+list(wave_input_parms)
-@app.callback( Output('console','value',allow_duplicate=True),
+@app.callback( Output('console','value'),
                Output("mode-select", "value"),              
                Output("title-in", "value"),
                Output('edit-control-table','data'),
@@ -228,8 +228,7 @@ order = fixed_order+list(wave_input_parms)
                State('console','value'),
                State("motor_on_off", "on"),
                State('edit-control-table','data'),
-               [State(f'{k}-input','value') for k in wave_input_parms],
-               prevent_initial_call=True)
+               [State(f'{k}-input','value') for k in wave_input_parms])
 
 def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_input):
     """When the drive-set-exec button is pressed, all state is sent to server, 
