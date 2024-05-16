@@ -217,6 +217,7 @@ async def test_pins(request,hw):
     
     enc_pins = [v for vs in hw.encoder_pins for v in vs]
     
+
     for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]+hw.echo_pins+enc_pins:
         try:
             cur_mode = await pi.get_mode(pin)
@@ -228,11 +229,16 @@ async def test_pins(request,hw):
             val3 = await pi.read(pin)            
             await pi.set_mode(pin,cur_mode)
             works = val1==0 and val2==1 and val3==0
+            if works != True:
+                log.info(f'issue on pin: {pin}')
             out[pin] = (works,cur_mode,val1,val2,val3)
             #TODO: assert ok!
         except Exception as e:
             fails = True
             log.info(f'issue on pin: {pin}| {e}')
+    
+    if any(v[0]==False for pin,v in out.items()):
+        fails = True
 
     return web.Response(body=json.dumps(out),status=200 if not fails else 411)
 
