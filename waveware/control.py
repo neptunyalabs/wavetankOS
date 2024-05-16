@@ -118,8 +118,8 @@ class wave_control:
         #setup pi if one isn't provided
         if pi is None:
             pi = asyncpio.pi()
-            log.info(f'control maaking pi: {pi}')
-            self.pi
+            log.info(f'control making pi: {pi}')
+            self.pi = pi
         else:
             self.pi = pi
 
@@ -189,6 +189,9 @@ class wave_control:
     #SETUP 
     async def _setup(self):
         if ON_RASPI:
+            if not hasattr(self,'pi') or not isinstance(self.pi,asyncpio.pi):
+                log.info(f'making pi last sec')
+                self.pi = asyncpio.pi()
             if not hasattr(self.pi,'connected'):
                 con = await self.pi.connect()
                 self.pi.connected = True
