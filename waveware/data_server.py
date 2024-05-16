@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("dash")
 
 def make_app(hw):
-    app = web.Application()
+    app = web.Application(access_log=None)
     #function making function (should scope internally to lambda inst)
     hwfi = lambda f,*a,**kw: lambda req: f(req,*a,**kw)
     #log.info(f'creating web server')
