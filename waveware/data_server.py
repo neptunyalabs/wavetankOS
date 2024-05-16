@@ -188,6 +188,7 @@ async def set_control_info(request,hw):
         return o
 
     except Exception as e:
+        log.info(f'issue in remote set control: {e}')
         traceback.print_tb(e.__traceback__)
         return web.Response(status=500,body=str(e))
 
