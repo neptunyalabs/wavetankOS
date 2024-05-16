@@ -628,7 +628,7 @@ class hardware_control:
         return True
 
     def parameters(self):
-        out = {}
+        out = {'mode':self.control.drive_mode,'title':self.title}
         
         #longest to shortest first, ensure match on appropriate child first
         comps = {
