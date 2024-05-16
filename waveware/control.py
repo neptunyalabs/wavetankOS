@@ -1277,11 +1277,13 @@ class wave_control:
             try:
                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_sc = time.perf_counter()
-                    if exited:
+
+                    v_dmd = self.v_command
+
+                    if exited and v_dmd != 0:
                         await self.setup_pwm_speed()        
                         exited = False
 
-                    v_dmd = self.v_command
                     dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),self.pwm_speed_base-1),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
