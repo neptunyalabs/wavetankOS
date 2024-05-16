@@ -264,7 +264,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
         raise dash.exceptions.PreventUpdate
   
 
-    if ('drive-refresh.n_clicks' in triggers and len(triggers) == 1) or not motor_on:
+    if ('drive-refresh.n_clicks' in triggers and len(triggers) == 1) or not motor_on or len(triggers) == 0:
         if 'drive-refresh.n_clicks' not in triggers:
             output[0] = append_log(console,'Must Enable Motor!')
             output[1] = 'STOP'
@@ -280,9 +280,9 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
             if k in ed_parms:
                 if k in tb_data:
                     tb_data[k] = cval
-                    order[Nfo-1] = tb_data #keep updating is fine
-                else:
-                    updates[k] = cval
+                    output[Nfo-1] = tb_data #keep updating is fine same ref...
+                else:   
+                    updates[k] = cval #others
             elif k not in ed_parms:
                 log.info(f'missing status: {k}')  
 
@@ -294,6 +294,12 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
         o = {k:v for k,v in zip(order,output) if v is not no_update}
         if DEBUG:
             log.info(f'setting output: {o} from {output}')
+
+        #mode special case
+        if output[1] is not no_update:
+            new = output[1].strip().upper()            
+            print(f'upper for mode: {new}')
+            output[1] = new
 
         return output
     
@@ -316,6 +322,12 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
             output[0] = append_log(console,f'Successfuly Set: {updates}')
         else:
             output[0] = append_log(console,f'Issue Setting Wave: {resp.text}')
+
+        #mode special case
+        if output[1] is not no_update:
+            new = output[1].strip().upper()            
+            print(f'upper for mode: {new}')
+            output[1] = new
 
         return output
 

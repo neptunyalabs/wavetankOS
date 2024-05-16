@@ -45,12 +45,6 @@ REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://localhost:{embedded_srv_po
 
 DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
 
-log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}')
-
-path = pathlib.Path(__file__)
-fdir = path.parent
-cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
-
 #IMPORT GPIO / CONFIGURE RASPI
 try:
     import RPi.GPIO as gpio
@@ -64,12 +58,20 @@ except:
     smbus = None
     MPU9250 = None
 
+log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}| RASPI: {ON_RASPI}')
+
+path = pathlib.Path(__file__)
+fdir = path.parent
+cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
+
+
+
 #PINS
 encoder_pins = [(17,18),(27,22),(23,24),(25,5)]
 encoder_sens = [{'sens':0.005*4}]*4
 echo_pins = [16,26,20,21]
 
-pins_kw = dict(dir_pin=4,step_pin=6,speedpwm_pin=12,adc_alert_pin=7,hlfb_pin=13,motor_en_pin=19,torque_pwm_pin=10,echo_trig_pin=11)
+pins_kw = dict(dir_pin=4,step_pin=6,speedpwm_pin=12,adc_alert_pin=7,hlfb_pin=13,motor_en_pin=19,torque_pwm_pin=10,echo_trig_pin=8)
 
 log.info(f'PIN SETTINGS:')
 for i,(a,b) in enumerate(encoder_pins):
