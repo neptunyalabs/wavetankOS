@@ -207,7 +207,7 @@ async def add_note(request,hw):
 
 
 async def test_pins(request,hw):
-
+    
     pi = hw.pi
     out = {}
 
@@ -215,10 +215,10 @@ async def test_pins(request,hw):
     obj = hw.control
     fails = False
     
-    enc_pins = [v for vs in hw.encoder_pins for v in vs]
-    
+    #enc_pins = [v for vs in hw.encoder_pins for v in vs]
+    #+hw.echo_pins+enc_pins#FIXME: this destroys sensor cbs ect, only output for now
 
-    for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]+hw.echo_pins+enc_pins:
+    for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]:
         try:
             cur_mode = await pi.get_mode(pin)
             await pi.write(pin,0)
@@ -231,7 +231,7 @@ async def test_pins(request,hw):
             works = val1==0 and val2==1 and val3==0
             if works != True:
                 log.info(f'issue on pin: {pin}')
-            out[pin] = (works,cur_mode,val1,val2,val3)
+            out[pin] = (works,'W' if cur_mode==1 else 'R',val1,val2,val3)
             #TODO: assert ok!
         except Exception as e:
             fails = True
@@ -279,7 +279,7 @@ async def push_data(hw):
                 # Finally try writing the data
                 if data_rows and LOG_TO_S3:
                     log.info(f"writing to S3")
-                    await write_s3(hw,data_set)
+                    await write_s3(hw,data_set) 
                 else:
                     log.info(f"no data, skpping s3 write")
                 # Finally Wait Some Time
