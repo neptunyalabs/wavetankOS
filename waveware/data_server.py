@@ -172,14 +172,17 @@ async def set_control_info(request,hw):
     try:
         params = {k:float(v.strip()) if k.replace('.','').isalpha() else v for k,v in request.query.copy().items() }
         s_data = {'data':params,'asOf':str(datetime.datetime.now())}
-        
-        await write_s3(hw,s_data,title='set_input')
+
+        loop = asyncio.get_running_loop()
+        loop.callSoon(write_s3,hw,s_data,title='set_input')
 
         out = hw.set_parameters(**params)
         if out is True:
-            web.Response(body='success')
+            o = web.Response(body='success')
         else:
-            web.Response(body='validation error: {out}',status=400)
+            o = web.Response(body='validation error: {out}',status=400)
+
+        return o
 
     except Exception as e:
         traceback.print_tb(e.__traceback__)
