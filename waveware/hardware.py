@@ -559,20 +559,25 @@ class hardware_control:
 
         #TODO set parameters via editable dict
         for k,v in kw.items():
-            if isinstance(v,str):
-                log.info(f'skippings str:{k}')
+            #if isinstance(v,str):
+            #    log.info(f'skippings str:{k}')
                 #continue #bye, titles ect
             
             list_check = False
+            str_check = False
             if isinstance(v,list):
                 list_check = True
+            elif isinstance(v,str):
+                str_check = True
             elif not isinstance(v,(float,int,bool)):
                 log.info(f'bad value for: {k}|{v}')
             
             ep = editable_parmaters[k]
-            if len(ep) == 1:
+            mn,mx = None,None
+            if str_check and isinstance(ep,str):
                 hwkey = ep
-                mn,mx = None,None
+            elif len(ep) == 1:
+                hwkey = ep
             elif len(ep) == 3:
                 hwkey,mn,mx = ep #min and max, numeric
             else:
