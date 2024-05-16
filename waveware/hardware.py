@@ -205,7 +205,7 @@ class hardware_control:
 
     #Run / Setup
     #Setup & Shutdown
-    def setup(self):
+    def setup(self,sensors=False):
         if ON_RASPI:
             loop = asyncio.get_event_loop()
             loop.run_until_complete(self._setup_hardware())    
@@ -256,7 +256,7 @@ class hardware_control:
             self.imu_ready = False
             
         try:
-            self.control.setup_i2c(smbus=self.smbus,lock=self.i2c_lock)
+            self.control.setup_i2c(smb=self.smbus,lock=self.i2c_lock)
             self.adc_ready = True
         except Exception as e:
             log.error('issue setting up control i2c',exc_info=e)
@@ -824,7 +824,7 @@ def main():
     
     rw = regular_wave()
     hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
-    hw.setup()
+    hw.setup(sensors=True)
 
     log.info(sys.argv)
     if '--do-mpu-cal' in sys.argv:
