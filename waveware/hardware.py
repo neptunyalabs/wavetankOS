@@ -557,12 +557,16 @@ class hardware_control:
                 return v
             return cb
 
-        #TODO set parameters via editable dict
+        #Set Parameters When Appropriate
         for k,v in kw.items():
-            #if isinstance(v,str):
-            #    log.info(f'skippings str:{k}')
-                #continue #bye, titles ect
-            
+
+            #Handle Special Cases
+            if k == 'mode':
+                log.info(f'setting mode! {v}')
+                set_procedures[k] = lambda *a: self.control.set_mode(v)
+                continue
+
+
             list_check = False
             str_check = False
             if isinstance(v,list):

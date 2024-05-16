@@ -50,7 +50,6 @@ class program:
                 shell=True,
             )
             
-
             await asyncio.sleep(3)
 
             await dash.wait()
