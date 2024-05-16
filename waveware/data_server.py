@@ -93,8 +93,8 @@ async def zero_positions(request,hw):
         raise Exception(f'DAQ not on')
 
     output = await hw._zero_task
+    await write_s3(hw,output,'zero_result')    
     output = json.dumps(output)
-    await write_s3(hw,output,'zero_result')
     resp = web.Response(text=f'Positions zeroed: {output}')
     return resp
 
