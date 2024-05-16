@@ -1269,7 +1269,7 @@ class wave_control:
             await self.setup_pwm_speed()
             exited = False
 
-        log.info(f'PWM freq: {a} | range: {b}')
+        log.info(f'PWM freq: {self.pwm_speed_freq} | range: {self.pwm_speed_base}')
         dc = 0
         it = 0
         while ON_RASPI:
