@@ -214,10 +214,14 @@ async def test_pins(request,hw):
     #control
     obj = hw.control
     fails = False
-    for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin]:
+
+    for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]:
         try:
-            val = await pi.write(pin,0)
-            out[pin] = val
+            val1 = await pi.write(pin,0)
+            val2 = await pi.write(pin,1)
+            val3 = await pi.write(pin,0)
+            works = val1==0 and val2==1 and val3==0
+            out[pin] = (works,val1,val2,val3)
             #TODO: assert ok!
         except Exception as e:
             fails = True

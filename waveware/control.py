@@ -90,8 +90,6 @@ class wave_control:
         """This class represents an A4988 stepper motor driver.  It uses two output pins
         
         for direction and step control signals."""
-        self.dt_stop_and_wait = 60
-
         #setup drive mode first
         self.drive_mode = 'stop'
         self.mode_changed = asyncio.Future()
