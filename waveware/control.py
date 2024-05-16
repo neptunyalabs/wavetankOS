@@ -255,6 +255,8 @@ class wave_control:
                 log.info(f'speed drive failure: {e}')
                 traceback.print_tb(e.__traceback__) 
         
+        if DEBUG: log.info(f'set tasks ex feedback / speed / pwm & steps')
+
         self.feedback_task = loop.create_task(self.feedback(d_fb))
 
         self.speed_off_task = loop.create_task(self.speed_control_off())
@@ -277,23 +279,23 @@ class wave_control:
         
         self.set_speed_tasks(d)
 
-        def go(*args,docal=True,**kw):
-            nonlocal self, loop
-            log.info(f'feedback OK. cal = {docal}')
-
-            cal_file = os.path.join(control_dir,'wave_cal.json')
-            has_file = os.path.exists(cal_file)
-            if (docal and not has_file) or (docal and self.force_cal):
-                log.info(f'calibrate first v={vmove}...')
-                task = loop.create_task(self.calibrate(vmove=vmove))
-                task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
-            else:
-                if has_file: 
-                    self.load_cal_file()
-                loop = asyncio.get_running_loop()
-                center_start = loop.create_task(self.center_start(default_mode))
-
         if await_feedback and go_on_feedback:
+            def go(*args,docal=True,**kw):
+                nonlocal self, loop
+                log.info(f'feedback OK. cal = {docal}')
+
+                cal_file = os.path.join(control_dir,'wave_cal.json')
+                has_file = os.path.exists(cal_file)
+                if (docal and not has_file) or (docal and self.force_cal):
+                    log.info(f'calibrate first v={vmove}...')
+                    task = loop.create_task(self.calibrate(vmove=vmove))
+                    task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
+                else:
+                    if has_file: 
+                        self.load_cal_file()
+                    loop = asyncio.get_running_loop()
+                    center_start = loop.create_task(self.center_start(default_mode))
+
             self.first_feedback.add_done_callback(go)
                     
 
@@ -356,7 +358,7 @@ class wave_control:
         self.stopped = True
 
     async def _stop(self):
-        
+        if DEBUG: log.info(f'task stop')
         self.stopped = True
         await self.sleep(0.1)
 
@@ -1194,19 +1196,20 @@ class wave_control:
                     v_dmd = self.v_command
 
                     if v_dmd != 0 and self.is_safe():
-                        d_us = max( int(1E6 * self.dz_per_step / abs(v_dmd)) , self.min_dt)
+                        d_us = min(max( int(1E6 * self.dz_per_step / abs(v_dmd)) , self.min_dt),self.max_wait)
                         steps = True
                     else:
                         steps = False
-                        d_us = int(1E5) #no 
+                        d_us = int(self.max_wait) #no 
 
                     dt = max(d_us,self.min_dt*2) 
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        #log.info(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
+                        if DEBUG: log.info(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
+                        if DEBUG: log.info(f'no steps')
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
                     self._step_time = dt
@@ -1272,6 +1275,8 @@ class wave_control:
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
                     tdc = max(min(int(self.t_command*1000),1000-10),0)
+
+                    if DEBUG: log.info(f'cntl speed: {v_dmd} | {dc} | {tdc}')
                     if tdc == 0:
                         await self.pi.write(self._tpwm_pin,0)
                     else:

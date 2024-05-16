@@ -535,6 +535,15 @@ class hardware_control:
             return dobj['dt'] * self.sound_conv
         return 0
 
+    @property
+    def control_status(self)->dict:
+        return {'dac_active':self.active,
+           'motor_enabled':self.control.enabled,
+           'motor_stopped':self.control.stopped,
+           'speed_mode': self.control.speed_control_mode,
+           'drive_mode': self.control.drive_mode,
+           'v_cmd': self.v_command}        
+
     def set_parameters(self,**params):
         #labels holds all high level status
         kw = {k:v for k,v in params.items() if k in editable_parmaters}
@@ -747,7 +756,7 @@ class hardware_control:
                 if PLOT_STREAM:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
-                    log.info({k:f'{v:3.3f}' for k,v in self.output_data().items() if isinstance(v,(float,int))})
+                    log.info({k:f'{v:3.3f}' for k,v in self.control_status.items()})
                 
                 await asyncio.sleep(intvl)
             except Exception as e:

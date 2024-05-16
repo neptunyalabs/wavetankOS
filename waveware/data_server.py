@@ -120,11 +120,7 @@ async def start_control(request,hw):
 
 #DATA LOGGING
 async def ctrl_status(request,hw):
-    out = {'dac_active':hw.active,
-           'motor_enabled':hw.control.enabled,
-           'motor_stopped':hw.control.stopped,
-           'speed_mode': hw.control.speed_control_mode,
-           'drive_mode': hw.control.drive_mode}
+    out = hw.control_status
     return web.Response(body=json.dumps(out))
 
 async def turn_daq_on(request,hw):
@@ -217,6 +213,7 @@ async def test_pins(request,hw):
     
     #enc_pins = [v for vs in hw.encoder_pins for v in vs]
     #+hw.echo_pins+enc_pins#FIXME: this destroys sensor cbs ect, only output for now
+    save_last = hw.last
 
     for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]:
         try:
@@ -237,6 +234,8 @@ async def test_pins(request,hw):
             fails = True
             log.info(f'issue on pin: {pin}| {e}')
     
+    hw.last = save_last
+
     if any(v[0]==False for pin,v in out.items()):
         fails = True
 
