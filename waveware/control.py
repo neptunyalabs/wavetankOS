@@ -65,7 +65,7 @@ assert default_speed_mode in speed_modes
 
 vmove=vmove_default=[0.0001,0.001]
 
-
+PR_INT = 100
     
 steps_per_rot = 360/1.8
 dz_per_rot = 0.01 #rate commad
@@ -1187,12 +1187,13 @@ class wave_control:
 
         self.dt_st = 0.005
         self.max_wait = 1E5 #0.1s
+        it = 0
         while not self.stopped:
             stc = self.speed_control_mode_changed
             try:        
                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_st = time.perf_counter()
-
+                    it += 1
                     v_dmd = self.v_command
 
                     if v_dmd != 0 and self.is_safe():
@@ -1205,8 +1206,8 @@ class wave_control:
                     dt = max(d_us,self.min_dt*2) 
 
                     #define wave up for dt, then down for dt,j repeated inc
+                    if DEBUG and (it%PR_INT==0): log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')                    
                     if steps:
-                        if DEBUG: log.info(f'steps: {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
                         if DEBUG: log.info(f'no steps')
@@ -1217,7 +1218,6 @@ class wave_control:
 
                     res = await self.step_wave(waves)
 
-                        
                     self.fail_st = False
                     self.dt_st = time.perf_counter() - self.ct_st
                 
@@ -1260,6 +1260,7 @@ class wave_control:
 
         log.info(f'PWM freq: {a} | range: {b}')
         dc = 0
+        it = 0
         while not self.stopped and ON_RASPI:
             stc = self.speed_control_mode_changed
             try:
@@ -1276,7 +1277,8 @@ class wave_control:
 
                     tdc = max(min(int(self.t_command*1000),1000-10),0)
 
-                    if DEBUG: log.info(f'cntl speed: {v_dmd} | {dc} | {tdc}')
+                    if DEBUG and (it%PR_INT==0): 
+                        log.info(f'cntl speed: {v_dmd} | {dc} | {tdc}')
                     if tdc == 0:
                         await self.pi.write(self._tpwm_pin,0)
                     else:
@@ -1284,6 +1286,8 @@ class wave_control:
 
                     self.fail_sc = False
                     self.dt_sc = time.perf_counter() - self.ct_sc
+                    
+                    it += 1
 
                 #now your not in use
                 log.info(f'exit pwm speed control inner loop')

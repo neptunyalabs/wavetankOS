@@ -537,12 +537,16 @@ class hardware_control:
 
     @property
     def control_status(self)->dict:
-        return {'dac_active':self.active,
+        return {
+           'dac_active':self.active,
            'motor_enabled':self.control.enabled,
            'motor_stopped':self.control.stopped,
            'speed_mode': self.control.speed_control_mode,
            'drive_mode': self.control.drive_mode,
-           'v_cmd': self.control.v_command}        
+           'v_cmd': self.control.v_command,
+           'stuck': self.control.stuck,
+           'maybe_stuck':self.control.maybe_stuck
+           }
 
     def set_parameters(self,**params):
         #labels holds all high level status
