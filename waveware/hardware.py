@@ -568,11 +568,11 @@ class hardware_control:
                 return f'{k} parameter entry, wrong format, 1/3 items:  {ep}'
             
             cmp = None
-            prm = None
-            for ck,cmp in comps.items():
-                if hwkey.startswith(ck):
-                    prm = hwkey.split('.')[-1]
-                    break #should be a cmp here, since we've parsed from editprm
+            segs = hwkey.split('.')
+            prm = segs[-1]
+            pre = '.'.join(segs[:-1])
+            if pre in comps:
+                cmp = comps[pre]
 
             if cmp is None:
                 raise ValueError(f'no component found! {k}| {hwkey} | ')
