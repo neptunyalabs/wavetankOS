@@ -16,6 +16,7 @@ import pandas as pd
 import pathlib
 import logging
 import requests
+import traceback
 
 from waveware.config import *
 from waveware.hardware import LABEL_DEFAULT
@@ -168,16 +169,21 @@ async def get_data(request,hw):
 #DATA LABELS & LOGGING
 
 async def set_control_info(request,hw):
-    params = {k:float(v.strip()) if k.replace('.','').isalpha() else v for k,v in request.query.copy().items() }
-    s_data = {'data':params,'asOf':str(datetime.datetime.now())}
-    
-    await write_s3(hw,s_data,title='set_input')
+    try:
+        params = {k:float(v.strip()) if k.replace('.','').isalpha() else v for k,v in request.query.copy().items() }
+        s_data = {'data':params,'asOf':str(datetime.datetime.now())}
+        
+        await write_s3(hw,s_data,title='set_input')
 
-    out = hw.set_parameters(**params)
-    if out is True:
-        web.Response(body='success')
-    else:
-        web.Response(body='validation error: {out}',status=400)
+        out = hw.set_parameters(**params)
+        if out is True:
+            web.Response(body='success')
+        else:
+            web.Response(body='validation error: {out}',status=400)
+
+    except Exception as e:
+        traceback.print_tb(e.__traceback__)
+        return web.Response(status=500,body=str(e))
 
 async def get_control_info(request,hw):
     return web.Response(body=json.dumps(hw.parameters()))
@@ -272,7 +278,7 @@ async def write_s3(hw,data: dict,title=None):
     """
     from waveware.config import aws_profile,bucket,folder
 
-    if ON_RASPI or folder=='TEST':
+    if ON_RASPI or folder.upper()=='TEST':
         up_time = datetime.datetime.now(tz=datetime.timezone.utc)
         data["upload_time"] = str(up_time)
         date = up_time.date()

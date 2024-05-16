@@ -309,7 +309,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
         #set the data and record result to console
         updates.update(tb_data)
         resp = requests.post(f'{REMOTE_HOST}/control/set',
-                      body=json.dumps(updates))
+                      data=json.dumps(updates))
         if resp.status_code == 200:
             output[0] = append_log(console,'Successfuly Set: {change_items}')
         else:
