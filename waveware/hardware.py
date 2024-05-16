@@ -537,7 +537,7 @@ class hardware_control:
 
     @property
     def control_status(self)->dict:
-        return {
+        basic = {
            'dac_active':self.active,
            'motor_enabled':self.control.enabled,
            'motor_stopped':self.control.stopped,
@@ -545,9 +545,21 @@ class hardware_control:
            'drive_mode': self.control.drive_mode,
            'v_cmd': self.control.v_command,
            'stuck': self.control.stuck,
-           'maybe_stuck':self.control.maybe_stuck
+           'maybe_stuck':self.control.maybe_stuck,
            }
+        
+        if DEBUG:
+            basic['speed_tsk'] = not self.control.speed_pwm_task.cancelled()
+            basic['steps_tsk'] = not self.control.speed_step_task.cancelled()
+            basic['goal_tsk'] = not self.control.speed_off_task.cancelled()
+            basic['fbck_tsk'] = not self.control.feedback_task.cancelled()
+            basic['goal_tsk'] = not self.control.goals_task.cancelled()
+            basic['stop_tsk'] = not self.control.stop_task.cancelled()
+            basic['cent_tsk'] = not self.control.center_task.cancelled()
+            basic['cal_tsk'] = not self.control.cal_task.cancelled()
 
+        return basic
+    
     def set_parameters(self,**params):
         #labels holds all high level status
         kw = {k:v for k,v in params.items() if k in editable_parmaters}
