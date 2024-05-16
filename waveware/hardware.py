@@ -782,7 +782,7 @@ class hardware_control:
                 
         self.zero_biases = bs
 
-        return 
+        return self.zero_biases
 
 def main():
     from waveware.control import regular_wave

@@ -194,9 +194,8 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
             out[3] = False
             out[4] = "DAC Disabled"  
 
-        if DEBUG and actions:
-            log.info(f'update status: {status} for triggers: {triggers}')
-            log.info(f'actions: {actions} setting out: {out}')
+    if DEBUG and actions:
+        log.info(f'update status: {status} for triggers: {triggers}')
 
     #TODO: final check?   
     #elif user_input:
@@ -208,7 +207,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
         out[0] = console
 
     #finally set values based on status if it is different
-    if user_input:
+    if user_input and DEBUG:
         log.info(f'actions: {actions} setting out: {out}')
     return out
 
@@ -371,7 +370,7 @@ def append_log(prv_msgs,msg,section_title=None):
 
     if section_title:
         title = section_title
-        spad = int((80-len(title)/2))
+        spad = int((20-len(title)/2))
         title = '#'*spad+' '+title.upper()+' '+'#'*spad
 
     if msg:
@@ -380,7 +379,7 @@ def append_log(prv_msgs,msg,section_title=None):
         log.info(msg)
         top = msg
         if title:
-            b = [title,top,html.P('#'*80)]+b[:1000]
+            b = [title,top,'#'*20]+b[:1000]
         else:
             b = [top]+b[:1000]
     
@@ -398,52 +397,6 @@ def de_prop(prv_msgs,dflt):
     else:
         raise Exception(f'unexpected {prv_msgs}')
     return p.get('children',dflt)
-
-#TODO: setup inputs callbacks
-# @app.callback(
-#     Output("title-in-input","value"),
-#     Output("sen1-x-input","value"),
-#     Output("sen1-rot-input","value"),
-#     Output("sen2-x-input","value"),    
-#     Output("sen2-rot-input","value"),
-#     Output("air-pla-input","value"),
-#     Output("water-pla-input","value"),
-#     Input("reset-btn","n_clicks"),
-#     )
-# def reset_labels(btn):
-#     out = requests.get(f"{REMOTE_HOST}/reset_labels")
-#     data = out.json()
-# 
-#     return [data['title'],data['sen1-x'],data['sen1-rot'],data['sen2-x'],data['sen2-rot'],data['air-pla'],data['water-pla']]
-
-#TODO: set meta parms and/or edit table here (outy ect)
-# @app.callback(
-#     Output("hidden-div",'children'),
-#     Input("set-btn","n_clicks"),
-#     State("title-in-input","value"),
-#     prevent_initial_call=True
-#     )
-# def set_labels(btn,title,sen1x,sen1rot,sen2x,sen2rot,airpla,waterpla):
-#     
-#     resp = requests.get(f"{REMOTE_HOST}/set_labels?title={title}&sen1-x={sen1x}&sen1-rot={sen1rot}&sen2-x={sen2x}&sen2-rot={sen2rot}&air-pla={airpla}&water-pla={waterpla}")
-# 
-#     out = resp.text
-# 
-#     return out
-
-
-
-#TODO: replace states  
-# State("sen1-x-input","value"),
-# State("sen1-rot-input","value"),
-# State("sen2-x-input","value"),    
-# State("sen2-rot-input","value"),
-# State("air-pla-input","value"),
-# State("water-pla-input","value"),
-
-
-
-
 
 
 

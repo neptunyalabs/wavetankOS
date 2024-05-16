@@ -378,7 +378,7 @@ DASH_LAY = html.Div(
                                 page_action='none',
                                 id='edit-control-table',
                                 style_table={'height': '100%', 'overflowY': 'auto','width':'100%'},
-                                editable=True,
+                                editable=True,#DEBUG, #FIXME: prod make this a special features, hide table as well
                                 style_cell={
                                     # 'padding': '5px'
                                     'backgroundColor': 'white',
@@ -416,7 +416,7 @@ DASH_LAY = html.Div(
                     )]),
                     dcc.Tab(label='CONSOLE',children=[html.Div(
                         [
-                            dcc.Textarea(id='console',value='',style={'width': '100%', 'height': "20%"}),
+                            dcc.Textarea(id='console',value='',readOnly=True,style={'width': '100%', 'height': "20%"}),
                         ]
                     )]),                                 
                 ]),

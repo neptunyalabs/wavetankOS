@@ -94,6 +94,7 @@ async def zero_positions(request,hw):
 
     output = await hw._zero_task
     output = json.dumps(output)
+    await write_s3(hw,output,'zero_result')
     resp = web.Response(text=f'Positions zeroed: {output}')
     return resp
 
