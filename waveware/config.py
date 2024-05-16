@@ -121,6 +121,7 @@ all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
 
 LABEL_DEFAULT = {
     "title": "test",
+    'mode':'STOP',
     "wave-hs": 0/1000., #m
     "wave-ts": 10.0, #s
     "z-ref": 50,
