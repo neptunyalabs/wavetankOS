@@ -226,11 +226,12 @@ class wave_control:
         self.start = None
         loop = asyncio.get_event_loop()
 
-        if cntl:
-            self.setup_control()
-
         if i2c:
             self.setup_i2c()
+
+        if cntl:
+            #requires i2c, but that can be set in outer fw
+            self.setup_control()            
 
         self.speed_control_mode = default_speed_mode
 
