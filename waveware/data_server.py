@@ -171,7 +171,7 @@ async def get_data(request,hw):
 async def set_control_info(request,hw):
     try:
         #params = {k:float(v.strip()) if k.replace('.','').isalpha() else v for k,v in request.query.copy().items() }
-        params = json.dumps(request.data)
+        params = request.json()
         log.info(f'got {params} from {request}')
         s_data = {'data':params,'asOf':str(datetime.datetime.now())}
 
