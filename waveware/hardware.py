@@ -542,7 +542,7 @@ class hardware_control:
            'motor_stopped':self.control.stopped,
            'speed_mode': self.control.speed_control_mode,
            'drive_mode': self.control.drive_mode,
-           'v_cmd': self.v_command}        
+           'v_cmd': self.control.v_command}        
 
     def set_parameters(self,**params):
         #labels holds all high level status
