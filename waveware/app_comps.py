@@ -339,9 +339,11 @@ DASH_LAY = html.Div(
             html.Div([
                 html.H6("DRIVE CONFIG:",className="graph__title"),
                 html.Div([
-                    html.Div([dcc.Input("Record Data With This Title", id="title-in", style={'width':'75%','padding-right':'1%','justify-content':'left'}),
-                    html.Button("RUN",id='drive-set-exec',style={'background-color':'#FFFFFF','height':'38px','width':"24%",'padding-top':'0%','padding-bottom':'5%','flex-grow': 1}) ],
-                    style={'displaty':'flex'}),
+                    html.Div([
+                    dcc.Input("Record Data With This Title", id="title-in", style={'width':'75%','padding-right':'1%','justify-content':'left'}),
+                    html.Button("GET",id='drive-refresh',style={'background-color':'#33CAFF','height':'38px','width':"12%",'padding-top':'0%','padding-bottom':'5%','flex-grow': 1}),
+                    html.Button("SET",id='drive-set-exec',style={'background-color':'#5FFFFF','height':'38px','width':"12%",'padding-top':'0%','padding-bottom':'5%','flex-grow': 1})
+                    ],style={'display':'flex'}),
                     dcc.RadioItems(
                             [mode_input_parms[k] for k in wave_drive_modes],
                             #[k for k in wave_drive_modes],

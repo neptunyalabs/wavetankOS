@@ -213,21 +213,21 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
 
 
 #Set Drive Mode:
-#
+fixed_order = ['console','mode-select','title','tb_data']
+order = fixed_order+list(wave_input_parms)
 @app.callback( Output('console','value',allow_duplicate=True),
                Output("mode-select", "value"),              
                Output("title-in", "value"),
+               Output('edit-control-table','data'),
                [Output(f'{k}-input','value') for k in wave_input_parms],
+               Input("drive-refresh", "n_clicks"),
                Input("drive-set-exec", "n_clicks"),
-               Input("graph-update","n_intervals"),
                State("mode-select", "value"),
                State("title-in", "value"),
                State('console','value'),
                State("motor_on_off", "on"),
-               [State('edit-control-table','data'),
-                State('edit-control-table','columns')],               
-                [State(f'{k}-input','value') for k in wave_input_parms],
-
+               State('edit-control-table','data'),
+               [State(f'{k}-input','value') for k in wave_input_parms],
                prevent_initial_call=True)
 
 def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,*wave_input):
@@ -236,20 +236,20 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
     """
     triggers = [t["prop_id"] for t in ctx.triggered]
 
-    print(f'args for trigger: {triggers}')
-    print(n_clk,g_int,ms_last,title_in,*wave_input)
+    #print(f'args for trigger: {triggers}')
+    #print(n_clk,g_int,ms_last,title_in,*wave_input)
 
-    if not motor_on:
-        #TODO: add note to console
-        raise dash.exceptions.PreventUpdate
+    #by default all changes will be nothing!
+    output = [no_update]*(len(fixed_order)+len(wave_input_parms))
 
+    #get state from wave input
     st_parms = {k:w for k,w in zip(wave_input_parms,wave_input)}
     st_parms['title'] = title_in
     st_parms['mode-select'] = ms_last
 
     #separte edit field parameters
     tb_data = {d['key']:d['val'] for d in tb_data}
-    ed_parms = {**tb_data}
+    ed_parms = {}
     for ed_in in edit_inputs:
         if ed_in in st_parms:
             ed_parms[ed_in] = st_parms.pop(ed_in)
@@ -258,38 +258,65 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
     current = requests.get(f'{REMOTE_HOST}/control/get')
     if current.status_code == 200:
         pkg = current.json()
-        print(pkg)
         rm_parms = {k:v for k,v in pkg.items()}
     else:
         print(f'bad rmt response: {current.text}')
         raise dash.exceptions.PreventUpdate
+  
 
-    if 'graph-update.n_intervals' in triggers and len(triggers) == 1:
+    if ('drive-refresh.n_clicks' in triggers and len(triggers) == 1) or not motor_on:
+        if 'drive-refresh.n_clicks' not in triggers:
+            output[0] = append_log(console,'Must Enable Motor!')
+            output[1] = 'STOP'
         #check embedded device state and set output reflecting embedded
+        
+        #check updates    
         updates = {}
-        print(pkg,st_parms,ed_parms)
         for k,cval in rm_parms.items():
             if k in st_parms:
                 st = st_parms[k]
                 if st != cval:
-                    #TODO: provide update output
-                    #print('diff ',k,st,cval)
                     updates[k] = cval
+            if k in ed_parms:
+                if k in tb_data:
+                    tb_data[k] = cval
+                    order[3] = tb_data #keep updating is fine
             elif k not in ed_parms:
-                print(f'missing status: {k}')
-        
+                print(f'missing status: {k}')  
+
         if updates:
-            print(f'got updates: {updates}')
-            #TODO: make display changes
-        
-        raise dash.exceptions.PreventUpdate
+            print(f'got updates: {updates}| {ed_parms}')
+            for k,v in updates.items():
+                output[order.index(k)] = v
+        o = {k:v for k,v in zip(order,output) if v is not no_update}
+        if DEBUG: 
+            print(f'setting output: {o}')
+        return output
     
     #otherwise it was a click!
     if 'drive-set-exec.n_clicks' in triggers:
-        #set current state as defined
-        pass
 
-    #return console, mode, title-, wave_outputs
+        #check updates    
+        updates = {}
+        for k,cval in rm_parms.items():
+            if k in st_parms:
+                st = st_parms[k]
+                if st != cval:
+                    updates[k] = st
+            elif k not in ed_parms:
+                print(f'missing status: {k}')  
+
+        #set the data and record result to console
+        updates.update(tb_data)
+        resp = requests.post(f'{REMOTE_HOST}/control/set',
+                      body=json.dumps(updates))
+        if resp.status_code == 200:
+            output[0] = append_log(console,'Successfuly Set: {change_items}')
+        else:
+            output[0] = append_log(console,'Issue Setting Wave: {resp.text}')
+
+        return output
+
     raise dash.exceptions.PreventUpdate
 
 

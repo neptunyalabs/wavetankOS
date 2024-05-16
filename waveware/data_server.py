@@ -142,7 +142,8 @@ async def turn_daq_off(request,hw):
 async def get_current(request,hw):
     if hw.last_time and hw.last_time in hw.cache:
         data = hw.cache[hw.last_time]
-        log.info(f'current {data}')
+        if DEBUG: 
+            log.info(f'current {data}')
         if data:
             return web.Response(body=json.dumps(data))
     return web.Response(body='no data!',status=420)
@@ -168,6 +169,9 @@ async def get_data(request,hw):
 
 async def set_control_info(request,hw):
     params = {k:float(v.strip()) if k.replace('.','').isalpha() else v for k,v in request.query.copy().items() }
+    s_data = {'data':params,'asOf':str(datetime.datetime.now())}
+    
+    await write_s3(hw,s_data,title='set_input')
 
     out = hw.set_parameters(**params)
     if out is True:
