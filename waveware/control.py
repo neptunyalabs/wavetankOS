@@ -414,11 +414,11 @@ class wave_control:
             log.info(f'fail in stop: {e}')
         os.kill(os.getpid(), signal.SIGKILL)
     
-    def setup_i2c(self,cv_inx = 0,smbus=None,lock=None):
-        if smbus is None:
+    def setup_i2c(self,cv_inx = 0,smb=None,lock=None):
+        if smb is None:
             self.smbus = smbus.SMBus(1)
         else:
-            self.smbus = smbus
+            self.smbus = smb
 
         if lock is None:
             self.i2c_lock = threading.Lock()
