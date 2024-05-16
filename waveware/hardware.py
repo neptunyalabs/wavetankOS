@@ -561,7 +561,7 @@ class hardware_control:
         for k,v in kw.items():
             if isinstance(v,str):
                 log.info(f'skippings str:{k}')
-                continue #bye, titles ect
+                #continue #bye, titles ect
             
             list_check = False
             if isinstance(v,list):
