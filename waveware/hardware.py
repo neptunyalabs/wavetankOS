@@ -601,7 +601,7 @@ class hardware_control:
                 if mx is not None:
                     if mx < max(v):
                         return f'{k} value {v} is greater than max: {mx}'
-            else:
+            elif not str_check:
                 if mn is not None:
                     if mn > v:
                         return f'{k} value {v} is less than min: {mn}'
