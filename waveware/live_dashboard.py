@@ -311,7 +311,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
         resp = requests.post(f'{REMOTE_HOST}/control/set',
                       data=json.dumps(updates))
         if resp.status_code == 200:
-            output[0] = append_log(console,f'Successfuly Set: {change_items}')
+            output[0] = append_log(console,f'Successfuly Set: {updates}')
         else:
             output[0] = append_log(console,f'Issue Setting Wave: {resp.text}')
 

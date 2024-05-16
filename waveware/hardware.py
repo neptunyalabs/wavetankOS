@@ -588,9 +588,11 @@ class hardware_control:
             #finally determine which items to set
             set_procedures[k] = set_later(cmp,prm,v)
 
+        print('setting',set_procedures)
         for k,sp in set_procedures.items():
-            print('setting ',k)
-            sp()
+            v = sp()
+            print('set ',k,v)
+            
 
         #match raw update
         self.labels.update(kw)
