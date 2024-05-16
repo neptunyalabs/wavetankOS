@@ -188,6 +188,9 @@ class wave_control:
 
     #SETUP 
     async def _setup(self):
+
+
+
         if ON_RASPI:
             if not hasattr(self,'pi') or not isinstance(self.pi,asyncpio.pi):
                 log.info(f'making pi last sec')
@@ -215,9 +218,12 @@ class wave_control:
 
 
 
-    def setup(self):
+    def setup(self,i2c=False):
         self.start = None
         loop = asyncio.get_event_loop()
+
+        if i2c:
+            self.setup_i2c()
 
         self.speed_control_mode = default_speed_mode
 
@@ -1302,6 +1308,6 @@ if __name__ == '__main__':
 
     rw = regular_wave()
     sc = wave_control(4,6,12,7,13,11,10,19,wave=rw,force_cal='-fc' in sys.argv)
-    sc.setup()
+    sc.setup(i2c=True)
     sc.run() 
 
