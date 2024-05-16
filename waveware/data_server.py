@@ -174,8 +174,8 @@ async def set_control_info(request,hw):
         s_data = {'data':params,'asOf':str(datetime.datetime.now())}
 
         #TODO: enable
-        #loop = asyncio.get_running_loop()
-        #loop.callSoon(write_s3,hw,s_data,title='set_input')
+        # asyncio.get_running_loop()
+        await write_s3(hw,s_data,'set_input')
 
         out = hw.set_parameters(**params)
         if out is True:

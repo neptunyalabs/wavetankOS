@@ -595,6 +595,8 @@ class hardware_control:
         #match raw update
         self.labels.update(kw)
 
+        return True
+
     def parameters(self):
         out = {}
         
