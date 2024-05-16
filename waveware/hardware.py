@@ -776,7 +776,7 @@ class hardware_control:
                 if PLOT_STREAM:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
-                    log.info({k:f'{v:3.3f}' for k,v in self.control_status.items()})
+                    log.info({k:f'{v:3.3f}' if isinstance(v,float) else v for k,v in self.control_status.items()})
                 
                 await asyncio.sleep(intvl)
             except Exception as e:
