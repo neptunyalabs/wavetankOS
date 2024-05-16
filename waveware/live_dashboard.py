@@ -176,21 +176,21 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
     if not user_input and 'num-raw-update.n_intervals' in triggers:
         #update the items per control status
         if motor_on and not m_on_old:
-            actions.append(f'ref M.en')
+            actions.append(f'updt: motor engaged')
             out[1] = True
             out[2] = "Motor Enabled"
         elif not motor_on and m_on_old:
-            actions.append(f'ref M.disen')
+            actions.append(f'updt: motor disabled')
             out[1] = False
             out[2] = "Motor Disabled"            
 
         if dac_on and not d_on_old:
-            actions.append(f'ref M.dacen')
+            actions.append(f'updt: dac engaged')
             out[3] = True
             out[4] = "DAC Enabled"
 
         elif not dac_on and d_on_old:
-            actions.append(f'ref M.dacdisen')
+            actions.append(f'updt: dac disabled')
             out[3] = False
             out[4] = "DAC Disabled"  
 
