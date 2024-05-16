@@ -547,13 +547,15 @@ class hardware_control:
         set_procedures = {}
 
         def set_later(cmp,k,v):
-            cb = lambda *a: setattr(cmp,k,v)
+            def cb(*a):
+                setattr(cmp,k,v)
+                return v
             return cb
 
         #TODO set parameters via editable dict
         for k,v in kw.items():
             if isinstance(v,str):
-                #log.info(f'skippings str:{k}')
+                log.info(f'skippings str:{k}')
                 continue #bye, titles ect
             elif not isinstance(v,(float,int,bool)):
                 log.info(f'bad value for: {k}|{v}')
@@ -588,10 +590,13 @@ class hardware_control:
             #finally determine which items to set
             set_procedures[k] = set_later(cmp,prm,v)
 
-        print('setting',set_procedures)
+        if not set_procedures and kw:
+            raise ValueError(f'no procedures used for {kw}')
+
+        log.info('setting',set_procedures)
         for k,sp in set_procedures.items():
             v = sp()
-            print('set ',k,v)
+            log.info('set ',k,v)
             
 
         #match raw update
