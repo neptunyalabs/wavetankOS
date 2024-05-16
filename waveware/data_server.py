@@ -181,7 +181,7 @@ async def set_control_info(request,hw):
         if out is True:
             o = web.Response(body='success')
         else:
-            o = web.Response(body='validation error: {out}',status=400)
+            o = web.Response(body=f'validation error: {out}',status=400)
 
         return o
 
