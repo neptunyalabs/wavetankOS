@@ -638,9 +638,11 @@ class hardware_control:
         }
 
         for k,token in editable_parmaters.items():
-            if len(token) == 1 or isinstance(token,str):
+            mn,mx = None,None
+            if len(token) == 1:
+                hwkey = token[0]
+            elif isinstance(token,str):
                 hwkey = token
-                mn,mx = None,None
             elif len(token) == 3:
                 hwkey,mn,mx = token #min and max, numeric
             else:
