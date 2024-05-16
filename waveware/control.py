@@ -447,6 +447,8 @@ class wave_control:
             #self.smbus.write_i2c_block_data(0x48, 0x03, [0x80,0x00])
             self.adc_ready = True
 
+        #TODO: handle i2c failure and restart or reattempt
+
         except Exception as e:
             log.error('issue setting up temp',exc_info=e)
             self.adc_ready = False        
@@ -1188,12 +1190,11 @@ class wave_control:
         self.dt_st = 0.005
         self.max_wait = 1E5 #0.1s
         it = 0
-        while not self.stopped:
+        while ON_RASPI:
             stc = self.speed_control_mode_changed
             try:        
                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_st = time.perf_counter()
-                    it += 1
                     v_dmd = self.v_command
 
                     if v_dmd != 0 and self.is_safe():
@@ -1206,8 +1207,8 @@ class wave_control:
                     dt = max(d_us,self.min_dt*2) 
 
                     #define wave up for dt, then down for dt,j repeated inc
-                    if DEBUG and (it%PR_INT==0): log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')                    
                     if steps:
+                        if DEBUG and (it%PR_INT==0): log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
                         if DEBUG: log.info(f'no steps')
@@ -1220,6 +1221,9 @@ class wave_control:
 
                     self.fail_st = False
                     self.dt_st = time.perf_counter() - self.ct_st
+                    
+                    it += 1
+
                 
                 #now your not in use
                 log.info(f'exit step speed control inner loop')
@@ -1234,17 +1238,8 @@ class wave_control:
                 traceback.print_tb(e.__traceback__)
                 if ON_RASPI: await self.pi.write(self._step_pin,0)
 
-    async def speed_pwm_control(self):
-        """uses pigpio hw PWM to control pwm dutycycle"""
-        log.info(f'setting pwm speed control')
-        self.dt_sc = 0.005
-        self.pwm_speed_base = 1000
-        self.pwm_speed_freq = 500
-        self.pwm_mid = int(self.pwm_speed_base/2)
-        self.pwm_speed_k = self.pwm_mid / self.max_speed_motor 
-
-        #PWM Frequency
-        if ON_RASPI: 
+    async def setup_pwm_speed(self):
+            log.info(f'setting up PWM Speed Mode')
             a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)
             assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
             b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
@@ -1256,22 +1251,37 @@ class wave_control:
             assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
             b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
             assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
-            await self.pi.write(self._tpwm_pin,0) #start null        
+            await self.pi.write(self._tpwm_pin,0) #start null          
+
+    async def speed_pwm_control(self):
+        """uses pigpio hw PWM to control pwm dutycycle"""
+        #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
+        log.info(f'setting pwm speed control')
+        self.dt_sc = 0.005
+        self.pwm_speed_base = 1000
+        self.pwm_speed_freq = 500
+        self.pwm_mid = int(self.pwm_speed_base/2)
+        self.pwm_speed_k = self.pwm_mid / self.max_speed_motor 
+
+        #PWM Frequency
+        exited = True
+        if ON_RASPI: 
+            await self.setup_pwm_speed()
+            exited = False
 
         log.info(f'PWM freq: {a} | range: {b}')
         dc = 0
         it = 0
-        while not self.stopped and ON_RASPI:
+        while ON_RASPI:
             stc = self.speed_control_mode_changed
             try:
                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_sc = time.perf_counter()
-                    
-                    #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
+                    if exited:
+                        await self.setup_pwm_speed()        
+                        exited = False
 
                     v_dmd = self.v_command
-                    
-
                     dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),self.pwm_speed_base-1),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
@@ -1280,6 +1290,7 @@ class wave_control:
                     if DEBUG and (it%PR_INT==0): 
                         log.info(f'cntl speed: {v_dmd} | {dc} | {tdc}')
                     if tdc == 0:
+                        exited = True
                         await self.pi.write(self._tpwm_pin,0)
                     else:
                         await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
@@ -1290,6 +1301,7 @@ class wave_control:
                     it += 1
 
                 #now your not in use
+                exited = True
                 log.info(f'exit pwm speed control inner loop')
                 await self.pi.write(self._vpwm_pin,0)
                 await self.speed_control_mode_changed
@@ -1306,7 +1318,8 @@ class wave_control:
                 assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
                 await self.pi.write(self._vpwm_pin,0) #start null
 
-        if ON_RASPI:        
+        if ON_RASPI:
+            #turn off safely
             await self.pi.write(self._vpwm_pin,0)
         
         
