@@ -577,7 +577,7 @@ class hardware_control:
             if str_check and isinstance(ep,str):
                 hwkey = ep
             elif len(ep) == 1:
-                hwkey = ep
+                hwkey = ep[0]
             elif len(ep) == 3:
                 hwkey,mn,mx = ep #min and max, numeric
             else:

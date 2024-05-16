@@ -139,7 +139,7 @@ edit_inputs = {k:v for k,v in LABEL_DEFAULT.items() if k not in wave_inputs}
 #1 entry is basic lookup no lims
 #3 entries is key,min,max
 editable_parmaters = {
-    'title': 'hw.title',
+    'title': ('hw.title',),
     'wave-hs': ('control.wave.hs',0,0.3),
     'wave-ts': ('control.wave.ts',1,10),
     'z-ref': ('control.vz0_ref',10,90),
