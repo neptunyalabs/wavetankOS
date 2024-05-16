@@ -45,7 +45,7 @@ import asyncpio
 asyncpio.exceptions = True
 
 import pigpio
-
+import traceback
 import datetime
 import time
 import logging
@@ -273,15 +273,27 @@ class hardware_control:
 
     def create_sensor_tasks(self):
         """starts asyncio tasks for sensor peripherals"""
+
+        def check_failure(res,typ):
+            try:
+                res.result()
+            except Exception as e:
+                log.info(f'{typ} failure: {e}')
+                traceback.print_tb(e.__traceback__) 
+
         loop = asyncio.get_event_loop()
         if self.imu_ready:
             self.imu_read_task = loop.create_task(self.imu_task())
+            self.imu_read_task.add_done_callback(check_failure,'imu task') 
         if self.temp_ready:
             self.temp_task = loop.create_task(self.temp_task())
+            self.temp_task.add_done_callback(check_failure,'temp task') 
         
         self.echo_trigger_task = loop.create_task(self.trigger_task())
+        self.echo_trigger_task.add_done_callback(check_failure,'echo trig task') 
         if DEBUG:
-            self.print_task = loop.create_task(self.print_data())        
+            self.print_task = loop.create_task(self.print_data())
+            self.print_task.add_done_callback(check_failure,'print task')   
 
     def run(self):
         
@@ -773,10 +785,12 @@ class hardware_control:
                 if not self.active:
                     await asyncio.sleep(intvl)
                     continue
+
                 if PLOT_STREAM:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
-                    log.info({k:f'{v:3.3f}' if isinstance(v,float) else v for k,v in self.control_status.items()})
+                    o = {k:f'{v:3.3f}' if isinstance(v,float) else v for k,v in self.control_status.items()}
+                    log.info(str(o))
                 
                 await asyncio.sleep(intvl)
             except Exception as e:

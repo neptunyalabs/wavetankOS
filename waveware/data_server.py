@@ -139,8 +139,8 @@ async def turn_daq_off(request,hw):
 async def get_current(request,hw):
     if hw.last_time and hw.last_time in hw.cache:
         data = hw.cache[hw.last_time]
-        if DEBUG: 
-            log.info(f'current {data}')
+        #if DEBUG: 
+        #    log.info(f'current {data}')
         if data:
             return web.Response(body=json.dumps(data))
     return web.Response(body='no data!',status=420)

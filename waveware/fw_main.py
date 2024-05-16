@@ -71,14 +71,23 @@ class program:
             # Create App & Setup
             await self.app.setup() #turn on webapp
 
+            def check_failure(res,typ):
+                try:
+                    res.result()
+                except Exception as e:
+                    log.info(f'{typ} failure: {e}')
+                    traceback.print_tb(e.__traceback__)
 
             # CREATE PIPELINE TASKS
             # 1. data poll
             self.poll_task = asyncio.create_task(self.hw.poll_data())
+            self.poll_task.add_done_callback(check_failure,'poll task')
             # 2. process data
             self.process_task = asyncio.create_task(self.hw.process_data())
+            self.process_task.add_done_callback(check_failure,'proc task')
             # 3. push data
             self.push_task = asyncio.create_task(push_data(self.hw))
+            self.push_task.add_done_callback(check_failure,'push task')
 
             # Run Site
             self.site = web.TCPSite(self.app, "0.0.0.0", embedded_srv_port)
@@ -88,6 +97,7 @@ class program:
             if not skip_dash:
                 self.dash = self.run_dashboard()
                 self.dash_task = asyncio.create_task(self.dash)
+                self.dash_task.add_done_callback(check_failure,'dash task')
             else:
                 self.dash = None
         except Exception as e:
