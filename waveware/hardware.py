@@ -562,7 +562,10 @@ class hardware_control:
             if isinstance(v,str):
                 log.info(f'skippings str:{k}')
                 continue #bye, titles ect
-
+            
+            list_check = False
+            if isinstance(v,list):
+                list_check = True
             elif not isinstance(v,(float,int,bool)):
                 log.info(f'bad value for: {k}|{v}')
             
@@ -586,12 +589,20 @@ class hardware_control:
                 raise ValueError(f'no component found! {k}| {hwkey} | ')
 
             #do validations
-            if mn is not None:
-                if mn > v:
-                    return f'{k} value {v} is less than min: {mn}'
-            if mx is not None:
-                if mx < v:
-                    return f'{k} value {v} is greater than max: {mx}'
+            if list_check:
+                if mn is not None:
+                    if mn > min(v):
+                        return f'{k} value {v} is less than min: {mn}'
+                if mx is not None:
+                    if mx < max(v):
+                        return f'{k} value {v} is greater than max: {mx}'
+            else:
+                if mn is not None:
+                    if mn > v:
+                        return f'{k} value {v} is less than min: {mn}'
+                if mx is not None:
+                    if mx < v:
+                        return f'{k} value {v} is greater than max: {mx}'
             
             #finally determine which items to set
             log.info(f'setting cb later: {prm} = {v}')

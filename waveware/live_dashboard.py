@@ -231,7 +231,7 @@ order = fixed_order+list(wave_input_parms)
                [State(f'{k}-input','value') for k in wave_input_parms],
                prevent_initial_call=True)
 
-def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,*wave_input):
+def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_input):
     """When the drive-set-exec button is pressed, all state is sent to server, 
     If 200 response, data is set otherwise error is logged.
     """
@@ -293,6 +293,7 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
         o = {k:v for k,v in zip(order,output) if v is not no_update}
         if DEBUG: 
             log.info(f'setting output: {o}')
+
         return output
     
     #otherwise it was a click!
@@ -301,17 +302,13 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,tb_col,
         log.info(f'updating with: {st_parms}| {tb_data} | {ed_parms}')
 
         #check updates    
-        updates = {}
-        for k,cval in rm_parms.items():
-            if k in st_parms:
-                st = st_parms[k]
-                if st != cval:
-                    updates[k] = st
-            elif k not in ed_parms:
-                log.info(f'missing status: {k}')  
+        updates = st_parms.copy()
+        updates.update(tb_data)
+        updates.update(ed_parms)
 
         #set the data and record result to console
         updates.update(tb_data)
+        log.info(f'set updates: {updates}')
         resp = requests.post(f'{REMOTE_HOST}/control/set',
                       data=json.dumps(updates))
         if resp.status_code == 200:
