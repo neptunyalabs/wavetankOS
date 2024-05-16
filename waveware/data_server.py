@@ -215,9 +215,9 @@ async def test_pins(request,hw):
     obj = hw.control
     fails = False
     
-    enc_pins = 
+    enc_pins = [v for vs in hw.encoder_pins for v in vs]
     
-    for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]+hw.echo_pins:
+    for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]+hw.echo_pins+enc_pins:
         try:
             cur_mode = await pi.get_mode(pin)
             await pi.write(pin,0)
