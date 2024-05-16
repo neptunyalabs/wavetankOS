@@ -410,17 +410,17 @@ DASH_LAY = html.Div(
                 ]),
                 # Write Test Log
                 dcc.Tabs([
+                    dcc.Tab(label='CONSOLE',children=[html.Div(
+                        [
+                            dcc.Textarea(id='console',value='',readOnly=True,style={'width': '100%', 'height': "20%"}),
+                        ]
+                    )]),                     
                     dcc.Tab(label='TEST LOG',children=[html.Div(
                         [
                             dcc.Textarea(id='test-log',value='',style={'width': '100%', 'height': "20%"}),
                             html.Button("record".upper(),id='test-log-send',style={'background-color':'#FFFFFF','height':'30px','padding-top':'0%','padding-bottom':'5%'})
                         ]
-                    )]),
-                    dcc.Tab(label='CONSOLE',children=[html.Div(
-                        [
-                            dcc.Textarea(id='console',value='',readOnly=True,style={'width': '100%', 'height': "20%"}),
-                        ]
-                    )]),                                 
+                    )]),                                
                 ]),
                 html.Div(
                     [
