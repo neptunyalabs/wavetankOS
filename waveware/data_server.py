@@ -120,6 +120,7 @@ async def ctrl_status(request,hw):
 async def turn_daq_on(request,hw):
     '''switch puts data in buffer'''
     log.info("turning on")
+    await hw._start_sensors()
     hw.active = True
     return web.Response(text="success")
 
