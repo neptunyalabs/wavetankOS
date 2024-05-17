@@ -554,7 +554,7 @@ class hardware_control:
            'maybe_stuck':self.control.maybe_stuck,
            }
         
-        if DEBUG and self.control.start is not None:
+        if DEBUG and hasattr(self.control,'speed_pwm_task'):
             try:
                 d = {}
                 d['speed_tsk'] = not self.control.speed_pwm_task.cancelled() if self.control.speed_pwm_task else None
