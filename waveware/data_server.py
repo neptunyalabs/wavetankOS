@@ -107,6 +107,7 @@ async def stop_control(request,hw):
 
 async def start_control(request,hw):
     assert hw.control.stopped
+    await hw._start_sensors()    
     await hw.control.start_control()
     return web.Response(text='started')
 

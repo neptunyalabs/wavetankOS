@@ -9,6 +9,7 @@ import datetime
 import pigpio
 import sys
 
+import traceback
 from math import cos,sin
 from decimal import Decimal
 from waveware.data import *

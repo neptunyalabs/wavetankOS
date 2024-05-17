@@ -65,7 +65,7 @@ assert default_speed_mode in speed_modes
 
 vmove=vmove_default=[0.0001,0.001]
 
-PR_INT = 100
+PR_INT = 1000
     
 steps_per_rot = 360/1.8
 dz_per_rot = 0.1 #rate commad
@@ -975,9 +975,8 @@ class wave_control:
         self.v_sup =v_cmd + self.dv_err
 
         vref = self.feedback_volts
-        #if int(self.inx)%10==0:
         if DEBUG: 
-            log.info(f'{self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
+            log.info(f'wave: {self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
 
         #determine direction
         ld = self._last_dir
@@ -1253,12 +1252,12 @@ class wave_control:
 
             print(o,a,b)
             
-            #Torque Control Pin
-            # a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
-            # assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
-            # b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
-            # assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
-            # await self.pi.write(self._tpwm_pin,0) #start null          
+            #Torque Control Pins
+            a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
+            assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
+            b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
+            assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
+            await self.pi.write(self._tpwm_pin,0) #start null          
 
     async def speed_pwm_control(self):
         """uses pigpio hw PWM to control pwm dutycycle"""
@@ -1293,17 +1292,16 @@ class wave_control:
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
 
-                    if DEBUG and (it%PR_INT==0): 
-                        log.info(f'cntl speed: {v_dmd} | {dc} | / {self.pwm_speed_base}')
+                    # if DEBUG and (it%PR_INT==0): 
+                    #     log.info(f'cntl speed: {v_dmd} | {dc} | / {self.pwm_speed_base}')
 
-#                    tdc = max(min(int(self.t_command*1000),1000-10),0)
-# 
-
-#                     if tdc == 0:
-#                         exited = True
-#                         await self.pi.write(self._tpwm_pin,0)
-#                     else:
-#                         await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
+                    #TORQUE PWM
+                    tdc = max(min(int(self.t_command*1000),1000-10),0)
+                    if tdc == 0:
+                        exited = True
+                        await self.pi.write(self._tpwm_pin,0)
+                    else:
+                        await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
 
                     self.fail_sc = False
                     self.dt_sc = time.perf_counter() - self.ct_sc
