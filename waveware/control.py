@@ -1233,11 +1233,11 @@ class wave_control:
             await self.pi.write(self._vpwm_pin,0) #start null
             
             #Torque Control Pin
-            a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
-            assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
-            b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
-            assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
-            await self.pi.write(self._tpwm_pin,0) #start null          
+            # a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
+            # assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
+            # b = await self.pi.set_PWM_range(self._tpwm_pin,self.pwm_speed_base)
+            # assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
+            # await self.pi.write(self._tpwm_pin,0) #start null          
 
     async def speed_pwm_control(self):
         """uses pigpio hw PWM to control pwm dutycycle"""
@@ -1260,6 +1260,7 @@ class wave_control:
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
+            await self.setup_pwm_speed()
             try:
                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_sc = time.perf_counter()
