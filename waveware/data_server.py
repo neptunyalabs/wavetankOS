@@ -102,12 +102,12 @@ async def zero_positions(request,hw):
 #Start / Stop
 async def stop_control(request,hw):
     assert not hw.control.stopped
-    await hw.control.disable_control()
+    await hw.control.stop_control()
     return web.Response(text='stopped')
 
 async def start_control(request,hw):
     assert hw.control.stopped
-    await hw.control.enable_control()
+    await hw.control.start_control()
     return web.Response(text='started')
 
 

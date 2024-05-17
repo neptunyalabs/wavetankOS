@@ -91,7 +91,7 @@ class program:
             if not skip_dash:
                 self.dash = self.run_dashboard()
                 self.dash_task = asyncio.create_task(self.dash)
-                self.dash_task.add_done_callback(check_failure,'dash task')
+                self.dash_task.add_done_callback(check_failure('dash task'))
             else:
                 self.dash = None
         except Exception as e:
