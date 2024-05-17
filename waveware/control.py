@@ -1226,11 +1226,14 @@ class wave_control:
 
     async def setup_pwm_speed(self):
             log.info(f'setting up PWM Speed Mode')
+            o = await self.pi.set_mode(self._vpwm_pin,asyncpio.OUTPUT)
             a = await self.pi.set_PWM_frequency(self._vpwm_pin,self.pwm_speed_freq)
             assert a == self.pwm_speed_freq, f'bad pwm freq result! {a}'
             b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
             assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
             await self.pi.write(self._vpwm_pin,0) #start null
+
+            print(o,a,b)
             
             #Torque Control Pin
             # a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)
@@ -1274,15 +1277,18 @@ class wave_control:
                     dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),self.pwm_speed_base-1),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
-                    tdc = max(min(int(self.t_command*1000),1000-10),0)
 
                     if DEBUG and (it%PR_INT==0): 
-                        log.info(f'cntl speed: {v_dmd} | {dc} | {tdc}')
-                    if tdc == 0:
-                        exited = True
-                        await self.pi.write(self._tpwm_pin,0)
-                    else:
-                        await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
+                        log.info(f'cntl speed: {v_dmd} | {dc} | / {self.pwm_speed_base}')
+
+#                    tdc = max(min(int(self.t_command*1000),1000-10),0)
+# 
+
+#                     if tdc == 0:
+#                         exited = True
+#                         await self.pi.write(self._tpwm_pin,0)
+#                     else:
+#                         await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
 
                     self.fail_sc = False
                     self.dt_sc = time.perf_counter() - self.ct_sc
