@@ -94,6 +94,7 @@ class program:
                 self.dash_task.add_done_callback(check_failure('dash task'))
             else:
                 self.dash = None
+
         except Exception as e:
             log.info(f'error in main: {e}')
             traceback.print_tb(e.__traceback__)
@@ -101,16 +102,19 @@ class program:
 
     def setup(self):
         #configure the system
-        self.hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
-        self.hw.setup()
-        self.hw.create_sensor_tasks()
-        self.hw.control.setup_control()
-        #self.hw.control.set_speed_tasks()
-        self.app = make_app(self.hw)
+        try:
+            self.hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
+            self.hw.setup()
+            self.hw.create_sensor_tasks()
+            self.hw.control.setup_control()
+            #self.hw.control.set_speed_tasks()
+            self.app = make_app(self.hw)
+        
+        except Exception as e:
+            log.error(e,'issue with setup')
 
     def print_dash(self,out):
         out = out.result()[0]
-        #log.info(f'DASH RESULT: {str(out)}')
         stdout,stderr = out
         log.info(f'DASH OUT:\n{stdout.decode()}')
         log.info(f'DASH ERR:\n{stderr.decode()}')

@@ -478,7 +478,7 @@ class wave_control:
             self.speed_control_mode_changed.set_result(new_mode)
         self.speed_control_mode_changed = asyncio.Future()        
 
-    def make_control_mode(self,mode,loop_function,*args,**kw):
+    def make_control_mode(self,mode,loop_function,tsk_name):
         loop = asyncio.get_event_loop()
         #make the loop task
         func = self.control_mode(loop_function,mode)
@@ -504,6 +504,7 @@ class wave_control:
         def on_start(*res):
             task = loop.create_task(func)
             self._control_modes[mode]=task
+            setattr(self,tsk_name,task)
             task.add_done_callback(_fail_control)
         
         self.started.add_done_callback(on_start)
@@ -517,10 +518,12 @@ class wave_control:
         self.set_mode('stop')
         self.started = asyncio.Future()
         
-        self.goals_task = self.make_control_mode('wave',self.wave_goal)
-        self.stop_task = self.make_control_mode('stop',self.run_stop)
-        self.center_task = self.make_control_mode('center',self.center_head)
-        self.cal_task = self.make_control_mode('cal',self.calibrate)        
+
+        self.make_control_mode('wave',self.wave_goal,'goals_task')
+        self.make_control_mode('stop',self.run_stop,'stop_task')
+        self.make_control_mode('center',self.center_head,'center_task')
+        self.make_control_mode('cal',self.calibrate,'cal_task')
+        
         #TODO: interactive
         #self.manual_task = self.make_control_mode('manual',self.manual_mode)
     
@@ -690,16 +693,18 @@ class wave_control:
         """runs an async function that sets v_cmd for the speed control systems"""
         log.info(f'creating control {mode_name}|{loop_function.__name__}...')
         
-        while self.is_safe():
+        while True:
             start_mode = self.mode_changed
 
             if (isinstance(mode_name,str) and self.drive_mode == mode_name) or (isinstance(mode_name,(list,tuple)) and self.drive_mode in mode_name):
                 log.info(f'starting control {mode_name}|{loop_function.__name__}...')
                 try: #avoid loop overhead in subloop
                     while self.is_safe() and start_mode is self.mode_changed:
-                        await loop_function()
+                        await loop_function() #continuously call zit
                         self._control_mode_fail_parms[mode_name] = False
-                        
+                    if not self.is_safe():
+                        log.warning(f'no longer safe, exiting {mode_name} control')
+                        await self._stop()
                 except Exception as e:
                     self._control_mode_fail_parms[mode_name] = True
                     log.info(f'control {mode_name}|{loop_function.__name__} error: {e}')
@@ -709,7 +714,7 @@ class wave_control:
             #if your not the active loop wait until the mode has changed to check again. Only one mode can run at a time
             await self.mode_changed
 
-        log.info(f'control io ending...')
+        log.warning(f'control io ending...')
         await self._stop()
 
     #Center        
