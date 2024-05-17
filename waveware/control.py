@@ -501,13 +501,15 @@ class wave_control:
             except Exception as e:
                 traceback.print_exception(e)
 
-        def on_start(*res):
-            task = loop.create_task(func)
-            self._control_modes[mode]=task
-            setattr(self,tsk_name,task)
-            task.add_done_callback(_fail_control)
+        #def on_start(*res):
+        task = loop.create_task(func)
+        self._control_modes[mode]=task
+        #setattr(self,tsk_name,task)
+        #self.started.add_done_callback(on_start)
+        task.add_done_callback(_fail_control)
+        return task
         
-        self.started.add_done_callback(on_start)
+
 
 
     def setup_control(self):
@@ -519,10 +521,10 @@ class wave_control:
         self.started = asyncio.Future()
         
 
-        self.make_control_mode('wave',self.wave_goal,'goals_task')
-        self.make_control_mode('stop',self.run_stop,'stop_task')
-        self.make_control_mode('center',self.center_head,'center_task')
-        self.make_control_mode('cal',self.calibrate,'cal_task')
+        self.goals_task = self.make_control_mode('wave',self.wave_goal)
+        self.stop_task = self.make_control_mode('stop',self.run_stop)
+        self.center_task = self.make_control_mode('center',self.center_head)
+        self.cal_task = self.make_control_mode('cal',self.calibrate)
         
         #TODO: interactive
         #self.manual_task = self.make_control_mode('manual',self.manual_mode)
