@@ -68,7 +68,7 @@ vmove=vmove_default=[0.0001,0.001]
 PR_INT = 100
     
 steps_per_rot = 360/1.8
-dz_per_rot = 0.01 #rate commad
+dz_per_rot = 0.1 #rate commad
 
 class wave_control:
     enabled = False
