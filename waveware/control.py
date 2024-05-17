@@ -249,7 +249,6 @@ class wave_control:
         #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
 
-        
         if DEBUG: log.info(f'set tasks ex feedback / speed / pwm & steps')
 
         self.feedback_task = loop.create_task(self.feedback(d_fb))
@@ -266,7 +265,7 @@ class wave_control:
 
     def startup(self,await_feedback=True,go_on_feedback=True):
         log.info(f'start control fb: {await_feedback}| {go_on_feedback}')
-        self.start = time.perf_counter()
+        
         loop = asyncio.get_event_loop()
 
         
@@ -274,10 +273,12 @@ class wave_control:
             self.first_feedback = d = asyncio.Future()
         
         self.set_speed_tasks(d)
+        
 
         if await_feedback and go_on_feedback:
             def go(*args,docal=True,**kw):
                 nonlocal self, loop
+                self.start = time.perf_counter()
                 log.info(f'feedback OK. cal = {docal}')
 
                 cal_file = os.path.join(control_dir,'wave_cal.json')
