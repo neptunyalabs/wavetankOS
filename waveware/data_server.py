@@ -100,21 +100,14 @@ async def zero_positions(request,hw):
     return resp
 
 #Start / Stop
-async def run_wave(request,hw):
-    assert not hw.control.started
-    hw.control.set_mode('wave')
-    resp = web.Response(text='Wave Started')
-    return resp
-
-
 async def stop_control(request,hw):
     assert not hw.control.stopped
-    await hw.control.stop_control()
+    await hw.control.disable_control()
     return web.Response(text='stopped')
 
 async def start_control(request,hw):
     assert hw.control.stopped
-    await hw.control.start_control()
+    await hw.control.enable_control()
     return web.Response(text='started')
 
 

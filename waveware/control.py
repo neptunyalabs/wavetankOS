@@ -251,9 +251,6 @@ class wave_control:
 
         if DEBUG: log.info(f'set tasks ex feedback / speed / pwm & steps')
 
-        self.feedback_task = loop.create_task(self.feedback(d_fb))
-        self.feedback_task.add_done_callback(check_failure('feedbck task'))
-
         self.speed_off_task = loop.create_task(self.speed_control_off())
         self.speed_off_task.add_done_callback(check_failure( 'speed off tsk'))
 
@@ -272,6 +269,9 @@ class wave_control:
         if await_feedback:
             self.first_feedback = d = asyncio.Future()
         
+
+        self.feedback_task = loop.create_task(self.feedback(d))
+        self.feedback_task.add_done_callback(check_failure('feedbck task'))
         self.set_speed_tasks(d)
         
 

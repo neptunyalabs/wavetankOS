@@ -569,6 +569,7 @@ class hardware_control:
             except Exception as e:
                 print(f'error in debug status: {e}')
                 traceback.print_tb(e.__traceback__)
+                
         return basic
     
     def set_parameters(self,**params):
