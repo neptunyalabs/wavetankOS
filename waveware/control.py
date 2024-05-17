@@ -251,7 +251,8 @@ class wave_control:
     def set_speed_tasks(self):
         #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
-
+        self.start = time.perf_counter()
+        
         if DEBUG: log.info(f'set tasks ex feedback / speed / pwm & steps')
 
         self.speed_off_task = loop.create_task(self.speed_control_off())
@@ -316,6 +317,7 @@ class wave_control:
             log.info(f'already enabled!')
 
     async def start_control(self):
+        self.start = time.perf_counter()
         await self.enable_control()
         if self.enabled and self.stopped:
             self.set_speed_tasks()
@@ -496,7 +498,7 @@ class wave_control:
             except MovementError:
                 self.v_cmd = 0
                 loop.run_until_complete(self.run_stop())
-                self.set_speed_mode('off')
+                self.set_speed_mode('stop')
 
             except Exception as e:
                 traceback.print_exception(e)
@@ -709,7 +711,7 @@ class wave_control:
                         await self._stop()
                 except Exception as e:
                     self._control_mode_fail_parms[mode_name] = True
-                    log.info(f'control {mode_name}|{loop_function.__name__} error: {e}')
+                    log.info(f'control {mode_name} failure|{loop_function.__name__} error: {e}')
                     task = asyncio.current_task()
                     task.print_stack()
             
