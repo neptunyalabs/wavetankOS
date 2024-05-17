@@ -565,9 +565,9 @@ class hardware_control:
                 d['stop_tsk'] = not self.control.stop_task.cancelled() if self.control.stop_task else None
                 d['cent_tsk'] = not self.control.center_task.cancelled() if self.control.center_task else None
                 d['cal_tsk'] = not self.control.cal_task.cancelled() if self.control.cal_task else None
-                d['prnt_tsk'] = not self.print_task.cancelled() if self.control.print_task else None
-                d['imu_tsk'] = not self.imu_task.cancelled() if self.control.imu_task else None
-                d['temp_task'] = not self.temp_task.cancelled() if self.control.temp_task else None                
+                d['prnt_tsk'] = not self.print_task.cancelled() if self.print_task else None
+                d['imu_tsk'] = not self.imu_task.cancelled() if self.imu_task else None
+                d['temp_task'] = not self.temp_task.cancelled() if self.temp_task else None                
                 basic['tasks'] = d
             except Exception as e:
                 print(f'error in debug status: {e}')
