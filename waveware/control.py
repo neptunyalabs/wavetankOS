@@ -449,7 +449,9 @@ class wave_control:
 
     def is_safe(self):
         #base = any((self._control_mode_fail_parms.values()))
-        base = self._control_mode_fail_parms[self.drive_mode]
+        if DEBUG:
+            return True
+        base = self._control_mode_fail_parms[self.drive_mode] if self.drive_mode in self._control_mode_fail_parms else False
         return all([not base,
                     not self.fail_sc,
                     not self.fail_st])
