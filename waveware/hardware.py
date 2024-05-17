@@ -569,7 +569,7 @@ class hardware_control:
             except Exception as e:
                 print(f'error in debug status: {e}')
                 traceback.print_tb(e.__traceback__)
-                
+
         return basic
     
     def set_parameters(self,**params):
@@ -790,7 +790,8 @@ class hardware_control:
                 
                 await asyncio.sleep(intvl)
             except Exception as e:
-                log.info(e)
+                log.info(str(e))
+                traceback.print_tb(e.__traceback__)
 
     async def process_data(self):
         """a simple function to provide efficient calculation of variables out of a queue before writing to S3"""
