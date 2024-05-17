@@ -193,7 +193,6 @@ class wave_control:
     async def _setup(self):
 
 
-
         if ON_RASPI:
             if not hasattr(self,'pi') or not isinstance(self.pi,asyncpio.pi):
                 log.info(f'making pi last sec')
@@ -225,6 +224,10 @@ class wave_control:
         self.start = None
         loop = asyncio.get_event_loop()
 
+
+        self.feedback_task = loop.create_task(self.feedback())
+        self.feedback_task.add_done_callback(check_failure('feedbck task'))
+
         if i2c:
             self.setup_i2c()
 
@@ -245,7 +248,7 @@ class wave_control:
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
         loop.run_until_complete(self._setup())
 
-    def set_speed_tasks(self,d_fb=None):
+    def set_speed_tasks(self):
         #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
 
@@ -259,49 +262,35 @@ class wave_control:
 
         self.speed_step_task = loop.create_task(self.step_speed_control())
         self.speed_step_task.add_done_callback(check_failure('speed steps'))
-
-    def startup(self,await_feedback=True,go_on_feedback=True):
-        log.info(f'start control fb: {await_feedback}| {go_on_feedback}')
-        
-        loop = asyncio.get_event_loop()
-
-        
-        if await_feedback:
-            self.first_feedback = d = asyncio.Future()
-        
-
-        self.feedback_task = loop.create_task(self.feedback(d))
-        self.feedback_task.add_done_callback(check_failure('feedbck task'))
-        self.set_speed_tasks(d)
-        
-
-        if await_feedback and go_on_feedback:
-            def go(*args,docal=True,**kw):
-                nonlocal self, loop
-                self.start = time.perf_counter()
-                log.info(f'feedback OK. cal = {docal}')
-
-                cal_file = os.path.join(control_dir,'wave_cal.json')
-                has_file = os.path.exists(cal_file)
-                if (docal and not has_file) or (docal and self.force_cal):
-                    log.info(f'calibrate first v={vmove}...')
-                    task = loop.create_task(self.calibrate(vmove=vmove))
-                    task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
-                else:
-                    if has_file: 
-                        self.load_cal_file()
-                    loop = asyncio.get_running_loop()
-                    center_start = loop.create_task(self.center_start(default_mode))
-
-            self.first_feedback.add_done_callback(go)
                     
 
     #RUN / OPS
-    def run(self):
-        #self.stopped = False
+    def run(self,vmove=0.001):
+        """run program without interactive ensuring that calibration occurs first"""
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.start_control())
-        self.startup(await_feedback=True)
+        self.first_feedback = d = asyncio.Future()
+
+        self.set_speed_tasks()
+
+        def go(*args,docal=True,**kw):
+            nonlocal self, loop
+            self.start = time.perf_counter()
+            log.info(f'feedback OK. cal = {docal}')
+
+            cal_file = os.path.join(control_dir,'wave_cal.json')
+            has_file = os.path.exists(cal_file)
+            if (docal and not has_file) or (docal and self.force_cal):
+                log.info(f'calibrate first v={vmove}...')
+                task = loop.create_task(self.calibrate(vmove=vmove))
+                task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
+            else:
+                if has_file: 
+                    self.load_cal_file()
+                loop = asyncio.get_running_loop()
+                center_start = loop.create_task(self.center_start(default_mode))
+
+        self.first_feedback.add_done_callback(go)
 
         try:
             loop.run_forever()
