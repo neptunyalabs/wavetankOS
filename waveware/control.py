@@ -478,7 +478,7 @@ class wave_control:
             self.speed_control_mode_changed.set_result(new_mode)
         self.speed_control_mode_changed = asyncio.Future()        
 
-    def make_control_mode(self,mode,loop_function,tsk_name):
+    def make_control_mode(self,mode,loop_function):
         loop = asyncio.get_event_loop()
         #make the loop task
         func = self.control_mode(loop_function,mode)
