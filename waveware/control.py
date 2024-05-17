@@ -970,7 +970,8 @@ class wave_control:
 
         vref = self.feedback_volts
         #if int(self.inx)%10==0:
-        log.info(self.z_cur,z,'|',v_cmd,self.v_sup,self.dv_err)
+        if DEBUG: 
+            log.info(f'{self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
 
         #determine direction
         ld = self._last_dir
