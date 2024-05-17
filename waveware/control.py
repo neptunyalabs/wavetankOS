@@ -114,6 +114,10 @@ class wave_control:
         self._tpwm_pin = torque_pwm
         self._adc_feedback_pin = fb_an_pin
         self._hlfb = hlfb
+
+        self.dt_sc = 0.005
+        self.pwm_speed_base = 1000
+        self.pwm_speed_freq = 500        
         
         #TODO: setup high/low interrupt on hlfb for ppr or torque / speed ect
 
@@ -1258,9 +1262,6 @@ class wave_control:
         """uses pigpio hw PWM to control pwm dutycycle"""
         #TODO: Set hardware PWM frequency and dutycycle on pin 12. This cancels waves
         log.info(f'setting pwm speed control')
-        self.dt_sc = 0.005
-        self.pwm_speed_base = 1000
-        self.pwm_speed_freq = 500
         self.pwm_mid = int(self.pwm_speed_base/2)
         self.pwm_speed_k = self.pwm_mid / self.max_speed_motor 
 
