@@ -268,9 +268,6 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
         if 'drive-refresh.n_clicks' not in triggers:
             output[0] = append_log(console,'Must Enable Motor!')
             output[1] = 'STOP'
-            output[3+wave_input_parms.index('wave-hs')] = 0
-            output[3+wave_input_parms.index('wave-ts')] = 10
-            output[3+wave_input_parms.index('trq-lim')] = 0
         #check embedded device state and set output reflecting embedded
         
         #check updates    
