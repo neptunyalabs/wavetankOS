@@ -559,12 +559,15 @@ class hardware_control:
                 d = {}
                 d['speed_tsk'] = not self.control.speed_pwm_task.cancelled() if self.control.speed_pwm_task else None
                 d['steps_tsk'] = not self.control.speed_step_task.cancelled() if self.control.speed_step_task else None
-                d['goal_tsk'] = not self.control.speed_off_task.cancelled() if self.control.speed_off_task else None
+                d['off_tsk'] = not self.control.speed_off_task.cancelled() if self.control.speed_off_task else None
                 d['fbck_tsk'] = not self.control.feedback_task.cancelled() if self.control.feedback_task else None
                 d['goal_tsk'] = not self.control.goals_task.cancelled() if self.control.goals_task else None
                 d['stop_tsk'] = not self.control.stop_task.cancelled() if self.control.stop_task else None
                 d['cent_tsk'] = not self.control.center_task.cancelled() if self.control.center_task else None
                 d['cal_tsk'] = not self.control.cal_task.cancelled() if self.control.cal_task else None
+                d['prnt_tsk'] = not self.print_task.cancelled() if self.control.print_task else None
+                d['imu_tsk'] = not self.imu_task.cancelled() if self.control.imu_task else None
+                d['temp_task'] = not self.temp_task.cancelled() if self.control.temp_task else None                
                 basic['tasks'] = d
             except Exception as e:
                 print(f'error in debug status: {e}')
@@ -778,7 +781,7 @@ class hardware_control:
     async def print_data(self,intvl:int=1):
         while True:
             try:
-                if not self.active:
+                if not self.active and not DEBUG:
                     await asyncio.sleep(intvl)
                     continue
 

@@ -323,6 +323,8 @@ class wave_control:
             await asyncio.sleep(1)
         elif not self.stopped:
             log.info(f'already started!!')
+        elif not self.enabled:
+            log.info(f'not enabled!')
 
     async def disable_control(self):
         log.info('disabiling motor!')
