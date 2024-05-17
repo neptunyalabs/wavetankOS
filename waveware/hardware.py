@@ -273,9 +273,7 @@ class hardware_control:
 
     def create_sensor_tasks(self):
         """starts asyncio tasks for sensor peripherals"""
-
-
-
+        log.info(f'create sensor tasks')
         loop = asyncio.get_event_loop()
         if self.imu_ready:
             self.imu_read_task = loop.create_task(self.imu_task())
@@ -566,7 +564,7 @@ class hardware_control:
                 d['cent_tsk'] = not self.control.center_task.cancelled() if self.control.center_task else None
                 d['cal_tsk'] = not self.control.cal_task.cancelled() if self.control.cal_task else None
                 d['prnt_tsk'] = not self.print_task.cancelled() if self.print_task else None
-                d['imu_tsk'] = not self.imu_task.cancelled() if self.imu_task else None
+                d['imu_tsk'] = not self.imu_read_task.cancelled() if self.imu_read_task else None
                 d['temp_task'] = not self.temp_task.cancelled() if self.temp_task else None                
                 basic['tasks'] = d
             except Exception as e:
