@@ -567,7 +567,8 @@ class hardware_control:
                 d['cal_tsk'] = not self.control.cal_task.cancelled()
                 basic['tasks'] = d
             except Exception as e:
-                pass
+                print(f'error in debug status: {e}')
+                traceback.print_tb(e.__traceback__)
         return basic
     
     def set_parameters(self,**params):

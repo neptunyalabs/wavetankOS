@@ -1220,11 +1220,11 @@ class wave_control:
                     
                     it += 1
 
-                
                 #now your not in use
                 log.info(f'exit step speed control inner loop')
                 
-                if ON_RASPI: await self.pi.write(self._step_pin,0)
+                if ON_RASPI: 
+                    await self.pi.write(self._step_pin,0)
                 await self.speed_control_mode_changed
 
             except Exception as e:
