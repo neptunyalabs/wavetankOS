@@ -78,6 +78,7 @@ class wave_control:
     kp_zerr = 0.0
     ki_zerr = 0.0
     kd_zerr = 0.0
+
     
     min_dt = 25
     pulse_dt = 100
@@ -155,7 +156,6 @@ class wave_control:
         self.z_cur = 0
         self.dzdvref = 0
         self.z_est = 0        
-        self.dir_mult = 1 if v >= 0 else 0
         self._last_dir = 1 if v >= 0 else -1
 
         self.wave_last = None
@@ -961,10 +961,11 @@ class wave_control:
         
         z = self.z_t
         z_err = z-self.z_cur
-        self.z_err_cuml = z_err*self.kzi_err + self.z_err_cuml*(1-self.kzi_err)
+        #TODO: handle integral windup
+        self.z_err_cuml = z_err*self.ki_zerr + self.z_err_cuml
         
         #correct integral for pwm ala velocity
-        self.dv_err = z_err * self.kzp_sup / self.wave.ts
+        self.dv_err = z_err * self.kp_zerr / self.wave.ts
         self.v_sup =v_cmd + self.dv_err
 
         vref = self.feedback_volts
@@ -973,7 +974,6 @@ class wave_control:
 
         #determine direction
         ld = self._last_dir
-        self.dir_mult = 1 if v >= 0 else 0
         self._last_dir = 1 if v >= 0 else -1
         if ld != self._last_dir:
             await self.set_dir(self._last_dir)
