@@ -1254,8 +1254,6 @@ class wave_control:
             b = await self.pi.set_PWM_range(self._vpwm_pin,self.pwm_speed_base)
             assert b == self.pwm_speed_base, f'bad pwm range result! {b}'
             await self.pi.write(self._vpwm_pin,0) #start null
-
-            print(o,a,b)
             
             #Torque Control Pins
             a = await self.pi.set_PWM_frequency(self._tpwm_pin,self.pwm_speed_freq)

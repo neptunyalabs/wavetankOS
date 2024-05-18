@@ -63,6 +63,10 @@ def make_app(hw):
         ]
     )
     log.info(f'creating web server')
+
+    dash_log = logging.getLogger('aiohttp.access')
+    dash_log.setLevel(40)
+
     return web.AppRunner(app)
     
 #Data Quality Methods
