@@ -891,6 +891,9 @@ def main():
     log.info(sys.argv)
     if '--do-mpu-cal' in sys.argv:
         hw.imu_calibrate()
+    elif '--do-act-cal' in sys.argv:
+        hw.control.act_max_speed = 0.01
+        hw.imu_calibrate()        
     else:    
         hw.run()
 
