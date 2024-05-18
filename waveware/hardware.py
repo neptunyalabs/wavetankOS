@@ -802,7 +802,7 @@ class hardware_control:
                     log.info(' '.join([f'{v:3.4f}' for k,v in self.output_data().items() if isinstance(v,(float,int))] )+'\r\n')
                 else:
                     o = {k:f'{v:3.3f}' if isinstance(v,float) else v for k,v in self.control_status.items()}
-                    #FIXME: log.info(str(o))
+                    log.info(str(o))
                 
                 await asyncio.sleep(intvl)
             except Exception as e:

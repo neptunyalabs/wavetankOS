@@ -1121,7 +1121,6 @@ class wave_control:
                         await asyncio.sleep(0) #break async context
                     await self.pi.wave_clear()                    
 
-                None
                 try:
                     await self.pi.wave_delete(self.wave_last)
                 except Exception as e:
@@ -1152,7 +1151,9 @@ class wave_control:
             if self.wave_last:
                 while self.wave_last == await self.pi.wave_tx_at():
                     log.info(f'waiting...')
-                    await asyncio.sleep(0) 
+                    await asyncio.sleep(0.001)  #1ms
+            else:
+                log.info(f'no last')
             
 
 
