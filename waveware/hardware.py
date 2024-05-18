@@ -566,7 +566,7 @@ class hardware_control:
         
         if DEBUG and hasattr(self.control,'speed_pwm_task'):
             d = {}
-            d['cntl_status'] = self.control._control_mode_fail_parms
+            basic['cntl_status'] = self.control._control_mode_fail_parms
             try:
 
                 d['speed_tsk'] = not self.control.speed_pwm_task.cancelled() if self.control.speed_pwm_task else None
@@ -667,16 +667,16 @@ class hardware_control:
                         return f'{k} value {v} is greater than max: {mx}'
             
             #finally determine which items to set
-            log.info(f'setting cb later: {prm} = {v}')
+            #log.info(f'setting cb later: {prm} = {v}')
             set_procedures[k] = set_later(cmp,prm,v)
 
         if not set_procedures and kw:
             raise ValueError(f'no procedures used for {kw}')
 
-        if DEBUG: log.info(f'setting {set_procedures}')
+        #if DEBUG: log.info(f'setting {set_procedures}')
         for k,sp in set_procedures.items():
             v = sp()
-            if DEBUG: log.info(f'set {k}|{v}')
+            #if DEBUG: log.info(f'set {k}|{v}')
             
         #always upate, might as well.
         self.control.wave.update()

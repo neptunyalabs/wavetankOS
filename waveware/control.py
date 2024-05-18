@@ -467,6 +467,9 @@ class wave_control:
             if DEBUG: log.info(f'same drive mode: {new_mode}')
             if new_mode == 'stop':
                 self.v_cmd = 0
+            else:
+                self.start = time.perf_counter()
+
             return
         
         self.drive_mode = new_mode
@@ -977,8 +980,8 @@ class wave_control:
         self.v_sup =v_cmd + self.dv_err
 
         vref = self.feedback_volts
-        if DEBUG: 
-            log.info(f'wave: {self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
+        # if DEBUG: 
+        #     log.info(f'wave: {self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
 
         #determine direction
         ld = self._last_dir
