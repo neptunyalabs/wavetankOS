@@ -1149,7 +1149,7 @@ class wave_control:
             self.step_count += Nw
             self.inx = self.inx + dir*Nw
         else:
-            log.info(f'waiting on steps')...
+            log.info(f'waiting on steps')
             while await self.pi.wave_tx_busy():
                 await asyncio.sleep(0) #break async context
             log.info(f'wave clear')
