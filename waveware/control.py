@@ -1126,8 +1126,8 @@ class wave_control:
                 except Exception as e:
                     log.info(f'wave create error: {e}| {self.wave_next}| {self.wave_next}| {wave}')
                     #wait on last wave
-                    # while self.wave_last == await self.pi.wave_tx_at():
-                    #     await asyncio.sleep(0)  #1ms
+                    while self.wave_last == await self.pi.wave_tx_at():
+                        await asyncio.sleep(0)  #1ms
 
                 try:
                     await self.pi.wave_delete(self.wave_last)
@@ -1199,7 +1199,7 @@ class wave_control:
             await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
 
         self.dt_st = 0.005
-        self.max_wait = 1E5 #0.1s
+        self.max_wait = 100000
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
