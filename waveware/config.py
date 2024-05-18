@@ -145,6 +145,7 @@ LABEL_DEFAULT = {
     "kp-gain":0,
     "ki-gain":0,
     "kd-gain":0,
+    "vz-max": 0.1,
 }
 
 #editable inputs are the difference of wave_inputs and label_defaults
@@ -165,6 +166,7 @@ editable_parmaters = {
     'ki-gain': ('control.ki_zerr',-1000,1000),
     'kd-gain': ('control.kd_zerr',-1000,1000),
     'trq-lim': ('control.t_command',0,100),
+    "vz-max": ('control.act_max_speed',0.01,1)
 
     #'cntl-dt': ('control.control_interval',1/1000.,1/100.),    
     #'poll-rate': ('hw.poll_rate',1/1000.,1/10.),

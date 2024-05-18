@@ -180,7 +180,7 @@ class wave_control:
 
         tol = 0.5
         self.v_active_tol = 0.1
-        self.act_max_speed = 0.01
+        self.act_max_speed = LABEL_DEFAULT['vz-max']
         
         self.upper_v = 3.3-tol
         self.lower_v = tol
