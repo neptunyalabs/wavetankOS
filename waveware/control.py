@@ -1262,7 +1262,7 @@ class wave_control:
             await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
 
         self.dt_st = 0.005
-        self.max_wait = 100000 #0.1s
+        self.max_wait = 10000 #0.1s
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
