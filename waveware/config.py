@@ -64,7 +64,7 @@ except:
     smbus = None
     MPU9250 = None
 
-log.info(f'Running AWS User: {aws_profile} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}| RASPI: {ON_RASPI}')
+log.info(f'Running AWS User: {aws_profile}| {REMOTE_HOST} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}| RASPI: {ON_RASPI}')
 
 path = pathlib.Path(__file__)
 fdir = path.parent
