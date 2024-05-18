@@ -846,12 +846,6 @@ class wave_control:
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
 
-                #elif test_val >= min_res*2:
-                    #if maybe_stuck is not False:
-                        #log.info(f'unstuck1 | {test_val} {dv}')
-                    #maybe_stuck = False
-                    continue #a step occured
-
                 elif test_val > 0:
                     #if maybe_stuck is not False:
                         #log.info(f'unstuck0| {test_val} {dv}')                    
@@ -1085,6 +1079,76 @@ class wave_control:
             return wave*inc            
 
 
+#     async def step_wave(self,wave,dir=None):
+#         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
+#         Nw = int(len(wave)/2)
+# 
+#         if dir is None:
+#             dir = self._last_dir
+#         elif self._last_dir != dir:
+#             dv = 1 if dir >= 0 else 0
+#             
+#             if ON_RASPI: await self.pi.write(self._dir_pin,dv)
+#             self._last_dir = dir
+# 
+#         if Nw > 0:
+#             self.wave_last = self.wave_next #push back
+#             #log.info(dir,len(wave))
+#             if self.wave_last is not None:
+#                 
+#                 sttime = await self.pi.wave_get_micros()
+#                 
+#                 if sttime > self.min_dt:
+#                     millis = int(sttime/1000)
+#                     if millis > 10: #asyncio can reliably do 1ms on
+#                         sttime = 10000 #10ms remaining
+#                         await self.sleep(max((millis-10)/1000,0.01))
+#                     
+#                     #Delay time
+#                     wave = [asyncpio.pulse(0, 0, sttime)] + wave
+#                 
+#                 try:
+#                     await self.pi.wave_add_generic(wave)
+#                     self.wave_next = await self.pi.wave_create()                
+#                     await self.pi.wave_send_once( self.wave_next)
+#                 
+#                     while self.wave_last == await self.pi.wave_tx_at():
+#                         #log.info(f'waiting...')
+#                         await asyncio.sleep(0)
+# 
+#                 except Exception as e:
+#                     log.info(f'wave create error: {e}| {self.wave_next}| {self.wave_next}| {wave}')
+#                     #wait on last wave
+#                     while self.wave_last == await self.pi.wave_tx_at():
+#                         await asyncio.sleep(0)  #1ms
+# 
+#                 try:
+#                     await self.pi.wave_delete(self.wave_last)
+#                 except Exception as e:
+#                     log.info(f'wave delete error: {e}')
+#                     pass
+# 
+#             else:
+#                 #do it raw
+#                 ##create the new wave
+#                 await self.pi.wave_add_generic(wave)
+# 
+#                 self.wave_next = await self.pi.wave_create()
+#                 await self.pi.wave_send_once( self.wave_next)
+#             
+#             #keep tracks
+#             self.step_count += Nw
+#             self.inx = self.inx + dir*Nw
+#         
+#         else:
+#             if self.wave_last:
+#                 while self.wave_last == await self.pi.wave_tx_at():
+#                     #log.info(f'waiting...')
+#                     await asyncio.sleep(0.001)  #1ms
+#             else:
+#                 #log.info(f'no last')
+#                 await asyncio.sleep(0.001)  #1ms
+
     async def step_wave(self,wave,dir=None):
         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
         Nw = int(len(wave)/2)
@@ -1123,10 +1187,10 @@ class wave_control:
                         await asyncio.sleep(0)
 
                 except Exception as e:
-                    log.info(f'wave create error: {e}| {self.wave_next}| {self.wave_next}| {wave}')
+                    log.info(f'wave create error: {e}')
                     #wait on last wave
-                    while self.wave_last == await self.pi.wave_tx_at():
-                        await asyncio.sleep(0)  #1ms
+                    # while self.wave_last == await self.pi.wave_tx_at():
+                    #     await asyncio.sleep(0)  #1ms
 
                 try:
                     await self.pi.wave_delete(self.wave_last)
@@ -1153,8 +1217,7 @@ class wave_control:
                     await asyncio.sleep(0.001)  #1ms
             else:
                 #log.info(f'no last')
-                await asyncio.sleep(0.001)  #1ms
-            
+                await asyncio.sleep(0.001)  #1ms            
 
 
     #SPEED CONTROL MODES:
@@ -1198,8 +1261,7 @@ class wave_control:
             await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
 
         self.dt_st = 0.005
-        self.max_wait = 100000
-        self._last_no_steps = time.time()
+        self.max_wait = 100000 #0.1s
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
@@ -1222,9 +1284,7 @@ class wave_control:
                         if DEBUG: log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
-                        if DEBUG and (time.time() - self._last_no_steps) > 3:
-                            log.info(f'no steps')
-                            self._last_no_steps = time.time()
+                        if DEBUG: log.info(f'no steps')
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
                     self._step_time = dt
@@ -1250,6 +1310,66 @@ class wave_control:
                 log.info(f'issue in speed step routine {e}')
                 traceback.print_tb(e.__traceback__)
                 if ON_RASPI: await self.pi.write(self._step_pin,0)
+
+#     async def step_speed_control(self):
+#         """uses pigpio waves hardware concepts to drive output"""
+#         log.info(f'setting up step speed control')
+#         if ON_RASPI: 
+#             await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
+# 
+#         self.dt_st = 0.005
+#         self.max_wait = 100000
+#         self._last_no_steps = time.time()
+#         it = 0
+#         while ON_RASPI:
+#             stc = self.speed_control_mode_changed
+#             try:        
+#                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
+#                     self.ct_st = time.perf_counter()
+#                     v_dmd = self.v_command
+# 
+#                     if v_dmd != 0 and self.is_safe():
+#                         d_us = min(max( int(1E6 * self.dz_per_step / abs(v_dmd)) , self.min_dt),self.max_wait)
+#                         steps = True
+#                     else:
+#                         steps = False
+#                         d_us = int(self.max_wait) #no 
+# 
+#                     dt = max(d_us,self.min_dt*2) 
+# 
+#                     #define wave up for dt, then down for dt,j repeated inc
+#                     if steps:
+#                         if DEBUG: log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
+#                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
+#                     else:
+#                         if DEBUG and (time.time() - self._last_no_steps) > 3:
+#                             log.info(f'no steps')
+#                             self._last_no_steps = time.time()
+#                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
+# 
+#                     self._step_time = dt
+#                     self._step_cint = max(len(waves)/2,1)
+# 
+#                     res = await self.step_wave(waves)
+# 
+#                     self.fail_st = False
+#                     self.dt_st = time.perf_counter() - self.ct_st
+#                     
+#                     it += 1
+# 
+#                 #now your not in use
+#                 log.info(f'exit step speed control inner loop')
+#                 
+#                 if ON_RASPI: 
+#                     await self.pi.write(self._step_pin,0)
+#                 await self.speed_control_mode_changed
+# 
+#             except Exception as e:
+#                 #kill PWM
+#                 self.fail_st = True
+#                 log.info(f'issue in speed step routine {e}')
+#                 traceback.print_tb(e.__traceback__)
+#                 if ON_RASPI: await self.pi.write(self._step_pin,0)
 
     async def setup_pwm_speed(self):
             log.info(f'setting up PWM Speed Mode')
