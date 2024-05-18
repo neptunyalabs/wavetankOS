@@ -943,6 +943,9 @@ class wave_control:
     def run_cal_blocking(self):
         log.info(f'running calibrate...')
         loop = asyncio.get_event_loop()
+        if self.control.stopped:
+            loop.run_until_complete(self.hw._start_sensors())
+            loop.run_until_complete(self.start_control())
         loop.run_until_complete(self.calibrate())
 
 
