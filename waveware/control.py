@@ -1072,8 +1072,8 @@ class wave_control:
         assert dt > mindt, f'dt {dt} to small for min_dt {mdt}'
 
         if dc is None:
-            toff = dt-mdt
-            ton = mdt
+            toff = int(dt-mdt)
+            ton = int(mdt)
             #log.info(ton,toff)
             wave = [asyncpio.pulse(1<<pin, 0, ton)]
             wave.append(asyncpio.pulse(0, 1<<pin, max(toff,mdt)))
