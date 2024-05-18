@@ -559,11 +559,16 @@ class hardware_control:
            'is_safe': self.control.is_safe(),
            'stuck': self.control.stuck,
            'maybe_stuck':self.control.maybe_stuck,
+           'fail_speed':self.control.fail_sc,
+           'fail_step':self.control.fail_st,
            }
+           
         
         if DEBUG and hasattr(self.control,'speed_pwm_task'):
+            d = {}
+            d['cntl_status'] = self.control._control_mode_fail_parms
             try:
-                d = {}
+
                 d['speed_tsk'] = not self.control.speed_pwm_task.cancelled() if self.control.speed_pwm_task else None
                 d['steps_tsk'] = not self.control.speed_step_task.cancelled() if self.control.speed_step_task else None
                 d['off_tsk'] = not self.control.speed_off_task.cancelled() if self.control.speed_off_task else None
@@ -673,6 +678,8 @@ class hardware_control:
             v = sp()
             if DEBUG: log.info(f'set {k}|{v}')
             
+        #always upate, might as well.
+        self.control.wave.update()
 
         #match raw update
         self.labels.update(kw)
