@@ -1148,7 +1148,7 @@ class wave_control:
 #             else:
 #                 #log.info(f'no last')
 #                 await asyncio.sleep(0.001)  #1ms
-
+   
     async def step_wave(self,wave,dir=None):
         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
         Nw = int(len(wave)/2)
@@ -1170,11 +1170,9 @@ class wave_control:
                 
                 if sttime > self.min_dt:
                     millis = int(sttime/1000)
-                    if millis > 10: #asyncio can reliably do 1ms on
+                    if millis > 10:
                         sttime = 10000 #10ms remaining
                         await self.sleep(max((millis-10)/1000,0.01))
-                    
-                    #Delay time
                     wave = [asyncpio.pulse(0, 0, sttime)] + wave
                 
                 try:
@@ -1184,14 +1182,14 @@ class wave_control:
                 
                     while self.wave_last == await self.pi.wave_tx_at():
                         #log.info(f'waiting...')
-                        await asyncio.sleep(0)
-
+                        await asyncio.sleep(0)                    
                 except Exception as e:
                     log.info(f'wave create error: {e}')
-                    #wait on last wave
-                    # while self.wave_last == await self.pi.wave_tx_at():
-                    #     await asyncio.sleep(0)  #1ms
+                    while await self.pi.wave_tx_busy():
+                        await asyncio.sleep(0) #break async context
+                    await self.pi.wave_clear()                    
 
+                None
                 try:
                     await self.pi.wave_delete(self.wave_last)
                 except Exception as e:
@@ -1204,21 +1202,24 @@ class wave_control:
                 await self.pi.wave_add_generic(wave)
 
                 self.wave_next = await self.pi.wave_create()
-                await self.pi.wave_send_once( self.wave_next)
+                await self.pi.wave_send_once( self.wave_next)           
+            
+            if (abs(int(self.inx))%100==0) :
+                vnow = self.feedback_volts
+                if vnow is None: vnow = 0
+                DIR = 'FWD' if dir > 0 else 'REV' 
+                mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
+                vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
+
+                log.info(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
             
             #keep tracks
             self.step_count += Nw
             self.inx = self.inx + dir*Nw
-        
         else:
-            if self.wave_last:
-                while self.wave_last == await self.pi.wave_tx_at():
-                    #log.info(f'waiting...')
-                    await asyncio.sleep(0.001)  #1ms
-            else:
-                #log.info(f'no last')
-                await asyncio.sleep(0.001)  #1ms            
-
+            while await self.pi.wave_tx_busy():
+                await asyncio.sleep(0) #break async context
+            await self.pi.wave_clear()
 
     #SPEED CONTROL MODES:
     @property
