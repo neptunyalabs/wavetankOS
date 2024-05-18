@@ -228,7 +228,6 @@ class wave_control:
         self.start = None
         loop = asyncio.get_event_loop()
 
-
         self.feedback_task = loop.create_task(self.feedback())
         self.feedback_task.add_done_callback(check_failure('feedbck task'))
 
@@ -1200,6 +1199,7 @@ class wave_control:
 
         self.dt_st = 0.005
         self.max_wait = 100000
+        self._last_no_steps = time.time()
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
@@ -1222,7 +1222,9 @@ class wave_control:
                         if DEBUG: log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
-                        if DEBUG: log.info(f'no steps')
+                        if DEBUG and (time.time() - self._last_no_steps) > 3:
+                            log.info(f'no steps')
+                            self._last_no_steps = time.time()
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
                     self._step_time = dt
