@@ -799,8 +799,8 @@ class wave_control:
                 await self.sleep(1)
         
         #Center
-        
-        await self.center_head_program()
+        if self.coef_100 != 0
+            await self.center_head_program()
 
         maybe_stuck = False
         cals = {}
