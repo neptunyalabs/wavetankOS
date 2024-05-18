@@ -799,7 +799,7 @@ class wave_control:
                 await self.sleep(1)
         
         #Center
-        if self.coef_100 != 0
+        if self.coef_100 != 0:
             await self.center_head_program()
 
         maybe_stuck = False
