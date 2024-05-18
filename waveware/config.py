@@ -14,8 +14,13 @@ from math import cos,sin
 from decimal import Decimal
 from waveware.data import *
 
+DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
+base_log = logging.INFO
+if DEBUG:
+    base_log = logging.DEBUG
+
 BASIC_LOG_FMT = "%(asctime)s|%(message)s"
-logging.basicConfig(level=logging.INFO,format=BASIC_LOG_FMT)
+logging.basicConfig(level=base_log,format=BASIC_LOG_FMT)
 log = logging.getLogger("conf")
 
 mm_accuracy_enc = Decimal('1e-3')
@@ -45,7 +50,6 @@ embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
 REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://localhost:{embedded_srv_port}')
 
 
-DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
 
 #IMPORT GPIO / CONFIGURE RASPI
 try:

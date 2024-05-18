@@ -229,7 +229,16 @@ class hardware_control:
     async def _start_sensors(self):
         log.info(f'starting sensors')
         await self.setup_encoder()
-        await self.setup_echo_sensors()        
+        self.setup_trigger()
+        await self.setup_echo_sensors()  
+
+    def setup_trigger(self):
+        log.info(f'eval trigger')
+        if not hasattr(self,'echo_trigger_task') or self.echo_trigger_task.cancelled():
+            log.info(f'setting up trigger')
+            loop = asyncio.get_running_loop()
+            self.echo_trigger_task = loop.create_task(self.trigger_task())
+            self.echo_trigger_task.add_done_callback(check_failure('echo trig task'))                      
              
     
     def setup_i2c(self):
@@ -280,9 +289,7 @@ class hardware_control:
             self.imu_read_task.add_done_callback(check_failure('imu task')) 
         if self.temp_ready:
             self.temp_task = loop.create_task(self.temp_task())
-            self.temp_task.add_done_callback(check_failure('temp task'))        
-        self.echo_trigger_task = loop.create_task(self.trigger_task())
-        self.echo_trigger_task.add_done_callback(check_failure('echo trig task'))
+            self.temp_task.add_done_callback(check_failure('temp task'))
         if DEBUG:
             self.print_task = loop.create_task(self.print_data())
             self.print_task.add_done_callback(check_failure('print task'))
@@ -548,6 +555,8 @@ class hardware_control:
            'speed_mode': self.control.speed_control_mode,
            'drive_mode': self.control.drive_mode,
            'v_cmd': self.control.v_command,
+           'v_cmd_raw': self.control.v_cmd,
+           'is_safe': self.control.is_safe,
            'stuck': self.control.stuck,
            'maybe_stuck':self.control.maybe_stuck,
            }
