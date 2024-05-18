@@ -139,7 +139,7 @@ class wave_control:
         #fail setupso
         self.enabled = False
         self._control_modes = {}
-        self._control_mode_fail_parms = {}
+        self._control_mode_fail_parms = {'stop':False,'center':False,'cal':False,'wave':False}
 
         self.speed_control_mode = default_speed_mode
         self.mode_changed = None
