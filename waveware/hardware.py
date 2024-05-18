@@ -893,7 +893,7 @@ def main():
         hw.imu_calibrate()
     elif '--do-act-cal' in sys.argv:
         hw.control.act_max_speed = 0.01
-        hw.imu_calibrate()        
+        hw.control.run_cal_blocking()
     else:    
         hw.run()
 

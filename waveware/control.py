@@ -940,7 +940,10 @@ class wave_control:
         self.__dict__.update(data) #youre welcome
 
 
-
+    def run_cal_blocking(self):
+        log.info(f'running calibrate...')
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.calibrate())
 
 
 
