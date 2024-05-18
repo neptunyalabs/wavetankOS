@@ -1281,10 +1281,10 @@ class wave_control:
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        if DEBUG: log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
+                        if DEBUG and (it%100==0): log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
-                        if DEBUG: log.info(f'no steps')
+                        if DEBUG and (it%100==0): log.info(f'no steps')
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
                     self._step_time = dt
