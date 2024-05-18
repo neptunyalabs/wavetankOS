@@ -556,7 +556,7 @@ class hardware_control:
            'drive_mode': self.control.drive_mode,
            'v_cmd': self.control.v_command,
            'v_cmd_raw': self.control.v_cmd,
-           'is_safe': self.control.is_safe,
+           'is_safe': self.control.is_safe(),
            'stuck': self.control.stuck,
            'maybe_stuck':self.control.maybe_stuck,
            }
@@ -579,7 +579,6 @@ class hardware_control:
             except Exception as e:
                 print(f'error in debug status: {e}')
                 traceback.print_tb(e.__traceback__)
-
         return basic
     
     def set_parameters(self,**params):
