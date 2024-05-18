@@ -1149,8 +1149,10 @@ class wave_control:
             self.step_count += Nw
             self.inx = self.inx + dir*Nw
         else:
+            log.info(f'waiting on steps')...
             while await self.pi.wave_tx_busy():
                 await asyncio.sleep(0) #break async context
+            log.info(f'wave clear')
             await self.pi.wave_clear()
             
 
@@ -1216,7 +1218,7 @@ class wave_control:
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        if DEBUG and (it%PR_INT==0): log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
+                        if DEBUG: log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
                     else:
                         if DEBUG: log.info(f'no steps')
