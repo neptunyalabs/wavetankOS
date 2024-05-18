@@ -104,7 +104,7 @@ class wave_control:
         self.dz_per_step = self.dz_per_rot / self.steps_per_rot
 
 
-        self.max_speed_motor = 0.1 #TODO: get better motor constants
+        self.max_speed_motor = 0.5 #TODO: get better motor constants
                 
         self.stopped = True
         self._motor_en_pin = motor_en_pin
@@ -449,9 +449,11 @@ class wave_control:
 
     def is_safe(self):
         #base = any((self._control_mode_fail_parms.values()))
-        if DEBUG:
-            return True
-        base = self._control_mode_fail_parms[self.drive_mode] if self.drive_mode in self._control_mode_fail_parms else False
+        base = False
+        if self.drive_mode in self._control_mode_fail_parms:
+            base = self._control_mode_fail_parms[self.drive_mode]
+        else:
+            log.warning(f'no drivemode found: {self.drive_mode}')
         return all([not base,
                     not self.fail_sc,
                     not self.fail_st])
@@ -1284,9 +1286,9 @@ class wave_control:
 
                     v_dmd = self.v_command
 
-                    if exited and v_dmd != 0:
-                        await self.setup_pwm_speed()        
-                        exited = False
+                    # if exited and v_dmd != 0:
+                    #     await self.setup_pwm_speed()        
+                    #     exited = False
 
                     dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),self.pwm_speed_base-1),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
@@ -1298,7 +1300,6 @@ class wave_control:
                     #TORQUE PWM
                     tdc = max(min(int(self.t_command*1000),1000-10),0)
                     if tdc == 0:
-                        exited = True
                         await self.pi.write(self._tpwm_pin,0)
                     else:
                         await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
