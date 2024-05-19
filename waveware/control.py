@@ -391,9 +391,13 @@ class wave_control:
             except Exception as e:
                 log.info(f'exception turning off steps: {e}')             
 
-            await self.sleep(0.1)
+            
 
-    async def _close(self):
+            await self._close(stop=False)
+
+            await self.sleep(0.1)           
+
+    async def _close(self,stop=True):
         try:
             await self.pi.wave_tx_stop()
         except Exception as e:
@@ -405,7 +409,7 @@ class wave_control:
             log.info(f'pigpio close error: {e}')                
 
         time.sleep(1)
-        await self.pi.stop()
+        if stop: await self.pi.stop()
 
 
     # async def exec_cb(self,exc,loop):
@@ -1065,7 +1069,7 @@ class wave_control:
             mindt = self.min_dt
 
         if dt_span is not None:
-            inc = min(max(int(dt_span/dt),1),2000) #socket limit otherwise
+            inc = min(max(int(dt_span/dt),1),1600) #socket limit otherwise
         
         assert dt > mindt, f'dt {dt} to small for min_dt {mdt}'
 
@@ -1148,10 +1152,10 @@ class wave_control:
         else:
             if self.wave_last:
                 while self.wave_last == await self.pi.wave_tx_at():
-                    #log.info(f'waiting...')
+                    if DEBUG: log.info(f'waiting...')
                     await asyncio.sleep(0.001)  #1ms
             else:
-                #log.info(f'no last')
+                if DEBUG: log.info(f'no last')
                 await asyncio.sleep(0.001)  #1ms
 
 #FIXME: improve or remove
