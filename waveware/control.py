@@ -168,18 +168,19 @@ class wave_control:
         self.wave_next = None
 
         #TODO: redo calibration system
-        # self.step_count = 0
-        # self.inx = 0
-        # self.coef_2 = 0
-        # self.coef_10 = 0
-        # self.coef_100 = 0
-        # self._coef_2 = 0
-        # self._coef_10 = 0
-        # self._coef_100 = 0        
-        # self.dvdt_2 = 0
-        # self.dvdt_10 = 0
-        # self.dvdt_100 = 0        
-        # self.z_err_cuml = 0
+        c0 = -0.0001
+        self.step_count = 0
+        self.inx = 0
+        self.coef_2 = c0
+        self.coef_10 = c0
+        self.coef_100 = c0
+        self._coef_2 = c0
+        self._coef_10 = c0
+        self._coef_100 = c0        
+        self.dvdt_2 = 0
+        self.dvdt_10 = 0
+        self.dvdt_100 = 0        
+        self.z_err_cuml = 0
 
         tol = 0.5
         self.v_active_tol = 0.1
