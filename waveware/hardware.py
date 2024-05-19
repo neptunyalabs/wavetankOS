@@ -310,7 +310,7 @@ class hardware_control:
 
     async def _stop(self):
         """
-        Cancel the rotary encoder decoder.
+        Cancel the rotary encoder decoder, echo sensors and triggers
         """
         log.info(f'hw stopping tasks..')
         for cba in self.cbA:
@@ -318,16 +318,16 @@ class hardware_control:
         for cbb in self.cbB:
             await cbb.cancel()
         
-        #log.info(f'stopping echos')
+        log.info(f'stopping echos')
         for cbr in self._cb_rise:
             await cbr.cancel()
         for cbf in self._cb_fall:
             await cbf.cancel()
 
-        #log.info(f'stopping echos')
+        log.info(f'stopping echos')
         self.imu_read_task.cancel() 
         self.print_task.cancel()
-        self.echo_trigger_task.cancel()
+        #self.echo_trigger_task.cancel()
 
     #MPU:
     #Interactive MPU Cal 

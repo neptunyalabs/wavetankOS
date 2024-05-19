@@ -121,6 +121,7 @@ async def ctrl_status(request,hw):
     out = hw.control_status
     return web.Response(body=json.dumps(out))
 
+#TODO: check trigger / restart dynamics for these items
 async def turn_daq_on(request,hw):
     '''switch puts data in buffer'''
     log.info("turning on")

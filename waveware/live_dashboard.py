@@ -195,7 +195,7 @@ def update_status(n,m_on_new,d_on_new,m_on_old,d_on_old,console):
             out[4] = "DAC Disabled"  
 
     if DEBUG and actions:
-        log.info(f'update status: {status} for triggers: {triggers}')
+        log.info(f'update status: {status} for triggers: {triggers} | actions: {actions}')
 
     #TODO: final check?   
     #elif user_input:
@@ -539,6 +539,9 @@ def main():
 
         log.info(f'serving on: {srv_host} with DEBUG={DEBUG}')
 
+        #FIXME: debug can cause zombie processes, thanks 70k per year software!
+        #You can sometimes change this with PORT env var
+        #On WSL zombies can permanently hang causing weird networking issues
         app.run_server(debug=DEBUG,host=srv_host)
 
     except KeyboardInterrupt:

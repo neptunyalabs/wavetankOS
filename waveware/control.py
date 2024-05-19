@@ -1153,7 +1153,8 @@ class wave_control:
             else:
                 #log.info(f'no last')
                 await asyncio.sleep(0.001)  #1ms
-   
+
+#FIXME: improve or remove
 #     async def step_wave(self,wave,dir=None):
 #         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
 #         Nw = int(len(wave)/2)
@@ -1287,16 +1288,18 @@ class wave_control:
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
-                        log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
-                        waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
+                        if DEBUG or (it%10==0): 
+                            log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
+                        waves = self.make_wave(self._step_pin,dt=dt,dt_span=int(self.dt_st*1E6))
                     else:
-                        log.info(f'no steps')
+                        if DEBUG or (it%100==0): 
+                            log.info(f'no steps')
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
                     self._step_time = dt
                     self._step_cint = max(len(waves)/2,1)
 
-                    print('waiting steps')
+                    #print('waiting steps')
                     res = await self.step_wave(waves)
 
                     self.fail_st = False
