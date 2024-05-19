@@ -1,0 +1,2 @@
+export WAVEWARE_HOST=http://192.168.50.15:8777
+export WAVEWARE_DEBUG=true

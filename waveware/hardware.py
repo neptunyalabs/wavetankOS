@@ -14,7 +14,7 @@
 Control:
 #mode 1: stepper position / velocity control
 #mode 2: two position toggle
-#enable - 1/0
+#enable - 0 enabled, 1 - disabled
 #Ach - dir
 #Bch - step
 
@@ -891,9 +891,11 @@ def main():
     log.info(sys.argv)
     if '--do-mpu-cal' in sys.argv:
         hw.imu_calibrate()
+
     elif '--do-act-cal' in sys.argv:
         hw.control.act_max_speed = 0.01
         hw.control.run_cal_blocking()
+
     else:    
         hw.run()
 
