@@ -68,7 +68,7 @@ vmove=vmove_default=[0.0001,0.001]
 PR_INT = 1000
     
 steps_per_rot = 360/1.8
-dz_per_rot = 0.001 #rate commad
+dz_per_rot = 0.01 #rate commad
 
 class wave_control:
     enabled = False
@@ -1122,7 +1122,7 @@ class wave_control:
                         await asyncio.sleep(0)
 
                 except Exception as e:
-                    log.info(f'wave create error: {e}| {self.wave_next}| {self.wave_next}| {wave}')
+                    log.info(f'wave create error: {e}| {self.wave_next}| {self.wave_next}| Np: {len(wave)}')
                     #wait on last wave
                     while self.wave_last == await self.pi.wave_tx_at():
                         await asyncio.sleep(0)  #1ms
