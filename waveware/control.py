@@ -58,7 +58,7 @@ if not safe_mode:
 drive_modes = ['stop','wave','cal','center']
 default_mode = 'wave'
 
-speed_modes = ['step','pwm','off']
+speed_modes = ['step','pwm','off','step-pwm']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
 assert default_speed_mode in speed_modes
 
@@ -68,7 +68,7 @@ vmove=vmove_default=[0.0001,0.001]
 PR_INT = 1000
     
 steps_per_rot = 360/1.8
-dz_per_rot = 0.01 #rate commad
+dz_per_rot = 0.05 #rate commad
 
 class wave_control:
     enabled = False
@@ -1273,7 +1273,7 @@ class wave_control:
             stc = self.speed_control_mode_changed
             print(f'setps top loop')
             try:        
-                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
+                while self.speed_control_mode in ['step-pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_st = time.perf_counter()
                     v_dmd = self.v_command
 
@@ -1417,7 +1417,7 @@ class wave_control:
             stc = self.speed_control_mode_changed
             await self.setup_pwm_speed()
             try:
-                while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
+                while self.speed_control_mode in ['pwm','step-pwm'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_sc = time.perf_counter()
 
                     v_dmd = self.v_command
