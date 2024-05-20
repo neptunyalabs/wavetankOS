@@ -846,9 +846,9 @@ class wave_control:
                 cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
 
                 #do things depending on how much movement there was
-                test_val = max(dv*now_dir,0)
+                test_val = abs(dv*now_dir)
 
-                log.info(f'dv: {dv} {now_dir} {maybe_stuck} {self._coef_10}|{self.coef_10} - {self.coef_100}')
+                #log.info(f'dv: {dv} {now_dir} {maybe_stuck}')
                 if test_val >= min_res*5 or self.v_cmd == 0:    
                     if maybe_stuck is not False:
                         log.info(f'unstuck2 | {test_val} {dv}')                   
@@ -862,7 +862,7 @@ class wave_control:
                     continue #hysterisis 
 
                 elif maybe_stuck is False:
-                    #log.info(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
+                    log.info(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
                     maybe_stuck = (t,cv)
 
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
