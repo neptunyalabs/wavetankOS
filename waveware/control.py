@@ -1201,19 +1201,24 @@ class wave_control:
                     if v_dmd != 0 and self.is_safe():
                         d_us = min(max( int(1E6 * self.dz_per_step / abs(v_dmd)) , self.min_dt),self.max_wait)
                         steps = True
+
+                        #set directions
+                        if v_dmd < 0 and self._last_dir < 0:
+                            log.info(f'set dir -1')
+                            await self.set_dir(1)
+                        elif v_dmd > 0 and self._last_dir > 0:
+                            log.info(f'set dir 1')
+                            await self.set_dir(-1)
+                        else:
+                            log.info(f'v: {v_dmd} dir: {self._last_dir}')
+
                     else:
                         steps = False
                         d_us = int(self.max_wait) #no 
 
                     dt = max(d_us,self.min_dt*2) 
 
-                    #set directions
-                    if v_dmd < 0 and self._last_dir > 0:
-                        log.info(f'set dir -1')
-                        await self.set_dir(-1)
-                    elif v_dmd > 0 and self._last_dir < 0:
-                        log.info(f'set dir 1')
-                        await self.set_dir(1)
+
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
