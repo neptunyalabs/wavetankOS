@@ -740,18 +740,21 @@ class wave_control:
     #Center        
     async def center_head(self,vmove=0.01,find_tol = 0.01,set_mode=False):
         fv = self.feedback_volts
-        dv=self.safe_vref_0-fv
+        dv=fv-self.safe_vref_0
 
         if abs(dv) < find_tol:
             self.v_cmd = 0
             log.info(f'done centering')
             await self.sleep(self.control_interval)
+            #set directions
+            if dv > 0 and self._last_dir > 0:
+                self.set_dir(-1)
+            elif dv < 0 and self._last_dir < 0:
+                self.set_dir(1)
+
             if set_mode: self.set_mode('stop')
             return False
-        #else:
-            #log.info('center head...')
 
-        #log.info(dv,coef_100,inx)
         #set direction
         if self.coef_100 == 0:
             est_steps = dv / float(self.coef_100)
@@ -851,18 +854,18 @@ class wave_control:
                 #log.info(f'dv: {dv} {now_dir} {maybe_stuck}')
                 if test_val >= min_res*5 or self.v_cmd == 0:    
                     if maybe_stuck is not False:
-                        log.info(f'unstuck2 | {test_val} {dv}')                   
+                        log.info(f'unstuck2 | {test_val} {dv}')
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
 
                 elif test_val > 0:
                     if maybe_stuck is not False:
-                        log.info(f'unstuck0| {test_val} {dv}')                    
+                        log.info(f'unstuck0| {test_val} {dv}')
                     #maybe_stuck = False
                     continue #hysterisis 
 
                 elif maybe_stuck is False:
-                    log.info(f'maybe stuck {cv} {test_val} | {dvdt} !!!')
+                    log.info(f'maybe stuck {test_val} {dv} | {dvdt} !!!')
                     maybe_stuck = (t,cv)
 
                 elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
