@@ -746,12 +746,6 @@ class wave_control:
             self.v_cmd = 0
             log.info(f'done centering')
             await self.sleep(self.control_interval)
-            #set directions
-            if dv > 0 and self._last_dir > 0:
-                self.set_dir(-1)
-            elif dv < 0 and self._last_dir < 0:
-                self.set_dir(1)
-
             if set_mode: self.set_mode('stop')
             return False
 
@@ -1225,6 +1219,12 @@ class wave_control:
 
                     dt = max(d_us,self.min_dt*2) 
 
+                    #set directions
+                    if v_dmd > 0 and self._last_dir > 0:
+                        self.set_dir(-1)
+                    elif v_dmd < 0 and self._last_dir < 0:
+                        self.set_dir(1)
+
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
                         if DEBUG or (it%10==0): 
@@ -1260,65 +1260,6 @@ class wave_control:
                 traceback.print_tb(e.__traceback__)
                 if ON_RASPI: await self.pi.write(self._step_pin,0)
 
-#     async def step_speed_control(self):
-#         """uses pigpio waves hardware concepts to drive output"""
-#         log.info(f'setting up step speed control')
-#         if ON_RASPI: 
-#             await self.pi.write(self._dir_pin,1 if self._last_dir > 0 else 0)
-# 
-#         self.dt_st = 0.005
-#         self.max_wait = 100000
-#         self._last_no_steps = time.time()
-#         it = 0
-#         while ON_RASPI:
-#             stc = self.speed_control_mode_changed
-#             try:        
-#                 while self.speed_control_mode in ['pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
-#                     self.ct_st = time.perf_counter()
-#                     v_dmd = self.v_command
-# 
-#                     if v_dmd != 0 and self.is_safe():
-#                         d_us = min(max( int(1E6 * self.dz_per_step / abs(v_dmd)) , self.min_dt),self.max_wait)
-#                         steps = True
-#                     else:
-#                         steps = False
-#                         d_us = int(self.max_wait) #no 
-# 
-#                     dt = max(d_us,self.min_dt*2) 
-# 
-#                     #define wave up for dt, then down for dt,j repeated inc
-#                     if steps:
-#                         if DEBUG: log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
-#                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=self.dt_st*1E6)
-#                     else:
-#                         if DEBUG and (time.time() - self._last_no_steps) > 3:
-#                             log.info(f'no steps')
-#                             self._last_no_steps = time.time()
-#                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
-# 
-#                     self._step_time = dt
-#                     self._step_cint = max(len(waves)/2,1)
-# 
-#                     res = await self.step_wave(waves)
-# 
-#                     self.fail_st = False
-#                     self.dt_st = time.perf_counter() - self.ct_st
-#                     
-#                     it += 1
-# 
-#                 #now your not in use
-#                 log.info(f'exit step speed control inner loop')
-#                 
-#                 if ON_RASPI: 
-#                     await self.pi.write(self._step_pin,0)
-#                 await self.speed_control_mode_changed
-# 
-#             except Exception as e:
-#                 #kill PWM
-#                 self.fail_st = True
-#                 log.info(f'issue in speed step routine {e}')
-#                 traceback.print_tb(e.__traceback__)
-#                 if ON_RASPI: await self.pi.write(self._step_pin,0)
 
     async def setup_pwm_speed(self):
             log.info(f'setting up PWM Speed Mode')
