@@ -669,7 +669,7 @@ class wave_control:
         self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
 
         #measured
-        self.v_cur = self.dvdt*self.dzdvref
+        self.v_cur = self.dvdt_2*self.dzdvref
 
         #TODO: determine stationary
         
@@ -804,8 +804,8 @@ class wave_control:
                 await self.sleep(1)
         
         #Center
-        if self.coef_100 != 0:
-            await self.center_head_program()
+        # if self.coef_100 != 0:
+        #     await self.center_head_program()
 
         maybe_stuck = False
         cals = {}
@@ -893,7 +893,6 @@ class wave_control:
         if ded < 0.1:
             log.info(f'no motion detected!!!')
             self.v_cmd = 0
-            if safe_mode: raise NoMotion()
 
         #if significant motion
         else:

@@ -22,6 +22,6 @@ disk_cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
 #polling & data range
 poll_rate = float(os.environ.get('WAVEWARE_POLL_RATE',1.0 / 100))
 poll_temp = float(os.environ.get('WAVEWARE_POLL_TIME',60))
-window = float(os.environ.get('WAVEWARE_WINDOW',60))
+window = float(os.environ.get('WAVEWARE_WINDOW',30))
 
 memcache = ExpiringDict(max_len=window * 2 / poll_rate, max_age_seconds=window * 2)
