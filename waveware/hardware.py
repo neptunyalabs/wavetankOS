@@ -679,7 +679,9 @@ class hardware_control:
             #if DEBUG: log.info(f'set {k}|{v}')
             
         #always upate, might as well.
+        self.control.update_const()
         self.control.wave.update()
+
 
         #match raw update
         self.labels.update(kw)
@@ -769,10 +771,11 @@ class hardware_control:
         out['coef_2'] = self.control.coef_2
         out['coef_10'] = self.control.coef_10
         out['coef_100'] = self.control.coef_100
+        
         out['stuck'] = self.control.stuck
-
         out['maybe_stuck'] = self.control.maybe_stuck
         out['drive_mode'] = self.control.drive_mode
+        out['feedback_ok'] = not self.control.fail_feedback
         out['speed_control_mode'] = self.control.speed_control_mode
         
         #mode check

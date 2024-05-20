@@ -127,9 +127,11 @@ control_conf = dict(wave=rw,force_cal='-fc' in sys.argv)
 
 #PINS
 #parameter groupings
-z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
+z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave','wave_fb_pct','wave_fb_volt']
 z_sensors = [f'z{i+1}' for i in range(4)]
 e_sensors = [f'e{i+1}' for i in range(4)]
+
+graph_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
 
 wave_drive_modes = ['stop','center','wave']
 M = len(wave_drive_modes)
@@ -153,6 +155,10 @@ LABEL_DEFAULT = {
     "ki-gain":0,
     "kd-gain":0,
     "vz-max": 0.1,
+    'dz-dvolt':0,
+    "z-range":0.3,
+    "dz-p-rot": 0.05,
+    "step-p-rot": 360/1.8,
 }
 
 #editable inputs are the difference of wave_inputs and label_defaults
@@ -173,14 +179,11 @@ editable_parmaters = {
     'ki-gain': ('control.ki_zerr',-1000,1000),
     'kd-gain': ('control.kd_zerr',-1000,1000),
     'trq-lim': ('control.t_command',0,100),
-    "vz-max": ('control.act_max_speed',0.01,1)
-
-    #'cntl-dt': ('control.control_interval',1/1000.,1/100.),    
-    #'poll-rate': ('hw.poll_rate',1/1000.,1/10.),
-    #'temp-rate': ('hw.temp_rate',1,600),    
-    #'dz-p-rot': 'control.dz_per_rot',
-    #'step-p-rot': 'control.dz_per_rot',
-    #dzdvref
+    "vz-max": ('control.act_max_speed',0.01,1),
+    "dz-dvolt": ('control.dzdvref',-1,1),
+    "z-range": ('control.dz_range',0.001,1),
+    'dz-p-rot': ('control.dz_per_rot',1E-6,0.1),
+    'step-p-rot': ('control.steps_per_rot',1,360),
 }
 
 _s_ep = set(editable_parmaters.keys())

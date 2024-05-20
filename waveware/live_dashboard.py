@@ -506,7 +506,7 @@ def update_graphs(n,on):
             fig_speed.update_layout(layout_style)
             fig_speed.update_xaxes(axes_style)        
 
-            fig_alph = plotly.express.line(df,x='timestamp',y=z_wave_parms)
+            fig_alph = plotly.express.line(df,x='timestamp',y=graph_wave_parms)
             fig_alph.update_layout(layout_style)
             fig_alph.update_xaxes(axes_style)
                     

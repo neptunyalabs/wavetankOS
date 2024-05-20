@@ -51,8 +51,6 @@ low_thres = 0x0000
 high_thres = 0x8000
 
 
-
-
 vmove=vmove_default=[0.0001,0.001]
 
 PR_INT = 1000
@@ -151,7 +149,6 @@ class wave_control:
         self.v_wave = 0
         self.z_cmd = 0
         self.z_cur = 0
-        self.dzdvref = 0
         self.z_est = 0
 
         self.wave_last = None
@@ -159,6 +156,7 @@ class wave_control:
 
         #TODO: redo calibration system
         c0 = 0.0001
+
         self.step_count = 0
         self.inx = 0
         self.coef_2 = c0
@@ -183,9 +181,18 @@ class wave_control:
         self.upper_frac = 0.66
         self.vref_0 = (self.upper_v+self.lower_v)/2
 
+        self.update_const()            
+
         self._step_time = self.min_dt
         self._step_cint = 1
         self.z_cur_vcal = 0
+
+
+    def update_const(self):
+        self.dz_per_step = self.dz_per_rot / self.steps_per_rot
+        self.dvref_range = self.upper_v - self.lower_v
+        log.info(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
+        self.dzdvref = self.dz_range/self.dvref_range   
 
     #SETUP 
     async def _setup(self):
@@ -774,8 +781,7 @@ class wave_control:
         await self.center_head_program()
         self.started.set_result(True)
         if go_to_mode is not None:
-            self.set_mode(go_to_mode)
-
+            self.set_mode(go_to_mode)     
 
 
     #Calibrate MOde
@@ -929,7 +935,7 @@ class wave_control:
         with open(os.path.join(control_dir,'wave_cal.json'),'r') as fp:
             data = json.loads(fp.read())
         log.info(f'loading cal file!: {data}')            
-        self.__dict__.update(data) #youre welcome
+        self.__dict__.update(data) #totally cool hacks
 
 
     def run_cal_blocking(self):
