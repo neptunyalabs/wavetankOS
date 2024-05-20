@@ -853,7 +853,7 @@ class wave_control:
                     continue #a step occured
 
                 elif test_val > 0:
-                    if maybe_stuck is not False:
+                    #if maybe_stuck is not False:
                         #log.info(f'unstuck0| {test_val} {dv}')
                     #maybe_stuck = False
                     continue #hysterisis 
