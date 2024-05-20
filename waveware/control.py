@@ -969,7 +969,7 @@ class wave_control:
         #always measure goal pos for error
         z = self.z_t
         z_err = z-self.z_cur
-        
+
         #TODO: handle integral windup
         self.z_err_cuml = z_err*self.ki_zerr + self.z_err_cuml
         
@@ -1000,7 +1000,7 @@ class wave_control:
     #safe bounds and references
     @property
     def feedback_pct(self):
-        fb = self.control.feedback_volts
+        fb = self.feedback_volts
         return (fb - self.lower_v)/ (self.upper_v - self.lower_v)
 
     @property
