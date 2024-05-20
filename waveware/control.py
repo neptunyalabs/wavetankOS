@@ -843,7 +843,7 @@ class wave_control:
                 cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
 
                 #do things depending on how much movement there was
-                test_val = max(dv*now_dir,0)
+                test_val = dv*now_dir
 
                 #log.info(f'dv: {dv} {now_dir} {maybe_stuck}')
                 if test_val >= min_res*5 or self.v_cmd == 0:    
@@ -854,7 +854,7 @@ class wave_control:
 
                 elif test_val > 0:
                     if maybe_stuck is not False:
-                        log.info(f'unstuck0| {test_val} {dv}')
+                        #log.info(f'unstuck0| {test_val} {dv}')
                     #maybe_stuck = False
                     continue #hysterisis 
 
