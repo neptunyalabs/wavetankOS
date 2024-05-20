@@ -155,7 +155,7 @@ class wave_control:
         self.wave_next = None
 
         #TODO: redo calibration system
-        c0 = 0.0001
+        c0 = -0.0001
 
         self.step_count = 0
         self.inx = 0
@@ -772,7 +772,7 @@ class wave_control:
             if self.stuck and flipped is False:
                 flipped = True
                 log.info('reverse!!')
-                await self.set_dir(dir=self._last_dir*-1)            
+                self.v_cmd = self.v_cmd * -1            
             await self.sleep(0)    
 
     async def center_start(self,go_to_mode=None):
@@ -792,14 +792,14 @@ class wave_control:
         #### Alternate locally to build guesses
         for v in [0.0001,0.001]:
             for d in [1,-1]:
-                await self.set_dir(dir=d)
-                self.v_cmd = v
+                #await self.set_dir(dir=d)
+                self.v_cmd = d*v
                 await self.sleep(0.1)
 
         for v in [0.0001,0.001]:
             for d in [1,-1]:
-                await self.set_dir(dir=d)
-                self.v_cmd = v
+                #await self.set_dir(dir=d)
+                self.v_cmd = d*v
                 await self.sleep(1)
         
         #Center #TODO: only if loaded cal
@@ -830,7 +830,7 @@ class wave_control:
                 sv = cv 
                 tlast = t
 
-                await self.set_dir(now_dir)
+                #await self.set_dir(now_dir)
                 await self.sleep(wait)
 
                 cv = self.feedback_volts
@@ -1208,12 +1208,12 @@ class wave_control:
                     dt = max(d_us,self.min_dt*2) 
 
                     #set directions
-                    if v_dmd > 0 and self._last_dir > 0:
-                        log.info(f'dir 1')
-                        await self.set_dir(1)
-                    elif v_dmd < 0 and self._last_dir < 0:
-                        log.info(f'dir -1')
+                    if v_dmd < 0 and self._last_dir > 0:
+                        log.info(f'set dir -1')
                         await self.set_dir(-1)
+                    elif v_dmd > 0 and self._last_dir < 0:
+                        log.info(f'set dir 1')
+                        await self.set_dir(1)
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
