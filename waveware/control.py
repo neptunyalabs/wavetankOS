@@ -468,13 +468,13 @@ class wave_control:
         new_mode = new_mode.strip().lower()
         assert new_mode in drive_modes,f'bad drive mode! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
+
         if new_mode == self.drive_mode:
             if DEBUG: log.info(f'same drive mode: {new_mode}')
             if new_mode == 'stop':
                 self.v_cmd = 0
             else:
                 self.start = time.perf_counter()
-
             return
         
         self.drive_mode = new_mode
@@ -669,7 +669,7 @@ class wave_control:
         self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
 
         #measured
-        self.v_cur = self.dvdt_2*self.dzdvref
+        self.v_cur = self.dvdt_10*self.dzdvref
 
         #TODO: determine stationary
         
@@ -738,12 +738,14 @@ class wave_control:
         await self._stop()
 
     #Center        
-    async def center_head(self,vmove=0.01,find_tol = 0.025,set_mode=False):
+    async def center_head(self,vmove=0.01,find_tol = 0.01,set_mode=False):
         fv = self.feedback_volts
         dv=self.safe_vref_0-fv
 
         if abs(dv) < find_tol:
             self.v_cmd = 0
+            log.info(f'done centering')
+            await self.sleep(self.control_interval)
             if set_mode: self.set_mode('stop')
             return False
         #else:
