@@ -765,6 +765,7 @@ class hardware_control:
         out['v_wave'] = self.control.v_wave
 
         out['wave_fb_volt'] = self.control.feedback_volts
+        out['wave_fb_pct'] = self.control.feedback_pct
         out['coef_2'] = self.control.coef_2
         out['coef_10'] = self.control.coef_10
         out['coef_100'] = self.control.coef_100

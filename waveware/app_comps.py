@@ -221,8 +221,10 @@ def input_card(name, id="",N=1, type="number", **kwargs):
         return div
 
 
-def readout_card(name, id=None, val=0.0):
-    mark = name.lower().replace(" ",'-')
+def readout_card(name, id=None, val=0.0,mark=None):
+    
+    if mark is None:
+        mark = name.lower().replace(" ",'-')
 
     if id is None:
         id=""
@@ -426,6 +428,9 @@ DASH_LAY = html.Div(
                     [
                     # Station 1
                     html.H6("Wave Gen Control:".upper(),className="graph__title"),
+
+                    readout_card("fb volts",mark='wave_fb_volt'),
+                    readout_card("act pct",mark="wave_fb_pct"),
                     readout_card("z_cur"),
                     readout_card("z_cmd"),
                     readout_card("z_wave"),

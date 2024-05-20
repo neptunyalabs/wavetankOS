@@ -49,6 +49,13 @@ PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
 REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://localhost:{embedded_srv_port}')
 
+drive_modes = ['stop','wave','cal','center']
+default_mode = 'wave'
+
+speed_modes = ['step','pwm','off','step-pwm']
+default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
+assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
+
 
 
 #IMPORT GPIO / CONFIGURE RASPI

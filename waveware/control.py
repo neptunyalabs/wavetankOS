@@ -50,17 +50,7 @@ min_res = volt_ref[fv_inx]/(2**16/2)
 low_thres = 0x0000 
 high_thres = 0x8000
 
-safe_word =  os.environ.get('USE_SAFE_MODE','true').strip().lower()
-safe_mode = (safe_word=='true')
-if not safe_mode:
-    log.info(f'SAFE MODE OFF! {safe_word}')
 
-drive_modes = ['stop','wave','cal','center']
-default_mode = 'wave'
-
-speed_modes = ['step','pwm','off','step-pwm']
-default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
-assert default_speed_mode in speed_modes
 
 
 vmove=vmove_default=[0.0001,0.001]
@@ -168,7 +158,7 @@ class wave_control:
         self.wave_next = None
 
         #TODO: redo calibration system
-        c0 = -0.0001
+        c0 = 0.0001
         self.step_count = 0
         self.inx = 0
         self.coef_2 = c0
@@ -975,10 +965,11 @@ class wave_control:
         v = (self.v_t + self.v_t_1)/2
         v = min(max(v,-self.max_speed_motor),self.max_speed_motor)
         v_cmd = v
+
         #always measure goal pos for error
-        
         z = self.z_t
         z_err = z-self.z_cur
+        
         #TODO: handle integral windup
         self.z_err_cuml = z_err*self.ki_zerr + self.z_err_cuml
         
@@ -1007,6 +998,11 @@ class wave_control:
 
     #Saftey & FEEDBACK
     #safe bounds and references
+    @property
+    def feedback_pct(self):
+        fb = self.control.feedback_volts
+        return (fb - self.lower_v)/ (self.upper_v - self.lower_v)
+
     @property
     def safe_upper_v(self):
         ul = self.upper_v - self.lower_v
@@ -1296,7 +1292,7 @@ class wave_control:
                             log.info(f'steps={steps}| {d_us} | {dt} | {v_dmd} | {self.dz_per_step}')
                         waves = self.make_wave(self._step_pin,dt=dt,dt_span=int(self.dt_st*1E6))
                     else:
-                        if DEBUG or (it%100==0): 
+                        if DEBUG or (it%5000==0): 
                             log.info(f'no steps')
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
