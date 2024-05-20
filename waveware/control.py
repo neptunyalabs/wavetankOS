@@ -875,7 +875,6 @@ class wave_control:
                         found_btm = cv if cv > self.lower_v else self.lower_v
 
                     now_dir = -1 * now_dir
-                    await self.set_dir(now_dir)
                     await self.sleep(wait)
                     log.info(f'reversing: {last_dir} > {now_dir}')
 
@@ -987,10 +986,10 @@ class wave_control:
         #     log.info(f'wave: {self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
 
         #determine direction
-        ld = self._last_dir
-        self._last_dir = 1 if v >= 0 else -1
-        if ld != self._last_dir:
-            await self.set_dir(self._last_dir)
+        # ld = self._last_dir
+        # self._last_dir = 1 if v >= 0 else -1
+        # if ld != self._last_dir:
+        #     await self.set_dir(self._last_dir)
         
         self.v_cmd = self.v_sup #TODO: validate this for position holding
         #self.v_cmd = v
@@ -1098,8 +1097,8 @@ class wave_control:
         elif self._last_dir != dir:
             dv = 1 if dir >= 0 else 0
             
-            if ON_RASPI: await self.pi.write(self._dir_pin,dv)
-            self._last_dir = dir
+            if ON_RASPI: 
+                await 
 
         if Nw > 0:
             self.wave_last = self.wave_next #push back
@@ -1221,9 +1220,9 @@ class wave_control:
 
                     #set directions
                     if v_dmd > 0 and self._last_dir > 0:
-                        self.set_dir(-1)
+                        await self.set_dir(-1)
                     elif v_dmd < 0 and self._last_dir < 0:
-                        self.set_dir(1)
+                        await self.set_dir(1)
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
