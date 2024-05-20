@@ -2,6 +2,8 @@
 
 import datetime
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import dash
 from dash import ctx, no_update
 from dash import dcc, html, dash_table
@@ -460,6 +462,7 @@ layout_style = {
             )
 def update_graphs(n,on):
     """first ask for new data then update the graphs"""
+
     log.info(f'update graphs {on}')
     begin = time.perf_counter()
     if on:
@@ -506,12 +509,16 @@ def update_graphs(n,on):
             fig_speed.update_layout(layout_style)
             fig_speed.update_xaxes(axes_style)        
 
-            fig_alph = plotly.express.line(df,x='timestamp',y=graph_wave_parms)
-            fig_alph.update_layout(layout_style)
-            fig_alph.update_xaxes(axes_style)
-                    
+            fig_zv = plotly.express.line(df,x='timestamp',y=zgraph)
+            fig_zv.update_layout(layout_style)
+            fig_zv.update_xaxes(axes_style)      
+
+            fig_vv= plotly.express.line(df,x='timestamp',y=vgraph)
+            fig_vv.update_layout(layout_style)
+            fig_vv.update_xaxes(axes_style)              
+                                
             log.info(f'returning 3 graphs {time.perf_counter()-begin}')
-            return [fig_pr,fig_speed,fig_alph]
+            return [fig_pr,fig_speed,fig_zv,fig_vv]
         
         except dash.exceptions.PreventUpdate:
             pass

@@ -805,7 +805,7 @@ class wave_control:
                 self.v_cmd = v
                 await self.sleep(1)
         
-        #Center
+        #Center #TODO: only if loaded cal
         # if self.coef_100 != 0:
         #     await self.center_head_program()
 
@@ -847,15 +847,17 @@ class wave_control:
 
                 #do things depending on how much movement there was
                 test_val = max(dv*now_dir,0)
+
+                log.info(f'dv: {dv} {now_dir} {maybe_stuck} {self._coef_10}|{self.coef_10} - {self.coef_100}')
                 if test_val >= min_res*5 or self.v_cmd == 0:    
-                    #if maybe_stuck is not False:
-                        #log.info(f'unstuck2 | {test_val} {dv}')                   
+                    if maybe_stuck is not False:
+                        log.info(f'unstuck2 | {test_val} {dv}')                   
                     maybe_stuck = False #reaffirm when out of error
                     continue #a step occured
 
                 elif test_val > 0:
-                    #if maybe_stuck is not False:
-                        #log.info(f'unstuck0| {test_val} {dv}')                    
+                    if maybe_stuck is not False:
+                        log.info(f'unstuck0| {test_val} {dv}')                    
                     #maybe_stuck = False
                     continue #hysterisis 
 
@@ -912,8 +914,7 @@ class wave_control:
         log.info(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
         self.dzdvref = self.dz_range/self.dvref_range  
         
-        #offset defaults to center
-        self.vz0_ref = 50
+
 
         log.info(f'center before run')
         await self.center_head_program()
@@ -1160,78 +1161,6 @@ class wave_control:
             else:
                 if DEBUG: log.info(f'no last')
                 await asyncio.sleep(0.001)  #1ms
-
-#FIXME: improve or remove
-#     async def step_wave(self,wave,dir=None):
-#         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
-#         Nw = int(len(wave)/2)
-# 
-#         if dir is None:
-#             dir = self._last_dir
-#         elif self._last_dir != dir:
-#             dv = 1 if dir >= 0 else 0
-#             
-#             if ON_RASPI: await self.pi.write(self._dir_pin,dv)
-#             self._last_dir = dir
-# 
-#         if Nw > 0:
-#             self.wave_last = self.wave_next #push back
-#             #log.info(dir,len(wave))
-#             if self.wave_last is not None:
-#                 
-#                 sttime = await self.pi.wave_get_micros()
-#                 
-#                 if sttime > self.min_dt:
-#                     millis = int(sttime/1000)
-#                     if millis > 10:
-#                         sttime = 10000 #10ms remaining
-#                         await self.sleep(max((millis-10)/1000,0.01))
-#                     wave = [asyncpio.pulse(0, 0, sttime)] + wave
-#                 
-#                 try:
-#                     await self.pi.wave_add_generic(wave)
-#                     self.wave_next = await self.pi.wave_create()                
-#                     await self.pi.wave_send_once( self.wave_next)
-#                 
-#                     while self.wave_last == await self.pi.wave_tx_at():
-#                         #log.info(f'waiting...')
-#                         await asyncio.sleep(0)                    
-#                 except Exception as e:
-#                     log.info(f'wave create error: {e}')
-#                     while await self.pi.wave_tx_busy():
-#                         await asyncio.sleep(0) #break async context
-#                     await self.pi.wave_clear()                    
-# 
-#                 try:
-#                     await self.pi.wave_delete(self.wave_last)
-#                 except Exception as e:
-#                     log.info(f'wave delete error: {e}')
-#                     pass
-# 
-#             else:
-#                 #do it raw
-#                 ##create the new wave
-#                 await self.pi.wave_add_generic(wave)
-# 
-#                 self.wave_next = await self.pi.wave_create()
-#                 await self.pi.wave_send_once( self.wave_next)           
-#             
-#             if (abs(int(self.inx))%100==0) :
-#                 vnow = self.feedback_volts
-#                 if vnow is None: vnow = 0
-#                 DIR = 'FWD' if dir > 0 else 'REV' 
-#                 mot_msg = f'stp:{self._step_time} | inc: {self._step_cint}|'
-#                 vmsg = f'{DIR}:|{self.inx:<4}|{self.v_cmd} @ {self._last_dir} |{vnow:3.5f}| {mot_msg}'
-# 
-#                 log.info(vmsg+' '.join([f'|{v:10.7f}' if isinstance(v,float) else '|'+'-'*10 for v in (self.dvds,self.coef_2,self.coef_10,self.coef_100) ]))
-#             
-#             #keep tracks
-#             self.step_count += Nw
-#             self.inx = self.inx + dir*Nw
-#         else:
-#             while await self.pi.wave_tx_busy():
-#                 await asyncio.sleep(0) #break async context
-#             await self.pi.wave_clear()
 
     #SPEED CONTROL MODES:
     @property

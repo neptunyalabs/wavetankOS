@@ -131,7 +131,8 @@ z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave','wave_fb_pct',
 z_sensors = [f'z{i+1}' for i in range(4)]
 e_sensors = [f'e{i+1}' for i in range(4)]
 
-graph_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave']
+zgraph = ['z_cur','z_cmd','z_wave']
+vgraph = ['v_cur','v_cmd','v_wave']
 
 wave_drive_modes = ['stop','center','wave']
 M = len(wave_drive_modes)
