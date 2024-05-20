@@ -156,7 +156,7 @@ LABEL_DEFAULT = {
     "kd-gain":0,
     "vz-max": 0.1,
     'dz-dvolt':0,
-    "z-range":0.3,
+    "act-zrange":0.3,
     "dz-p-rot": 0.05,
     "step-p-rot": 360/1.8,
 }
@@ -181,7 +181,7 @@ editable_parmaters = {
     'trq-lim': ('control.t_command',0,100),
     "vz-max": ('control.act_max_speed',0.01,1),
     "dz-dvolt": ('control.dzdvref',-1,1),
-    "z-range": ('control.dz_range',0.001,1),
+    "act-zrange": ('control.dz_range',0.001,1),
     'dz-p-rot': ('control.dz_per_rot',1E-6,0.1),
     'step-p-rot': ('control.steps_per_rot',1,360),
 }
