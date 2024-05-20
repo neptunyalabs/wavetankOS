@@ -878,7 +878,7 @@ class wave_control:
                     await self.sleep(wait)
                     log.info(f'reversing: {last_dir} > {now_dir}')
 
-                await self.sleep(self.control_interval)
+                await self.sleep(self.control_interval*10)
             
                 #Store cal info
                 cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
