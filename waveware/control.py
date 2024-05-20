@@ -1092,6 +1092,9 @@ class wave_control:
         """places waveform on pin with appropriate callbacks, waiting for last wave to finish before continuing"""
         Nw = int(len(wave)/2)
 
+        if dir is None:
+            dir = self._last_dir
+
         if Nw > 0:
             self.wave_last = self.wave_next #push back
             #log.info(dir,len(wave))
