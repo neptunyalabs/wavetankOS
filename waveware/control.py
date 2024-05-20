@@ -56,7 +56,7 @@ vmove=vmove_default=[0.0001,0.001]
 PR_INT = 1000
     
 steps_per_rot = 360/1.8
-dz_per_rot = 0.05 #rate commad
+dz_per_rot = 0.01 #rate commad
 
 class wave_control:
     enabled = False
@@ -784,7 +784,7 @@ class wave_control:
 
 
     #Calibrate MOde
-    async def calibrate(self,vmove = None, crash_detect=1,wait=0.001):
+    async def calibrate(self,vmove = None, crash_detect=1,wait=0.005):
         log.info('starting calibrate...')
 
         vstart = cv = sv = self.feedback_volts
@@ -984,12 +984,6 @@ class wave_control:
         vref = self.feedback_volts
         # if DEBUG: 
         #     log.info(f'wave: {self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
-
-        #determine direction
-        # ld = self._last_dir
-        # self._last_dir = 1 if v >= 0 else -1
-        # if ld != self._last_dir:
-        #     await self.set_dir(self._last_dir)
         
         self.v_cmd = self.v_sup #TODO: validate this for position holding
         #self.v_cmd = v
