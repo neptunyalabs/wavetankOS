@@ -1215,9 +1215,11 @@ class wave_control:
 
                     #set directions
                     if v_dmd > 0 and self._last_dir > 0:
-                        await self.set_dir(-1)
-                    elif v_dmd < 0 and self._last_dir < 0:
+                        log.info(f'dir 1')
                         await self.set_dir(1)
+                    elif v_dmd < 0 and self._last_dir < 0:
+                        log.info(f'dir -1')
+                        await self.set_dir(-1)
 
                     #define wave up for dt, then down for dt,j repeated inc
                     if steps:
