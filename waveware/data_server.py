@@ -18,6 +18,8 @@ import logging
 import requests
 import traceback
 
+from concurrent.futures import ProcessPoolExecutor
+
 from waveware.config import *
 from waveware.hardware import LABEL_DEFAULT
 
