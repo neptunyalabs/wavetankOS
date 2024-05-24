@@ -879,21 +879,23 @@ class wave_control:
         
         vdmd = self.v_cmd
         
-        v_cur = self.feedback_volts
-        if v_cur is None:
-            return 0 #wait till feedback
+        #limit max speed
+        Kspd = min(self.act_max_speed,abs(vdmd))
+        vnew = Kspd*(1 if vdmd > 0 else -1)     
+        return vnew   
         
-        dvl = (self.safe_upper_v-v_cur)
-        dvu = (v_cur-self.safe_lower_v) 
+        # v_cur = self.feedback_volts
+        # if v_cur is None:
+        #     return 0 #wait till feedback
+        # 
+        # dvl = (self.safe_upper_v-v_cur)
+        # dvu = (v_cur-self.safe_lower_v) 
         
-        if dvl < self.v_active_tol or dvu < self.v_active_tol:
-            Kspd = min(self.act_max_speed,abs(vdmd))
-            vnew = Kspd*(1 if vdmd > 0 else -1)
-            #log.info(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
-            vdmd = vnew
-            
-
-        return vdmd
+        # if dvl < self.v_active_tol or dvu < self.v_active_tol:
+        #     Kspd = min(self.act_max_speed,abs(vdmd))
+        #     vnew = Kspd*(1 if vdmd > 0 else -1)
+        #     #log.info(f'{dvl} {dvu} {v_cur} limiting speed! {vnew} > {vdmd}')
+        #     vdmd = vnew
     
     async def speed_control_off(self):
         while True:
@@ -926,12 +928,12 @@ class wave_control:
                         steps = True
 
                         #set directions
-                        if v_dmd < 0 and self._last_dir < 0:
+                        if v_dmd < 0 and self._last_dir > 0:
                             log.info(f'set dir -1')
-                            await self.set_dir(1)
-                        elif v_dmd > 0 and self._last_dir > 0:
-                            log.info(f'set dir 1')
                             await self.set_dir(-1)
+                        elif v_dmd > 0 and self._last_dir < 0:
+                            log.info(f'set dir 1')
+                            await self.set_dir(1)
                         else:
                             log.info(f'v: {v_dmd} dir: {self._last_dir}')
 

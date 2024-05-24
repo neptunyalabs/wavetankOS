@@ -255,46 +255,54 @@ async def test_pins(request,hw):
 #Data Recording
 async def push_data(hw):
     """Periodically looks for new data to upload 1/3 of window time"""
-    while True:
+    loop = asyncio.get_running_loop()
+    with asyncio.ProcessPoolExecutor(2) as pool:
+        while True:
 
-        try:
+            try:
 
-            if hw.active and hw.unprocessed:
+                if hw.active and hw.unprocessed:
 
-                data_rows = {}
-                data_set = {
-                    "data": data_rows,
-                    "num": len(hw.unprocessed),
-                    "test": hw.labels['title'],
-                }
-                #add items from deque
-                while hw.unprocessed:
-                    row_ts = hw.unprocessed.pop()
-                    if row_ts in hw.cache:
-                        row = hw.cache[row_ts]
-                        if row:
-                            data_rows[row_ts] = row
+                    data_rows = {}
+                    data_set = {
+                        "data": data_rows,
+                        "num": len(hw.unprocessed),
+                        "test": hw.labels['title'],
+                    }
+                    #add items from deque
+                    while hw.unprocessed:
+                        row_ts = hw.unprocessed.pop()
+                        if row_ts in hw.cache:
+                            row = hw.cache[row_ts]
+                            if row:
+                                data_rows[row_ts] = row
 
-                # Finally try writing the data
-                if data_rows and LOG_TO_S3:
-                    if DEBUG: log.info(f"writing to S3")
-                    await write_s3(hw,data_set) 
+                    # Finally try writing the data (data rows already set above in data_set)
+                    if data_rows and LOG_TO_S3:
+                        if DEBUG: log.info(f"writing to S3")
+                        
+                        out = await asyncio.gather(
+                            loop.run_in_executor(pool,sync_write_s3, hw.labels['title'],data_set)
+                            )
+
+                        if DEBUG: log.info(f"wrote to S3, got: {out}")
+
+                    else:
+                        log.info(f"no data, skpping s3 write")
+                    # Finally Wait Some Time
+                    await asyncio.sleep(hw.window / 10.0)
+
+                elif hw.active:
+                    log.info(f"no data")
+                    await asyncio.sleep(hw.window / 10.0)
                 else:
-                    log.info(f"no data, skpping s3 write")
-                # Finally Wait Some Time
-                await asyncio.sleep(hw.window / 10.0)
+                    log.info(f"not active")
+                    await asyncio.sleep(hw.window / 10.0)
 
-            elif hw.active:
-                log.info(f"no data")
-                await asyncio.sleep(hw.window / 10.0)
-            else:
-                log.info(f"not active")
-                await asyncio.sleep(hw.window / 10.0)
+            except Exception as e:
+                log.error(str(e), exc_info=1)
 
-        except Exception as e:
-            log.error(str(e), exc_info=1)
-
-async def write_s3(hw,data: dict,title=None):
+async def write_s3(test,data: dict,title=None):
     """writes the dictionary to the bucket
     :param data: a dictionary to write as json
     :param : default='data', use to log actions ect
@@ -309,10 +317,10 @@ async def write_s3(hw,data: dict,title=None):
         
         #SET THE PATH
         if title is not None and title:
-            key = f"{folder}/{hw.labels['title']}/{date}/{title}_{time}.json"
+            key = f"{folder}/{test}/{date}/{title}_{time}.json"
         else:
             #data
-            key = f"{folder}/{hw.labels['title']}/{date}/data_{time}.json"
+            key = f"{folder}/{test}/{date}/data_{time}.json"
 
         session = aiobotocore.session.AioSession(profile=aws_profile)
         async with session.create_client('s3',region_name='us-east-1') as client:
@@ -322,5 +330,15 @@ async def write_s3(hw,data: dict,title=None):
             )
             log.info(f"success writing {key}")
             log.debug(f"got s3 resp: {resp}")
+            return True
+        
     else:
         log.info(f"mock writing s3...: {aws_profile}|{title}|{len(data)}")
+
+        return True
+
+def sync_write_s3(test,data,title=None):
+    """to be called in process pool"""
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(write_s3(test,data,title))
+
