@@ -339,8 +339,38 @@ async def write_s3(test,data: dict,title=None):
 
         return True
 
-def sync_write_s3(test,data,title=None):
-    """to be called in process pool"""
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(write_s3(test,data,title))
+def sync_write_s3(test,data: dict,title=None):
+    """writes the dictionary to the bucket
+    :param data: a dictionary to write as json
+    :param : default='data', use to log actions ect
+    """
+    import botocore
+    from waveware.config import aws_profile,bucket,folder
+
+    if ON_RASPI or folder.upper()=='TEST':
+        up_time = datetime.datetime.now(tz=datetime.timezone.utc)
+        data["upload_time"] = str(up_time)
+        date = up_time.date()
+        time = f"{up_time.hour}-{up_time.minute}-{up_time.second}"
+        
+        #SET THE PATH
+        if title is not None and title:
+            key = f"{folder}/{test}/{date}/{title}_{time}.json"
+        else:
+            #data
+            key = f"{folder}/{test}/{date}/data_{time}.json"
+
+        session = botocore.session.AioSession(profile=aws_profile)
+        with session.create_client('s3',region_name='us-east-1') as client:
+            resp = client.put_object(
+                Bucket=bucket, Key=key, Body=json.dumps(data)
+            )
+            log.info(f"success writing {key}")
+            log.debug(f"got s3 resp: {resp}")
+            return True
+        
+    else:
+        log.info(f"mock writing s3...: {aws_profile}|{title}|{len(data)}")
+
+        return True
 
