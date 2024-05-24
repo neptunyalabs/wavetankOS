@@ -632,7 +632,7 @@ class wave_control:
                     await self.sleep(wait)
                     #fake integration w
                     self.z_cur = self.z_cur+self.v_command*(1+0.04*(0.5-random.random()))*wait
-                    self.feedback_volts = (self.z_cur*self.dzdvref)+ self.safe_vref_0
+                    self.feedback_volts = (self.z_cur*self.dzdvref) + self.safe_vref_0
 
                     if feedback_futr is not None:
                         feedback_futr.set_result(True)

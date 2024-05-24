@@ -277,19 +277,19 @@ async def push_data(hw):
 
                 # Finally try writing the data
                 if data_rows and LOG_TO_S3:
-                    log.info(f"writing to S3")
+                    if DEBUG: log.info(f"writing to S3")
                     await write_s3(hw,data_set) 
                 else:
                     log.info(f"no data, skpping s3 write")
                 # Finally Wait Some Time
-                await asyncio.sleep(hw.window / 3.0)
+                await asyncio.sleep(hw.window / 10.0)
 
             elif hw.active:
                 log.info(f"no data")
-                await asyncio.sleep(hw.window / 3.0)
+                await asyncio.sleep(hw.window / 10.0)
             else:
                 log.info(f"not active")
-                await asyncio.sleep(hw.window / 3.0)
+                await asyncio.sleep(hw.window / 10.0)
 
         except Exception as e:
             log.error(str(e), exc_info=1)
