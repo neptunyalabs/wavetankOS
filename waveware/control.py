@@ -674,11 +674,7 @@ class wave_control:
         err = fv - v_goal
 
         #TODO: integral windup prevention
-        print(fv,err,v_goal)
         self.err_int = self.err_int + err*self.dt
-
-        print(err,self.kp_zerr,self.ki_zerr,self.kd_zerr)
-        print(type(err),type(self.kp_zerr))
 
         Vp = err * self.kp_zerr
         Vi = self.err_int * self.ki_zerr
@@ -918,7 +914,7 @@ class wave_control:
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
-            print(f'setps top loop')
+            print(f'steps top loop')
             try:        
                 while self.speed_control_mode in ['step-pwm','step'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_st = time.perf_counter()
