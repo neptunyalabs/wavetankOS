@@ -563,8 +563,8 @@ class hardware_control:
            'v_cmd': self.control.v_command,
            'v_cmd_raw': self.control.v_cmd,
            'is_safe': self.control.is_safe(),
-           'stuck': self.control.stuck,
-           'maybe_stuck':self.control.maybe_stuck,
+           #'stuck': self.control.stuck,
+           #'maybe_stuck':self.control.maybe_stuck,
            'fail_speed':self.control.fail_sc,
            'fail_step':self.control.fail_st,
            }
@@ -778,8 +778,8 @@ class hardware_control:
         out['coef_10'] = self.control.coef_10
         out['coef_100'] = self.control.coef_100
         
-        out['stuck'] = self.control.stuck
-        out['maybe_stuck'] = self.control.maybe_stuck
+        # out['stuck'] = self.control.stuck
+        # out['maybe_stuck'] = self.control.maybe_stuck
         out['drive_mode'] = self.control.drive_mode
         out['feedback_ok'] = not self.control.fail_feedback
         out['speed_control_mode'] = self.control.speed_control_mode

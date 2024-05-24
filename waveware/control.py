@@ -638,11 +638,11 @@ class wave_control:
         self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
 
         #no stuck no problem, update official rate
-        if not self.maybe_stuck and not self.stuck:
-            #set the official rate variables for estimates
-            self.coef_2 = self._coef_2
-            self.coef_10 = self._coef_10
-            self.coef_100 = self._coef_100
+        # if not self.maybe_stuck and not self.stuck:
+        #     #set the official rate variables for estimates
+        #     self.coef_2 = self._coef_2
+        #     self.coef_10 = self._coef_10
+        #     self.coef_100 = self._coef_100
 
 
     #CONTROL MODES
