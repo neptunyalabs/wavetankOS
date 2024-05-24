@@ -274,19 +274,8 @@ class wave_control:
             nonlocal self, loop
             self.start = time.perf_counter()
             log.info(f'feedback OK. cal = {docal}')
-
-            #cal_file = os.path.join(control_dir,'wave_cal.json')
-            #has_file = os.path.exists(cal_file)
-            # if (docal and not has_file) or (docal and self.force_cal):
-            #     log.info(f'calibrate first v={vmove}...')
-            #     task = loop.create_task(self.calibrate(vmove=vmove))
-            #     task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
-            # else:
-            #     if has_file: 
-            #         self.load_cal_file()
-            loop = asyncio.get_running_loop()
-            center_start = loop.create_task(self.center_start(default_mode))
-
+            self.set_mode('center')
+            
         self.first_feedback.add_done_callback(go)
 
         try:
