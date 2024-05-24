@@ -218,7 +218,7 @@ class wave_control:
 
 
     def setup(self,i2c=False,cntl=False):
-        self.start = None
+        self.start = time.perf_counter()
         loop = asyncio.get_event_loop()
 
         self.feedback_task = loop.create_task(self.feedback())
