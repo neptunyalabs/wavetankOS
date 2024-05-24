@@ -184,6 +184,12 @@ class hardware_control:
             assert len(enc_conf) == len(self.encoder_pins), f'encoder conf mismatch'
             self.encoder_conf = enc_conf
 
+        #Echo X pos for wave calc
+        self.echo_x1 = 0
+        self.echo_x2 = 0
+        self.echo_x3 = 0
+        self.echo_x4 = 0
+
         self._motor_en_pin = motor_en_pin
         #stepper
         self._dir_pin = dir_pin
@@ -782,6 +788,8 @@ class hardware_control:
         out['data_active'] = self.active
         out['ctrl_stopped'] = self.control.stopped
         out['ctrl_enabled'] = self.control.enabled
+
+        out.update({"echo_x1":self.echo_x1,"echo_x2":self.echo_x2,"echo_x3":self.echo_x3,"echo_x4":self.echo_x4})
 
 
         #subtract the bias before it hits the system

@@ -157,7 +157,8 @@ class wave_control:
         #TODO: redo calibration system
         c0 = -0.0001
 
-        self.step_count = 0
+        self.err_int = 0
+        self.dt = 0
         self.inx = 0
         self.coef_2 = c0
         self.coef_10 = c0
@@ -170,29 +171,20 @@ class wave_control:
         self.dvdt_100 = 0        
         self.z_err_cuml = 0
 
-        tol = 0.5
+        tol = 0.25
         self.v_active_tol = 0.1
         self.act_max_speed = LABEL_DEFAULT['vz-max']
         
-        self.upper_v = 3.3-tol
-        self.lower_v = tol
+        self.v_max = 3.3
+        self.v_min = 0
         self.zero_frac = 0.5
         self.lower_frac = 0.33
         self.upper_frac = 0.66
-        self.vref_0 = (self.upper_v+self.lower_v)/2
+        self.upper_v = self.v_max - tol
+        self.lower_v = tol
+        self.vref_0 = (self.upper_v + self.lower_v)*self.zero_frac
 
-        self.update_const()            
-
-        self._step_time = self.min_dt
-        self._step_cint = 1
-        self.z_cur_vcal = 0
-
-
-    def update_const(self):
-        self.dz_per_step = self.dz_per_rot / self.steps_per_rot
-        self.dvref_range = self.upper_v - self.lower_v
-        log.info(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
-        self.dzdvref = self.dz_range/self.dvref_range   
+        self.update_const()  
 
     #SETUP 
     async def _setup(self):
@@ -283,17 +275,17 @@ class wave_control:
             self.start = time.perf_counter()
             log.info(f'feedback OK. cal = {docal}')
 
-            cal_file = os.path.join(control_dir,'wave_cal.json')
-            has_file = os.path.exists(cal_file)
-            if (docal and not has_file) or (docal and self.force_cal):
-                log.info(f'calibrate first v={vmove}...')
-                task = loop.create_task(self.calibrate(vmove=vmove))
-                task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
-            else:
-                if has_file: 
-                    self.load_cal_file()
-                loop = asyncio.get_running_loop()
-                center_start = loop.create_task(self.center_start(default_mode))
+            #cal_file = os.path.join(control_dir,'wave_cal.json')
+            #has_file = os.path.exists(cal_file)
+            # if (docal and not has_file) or (docal and self.force_cal):
+            #     log.info(f'calibrate first v={vmove}...')
+            #     task = loop.create_task(self.calibrate(vmove=vmove))
+            #     task.add_done_callback(lambda *a,**kw:go(*a,docal=False,**kw))
+            # else:
+            #     if has_file: 
+            #         self.load_cal_file()
+            loop = asyncio.get_running_loop()
+            center_start = loop.create_task(self.center_start(default_mode))
 
         self.first_feedback.add_done_callback(go)
 
@@ -542,10 +534,6 @@ class wave_control:
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
         self.stop_task = self.make_control_mode('stop',self.run_stop)
         self.center_task = self.make_control_mode('center',self.center_head)
-        self.cal_task = self.make_control_mode('cal',self.calibrate)
-        
-        #TODO: interactive
-        #self.manual_task = self.make_control_mode('manual',self.manual_mode)
     
     #FEEDBACK & CONTROL TASKS
     async def feedback(self,feedback_futr=None):
@@ -564,13 +552,14 @@ class wave_control:
         # 
         # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
 
-        tlast = tnow = time.perf_counter()
+        tlast = tnow = time.perf_counter() - self.start
+        
         self.z_cur = self.wave.z_pos(tnow)
         self.v_wave = self.wave.z_vel(tnow)
         vdtlast = vdtnow = self.v_command
         vlast = vnow = self.feedback_volts #prep vars
 
-        self.t_no_inst = False
+
         while ON_RASPI:
                   
             try:
@@ -608,7 +597,7 @@ class wave_control:
                     
                     # Convert the data
                     vdtnow = self.v_command
-                    tnow = time.perf_counter()
+                    tnow = time.perf_counter() - self.start
 
                     kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
                     self.calc_rates(vdtnow,tnow,**kw)
@@ -618,38 +607,7 @@ class wave_control:
                 log.info(f'control error: {e}')       
                 traceback.print_tb(e.__traceback__)
 
-        #this is mock data
-        while not ON_RASPI:
-            
-            try:
-                while True:
-                    tlast = tnow #push back
-                    vdtlast = vdtnow
-                    vlast = vnow if vnow is not None else 0
-                    st_inx = self.inx
-                    wait = wait_factor/float(dr_inx)
-                    
-                    await self.sleep(wait)
-                    #fake integration w
-                    self.z_cur = self.z_cur+self.v_command*(1+0.04*(0.5-random.random()))*wait
-                    self.feedback_volts = (self.z_cur*self.dzdvref) + self.safe_vref_0
-
-                    if feedback_futr is not None:
-                        feedback_futr.set_result(True)
-                        feedback_futr = None #twas, no more                
-                    #ok!
-                    self.fail_feedback = False                    
-
-                    # Convert the data
-                    vdtnow = self.v_command
-                    
-                    kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
-                    self.calc_rates(vdtnow,tnow,**kw)
-
-            except Exception as e:
-                self.fail_feedback = True
-                log.info(f'control error: {e}')       
-                traceback.print_tb(e.__traceback__)            
+        log.warning(f'NO FEEDBACK!!!!')           
 
     def calc_rates(self,vdtnow,tnow,**kw):
         vnow = kw.get('vnow')
@@ -658,11 +616,11 @@ class wave_control:
         vdtlast = kw.get('vdtlast')
         st_inx = kw.get('st_inx')
         dv = (vnow-vlast)
-        dt = (tnow-tlast)
+        self.dt = dt = (tnow-tlast)
         accel = (vdtnow -vdtlast)/dt #speed
         self.z_est = self.z_est + vdtnow*dt+0.5*accel*dt**2
 
-        #
+        #calc dynamic rates
         self.dvdt = dv / dt
         self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
         self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
@@ -676,15 +634,14 @@ class wave_control:
         Nw = abs(int(self.inx - st_inx))
         
         #stop catching
-        if self.drive_mode == 'stop':
-            return
+        if self.v_command == 0:
+            return #dont determine rates as vcmd = 0
 
         elif Nw < 1:
             #no steps, no thank you
             return
         
         #increment measure if points exist
-        was_maybe_stuck,was_stuck = self.maybe_stuck,self.stuck
         self.t_no_inst = False
         self.dvds = dv/((self._last_dir*Nw))
         self._coef_2 = (self._coef_2 + self.dvds)/2
@@ -697,15 +654,6 @@ class wave_control:
             self.coef_2 = self._coef_2
             self.coef_10 = self._coef_10
             self.coef_100 = self._coef_100
-                                
-        elif self.maybe_stuck:
-            if not was_maybe_stuck:
-                log.info(f'CAUTION: maybe stuck: {self.coef_2}')
-
-        elif self.stuck:
-            if not was_stuck:
-                log.info('STUCK!')
-                self.set_mode('stop')
 
 
     #CONTROL MODES
@@ -737,214 +685,39 @@ class wave_control:
         log.warning(f'control io ending...')
         await self._stop()
 
-    #Center        
-    async def center_head(self,vmove=0.01,find_tol = 0.01,set_mode=False):
-        fv = self.feedback_volts
-        dv=fv-self.safe_vref_0
-
-        if abs(dv) < find_tol:
-            self.v_cmd = 0
-            log.info(f'done centering')
-            await self.sleep(self.control_interval)
-            if set_mode: self.set_mode('stop')
-            return False
-
-        #set direction
-        if self.coef_100 == 0:
-            est_steps = dv / float(self.coef_100)
-        else:
-            #this will only happen when uninitialized
-            est_steps = int((dv/abs(dv)+0.1)) #add small bias to counter int rounding so will be 1 in magnitude
-
-        if est_steps <= 0:
-            self.v_cmd = vmove * -1
-        else:
-            self.v_cmd = vmove
+    #Control
+    async def pid_control(self,v_goal):
         
+        fv = self.feedback_volts
+        err = fv - v_goal
+
+        #TODO: integral windup prevention
+        self.err_int = self.err_int + err*self.dt
+
+        Vp = err * self.kp_zerr
+        Vi = self.err_int * self.ki_zerr
+        Vd = self.dvdt_10 * self.kd_zerr
+
+        self.v_cmd = Vp #+Vi+Vd
+
         await self.sleep(self.control_interval)
 
-        return self.v_cmd
-    
-    async def center_head_program(self):
-        log.info(f'centering')
-        flipped = False
-        while (await self.center_head()) != False:
-            if self.stuck and flipped is False:
-                flipped = True
-                log.info('reverse!!')
-                self.v_cmd = self.v_cmd * -1            
-            await self.sleep(0)    
+        return err
 
-    async def center_start(self,go_to_mode=None):
-        log.info('centering on start!')
-        await self.center_head_program()
-        self.started.set_result(True)
-        if go_to_mode is not None:
-            self.set_mode(go_to_mode)     
+    async def center_head(self,find_tol = 0.01,set_mode=False):
+        err = await self.pid_control(self.safe_vref_0)
 
-
-    #Calibrate MOde
-    async def calibrate(self,vmove = None, crash_detect=1,wait=0.005):
-        log.info('starting calibrate...')
-
-        vstart = cv = sv = self.feedback_volts
-
-        #### Alternate locally to build guesses
-        for v in [0.0001,0.001]:
-            for d in [1,-1]:
-                #await self.set_dir(dir=d)
-                self.v_cmd = d*v
-                await self.sleep(0.1)
-
-        for v in [0.0001,0.001]:
-            for d in [1,-1]:
-                #await self.set_dir(dir=d)
-                self.v_cmd = d*v
-                await self.sleep(1)
+        if set_mode is not False and abs(err)<find_tol:
+            self.set_mode(set_mode)
+            return
         
-        #Center #TODO: only if loaded cal
-        # if self.coef_100 != 0:
-        #     await self.center_head_program()
+    async def wave_goal(self):
+        ###constantly determines
+        t = time.perf_counter() - self.start
+        v_goal = self.hwave_to_v(self.wave.z_pos(t))
+        err = await self.pid_control(v_goal)
 
-        maybe_stuck = False
-        cals = {}
-        tlast = t = time.perf_counter()
-
-        if vmove is None:
-            vmove=vmove_default
-        elif not isinstance(vmove,(list,tuple)):
-            vmove = [vmove]
-
-        now_dir = self._last_dir
-        found_set = False
-        for vmov in vmove:
-            
-            log.info(f'calibrate at speed: {vmov}')
-            found_top = False
-            found_btm = False            
-            cals[vmov] = cal_val = 0 #avoid same variable 
-            while found_btm is False or found_top is False:
-                self.v_cmd = vmov * (1 if now_dir > 0 else -1)
-                #log.info(f'set dir: {now_dir}')
-                
-                sv = cv 
-                tlast = t
-
-                #await self.set_dir(now_dir)
-                await self.sleep(wait)
-
-                cv = self.feedback_volts
-                t = time.perf_counter()
-                last_dir = now_dir
-                dv = cv-sv
-                dt = (t-tlast)
-                dvdt = dv / dt #change in fbvolts / time
-                #log.info(f'sv : {dv}/{dt} = {dvdt} | {maybe_stuck}')
-                cal_val = cal_val*0.99 + (dvdt/self.v_cmd)*0.1
-
-                #do things depending on how much movement there was
-                test_val = dv*now_dir
-
-                #log.info(f'dv: {dv} {now_dir} {maybe_stuck}')
-                if test_val >= min_res*5 or self.v_cmd == 0:    
-                    if maybe_stuck is not False:
-                        log.info(f'unstuck2 | {test_val} {dv}')
-                    maybe_stuck = False #reaffirm when out of error
-                    continue #a step occured
-
-                elif test_val > 0:
-                    #if maybe_stuck is not False:
-                        #log.info(f'unstuck0| {test_val} {dv}')
-                    #maybe_stuck = False
-                    continue #hysterisis 
-
-                elif maybe_stuck is False:
-                    log.info(f'maybe stuck {test_val} {dv} | {dvdt} !!!')
-                    maybe_stuck = (t,cv)
-
-                elif (t-maybe_stuck[0])>(crash_detect*max(0.01/vmov,1)):
-                    #reset stuck and reverse
-                    maybe_stuck = False
-                    
-                    #max values, expansiveness
-                    if now_dir > 0:
-                        log.info(f'found top! {cv}')
-                        found_top = cv if cv < self.upper_v else self.upper_v
-                    else:
-                        log.info(f'found bottom! {cv}')
-                        found_btm = cv if cv > self.lower_v else self.lower_v
-
-                    now_dir = -1 * now_dir
-                    await self.sleep(wait)
-                    log.info(f'reversing: {last_dir} > {now_dir}')
-
-                await self.sleep(self.control_interval*10)
-            
-                #Store cal info
-                cals[vmov]={'cv':cal_val,'lim':{found_btm,found_top}}
-        
-        log.info(f'got speed cals: {cals} > { getattr(self,"cal_collections",None) }')
-
-        #min values
-        self.upper_v = found_top if found_top > self.upper_v else self.upper_v
-        self.lower_v = found_btm if found_btm < self.lower_v else self.lower_v
-
-        ded = abs(found_top - found_btm)
-        if ded < 0.1:
-            log.info(f'no motion detected!!!')
-            self.v_cmd = 0
-
-        #if significant motion
-        else:
-            self.upper_v = found_top if found_top < self.upper_v else self.upper_v
-            self.lower_v = found_btm if found_btm > self.lower_v else self.lower_v
-    
-
-        #TODO: write calibration file
-        #TODO: write the z-index and prep for z offset
-        self.dvref_range = self.upper_v - self.lower_v
-        #calculated z per
-        #how much z changes per vref
-        self.cal_collections = cals
-
-        log.info(f'setting dzdvref = {self.dz_range}/{self.dvref_range}')
-        self.dzdvref = self.dz_range/self.dvref_range  
-        
-
-
-        log.info(f'center before run')
-        await self.center_head_program()
-
-        #TODO: add reset callback for this
-        self.z_cur_vcal = self.feedback_volts
-
-        self.save_cal_file()
-
-        log.info(f'set mode: {default_mode}')
-        self.set_mode(default_mode)
-
-    def save_cal_file(self,**kw):
-        data = {'coef_2':self.coef_2,'coef_10':self.coef_10,'coef_100':self.coef_100,'upper_v':self.upper_v,'lower_v':self.lower_v,'z_cur_vcal':self.z_cur_vcal,'vref_0':self.safe_vref_0,'dzdvref':self.dzdvref,'dvref_range':self.dvref_range,**kw}
-        log.info(f'saving cal data! {data}')
-        with open(os.path.join(control_dir,'wave_cal.json'),'w') as fp:
-            fp.write(json.dumps(data))
-
-    def load_cal_file(self):
-        with open(os.path.join(control_dir,'wave_cal.json'),'r') as fp:
-            data = json.loads(fp.read())
-        log.info(f'loading cal file!: {data}')            
-        self.__dict__.update(data) #totally cool hacks
-
-
-    def run_cal_blocking(self):
-        log.info(f'running calibrate...')
-        loop = asyncio.get_event_loop()
-        if self.stopped:
-            loop.run_until_complete(self.start_control())
-        loop.run_until_complete(self.calibrate())
-
-
-
+    #Wave Control Goal
     async def set_dir(self,dir=None):
         if dir is None:
             dir = self._last_dir
@@ -952,50 +725,30 @@ class wave_control:
             self._last_dir = dir
         await self.pi.write(self._dir_pin,1 if dir > 0 else 0)
 
-
-
-    #Wave Control Goal
-    async def wave_goal(self):
-        ###constantly determines
-
-        t = time.perf_counter() - self.start
-        self.z_t = z = self.wave.z_pos(t)
-        self.z_t_1 = z = self.wave.z_pos(t+self.control_interval)
-        self.v_t = v= self.wave.z_vel(t)
-        self.v_t_1 = v= self.wave.z_vel(t+self.control_interval)
-        
-        #avg velocity
-        #v = self.v_t
-        v = (self.v_t + self.v_t_1)/2
-        v = min(max(v,-self.max_speed_motor),self.max_speed_motor)
-        v_cmd = v
-
-        #always measure goal pos for error
-        z = self.z_t
-        z_err = z-self.z_cur
-
-        #TODO: handle integral windup
-        self.z_err_cuml = z_err*self.ki_zerr + self.z_err_cuml
-        
-        #correct integral for pwm ala velocity
-        self.dv_err = z_err * self.kp_zerr / self.wave.ts
-        self.v_sup =v_cmd + self.dv_err
-
-        vref = self.feedback_volts
-        # if DEBUG: 
-        #     log.info(f'wave: {self.z_cur},{z},"|",{v_cmd},{self.v_sup},{self.dv_err}')
-        
-        self.v_cmd = self.v_sup #TODO: validate this for position holding
-        #self.v_cmd = v
-        await self.sleep(self.control_interval)
-
     async def run_stop(self):
-        self.v_cmd = 0      
+        self.v_cmd = 0   
         await self.sleep(self.control_interval)
                     
 
     #Saftey & FEEDBACK
     #safe bounds and references
+    def update_const(self):
+        self.dz_per_step = self.dz_per_rot / self.steps_per_rot
+        self.dvref_range = self.upper_v - self.lower_v
+        log.info(f'setting dzdv = {self.dz_range} <> [3.3/{self.dvref_range}]')
+        self.dzdvref = self.dz_range/(self.v_max - self.v_min)
+
+    def hwave_to_v(self,h_in):
+        da = h_in/self.dz_range
+        dvf = da * (self.v_max - self.v_min)
+
+        ul = self.upper_v - self.lower_v
+        vu = ul * self.upper_frac + self.lower_v
+        vl = ul * self.lower_frac + self.lower_v        
+
+        return min(max(dvf,vl),vu)
+
+
     @property
     def feedback_pct(self):
         fb = self.feedback_volts
@@ -1038,18 +791,6 @@ class wave_control:
     def vz0_ref(self,inv):
         ck,lv,uv = editable_parmaters['z-ref']
         self.zero_frac = min(max(int(inv),lv),uv)/100.
-
-    @property
-    def maybe_stuck(self,tol_maybestuck=0.01):
-        if abs(self._coef_2) < tol_maybestuck and self.step_count > 1000:
-            return True
-        return False
-    
-    @property
-    def stuck(self,tol_stuck=1E-5):
-        if abs(self._coef_10) < tol_stuck and self.step_count > 1000:
-            return True
-        return False
 
 
     #to handle stepping controls
@@ -1135,7 +876,6 @@ class wave_control:
                 await self.pi.wave_send_once( self.wave_next)
             
             #keep tracks
-            self.step_count += Nw
             self.inx = self.inx + dir*Nw
         
         else:
@@ -1230,9 +970,6 @@ class wave_control:
                             log.info(f'no steps')
                         waves = [asyncpio.pulse(0, 1<<self._step_pin, dt)]
 
-                    self._step_time = dt
-                    self._step_cint = max(len(waves)/2,1)
-
                     #print('waiting steps')
                     res = await self.step_wave(waves)
 
@@ -1288,6 +1025,7 @@ class wave_control:
         log.info(f'PWM freq: {self.pwm_speed_freq} | range: {self.pwm_speed_base}')
         dc = 0
         it = 0
+        maxit = self.pwm_speed_base-1
         while ON_RASPI:
             stc = self.speed_control_mode_changed
             await self.setup_pwm_speed()
@@ -1301,7 +1039,7 @@ class wave_control:
                     #     await self.setup_pwm_speed()        
                     #     exited = False
 
-                    dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),self.pwm_speed_base-1),1)
+                    dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),maxit),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
 
@@ -1361,4 +1099,3 @@ if __name__ == '__main__':
     sc = wave_control(4,6,12,7,13,11,10,19,wave=rw,force_cal='-fc' in sys.argv)
     sc.setup(i2c=True,cntl=True)
     sc.run() 
-

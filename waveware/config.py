@@ -160,6 +160,10 @@ LABEL_DEFAULT = {
     "act-zrange":0.3,
     "dz-p-rot": 0.05,
     "step-p-rot": 360/1.8,
+    "echo_x1":0,
+    "echo_x2":0,
+    "echo_x3":0,
+    "echo_x4":0,
 }
 
 #editable inputs are the difference of wave_inputs and label_defaults
@@ -185,6 +189,10 @@ editable_parmaters = {
     "act-zrange": ('control.dz_range',0.001,1),
     'dz-p-rot': ('control.dz_per_rot',1E-6,0.1),
     'step-p-rot': ('control.steps_per_rot',1,360),
+    "echo_x1":('hw.echo_x1',0,5000),
+    "echo_x2":('hw.echo_x2',0,5000),
+    "echo_x3":('hw.echo_x3',0,5000),
+    "echo_x4":('hw.echo_x4',0,5000),
 }
 
 _s_ep = set(editable_parmaters.keys())
