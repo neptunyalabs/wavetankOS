@@ -678,6 +678,7 @@ class wave_control:
         self.err_int = self.err_int + err*self.dt
 
         print(err,self.kp_zerr,self.ki_zerr,self.kd_zerr)
+        print(type(err),type(self.kp_zerr))
 
         Vp = err * self.kp_zerr
         Vi = self.err_int * self.ki_zerr

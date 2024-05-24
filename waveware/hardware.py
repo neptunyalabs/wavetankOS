@@ -620,31 +620,21 @@ class hardware_control:
         for k,v in kw.items():
 
             #Handle Special Cases
-            if k == 'mode':
+            list_check = False
+
+            if k == 'mode' or k == 'title':
                 log.info(f'user set mode! {v}')
                 set_procedures[k] = call_later(self.control.set_mode,v)
                 continue
-
-
-            list_check = False
-            str_check = False
-            if isinstance(v,list):
-                list_check = True
-            elif isinstance(v,str):
-                str_check = True
-            elif not isinstance(v,(float,int,bool)):
-                log.info(f'bad value for: {k}|{v}')
             
-            ep = editable_parmaters[k]
-            mn,mx = None,None
-            if str_check and isinstance(ep,str):
-                hwkey = ep
-            elif len(ep) == 1:
-                hwkey = ep[0]
-            elif len(ep) == 3:
-                hwkey,mn,mx = ep #min and max, numeric
+            #list
+            if k == 'z-range':
+                list_check = True
             else:
-                return f'{k} parameter entry, wrong format, 1/3 items:  {ep}'
+                v = float(v)
+
+            ep = editable_parmaters[k]
+            hwkey,mn,mx = ep #min and max, numeric
             
             cmp = None
             segs = hwkey.split('.')
@@ -664,7 +654,7 @@ class hardware_control:
                 if mx is not None:
                     if mx < max(v):
                         return f'{k} value {v} is greater than max: {mx}'
-            elif not str_check:
+            else:
                 if mn is not None:
                     if mn > v:
                         return f'{k} value {v} is less than min: {mn}'
