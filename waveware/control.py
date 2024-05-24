@@ -637,13 +637,6 @@ class wave_control:
         self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
         self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
 
-        #no stuck no problem, update official rate
-        # if not self.maybe_stuck and not self.stuck:
-        #     #set the official rate variables for estimates
-        #     self.coef_2 = self._coef_2
-        #     self.coef_10 = self._coef_10
-        #     self.coef_100 = self._coef_100
-
 
     #CONTROL MODES
     async def control_mode(self,loop_function:callable,mode_name:str):
@@ -666,7 +659,7 @@ class wave_control:
                     self._control_mode_fail_parms[mode_name] = True
                     log.info(f'control {mode_name} failure|{loop_function.__name__} error: {e}')
                     task = asyncio.current_task()
-                    task.print_stack()
+                    traceback.print_tb(e)
             
             #if your not the active loop wait until the mode has changed to check again. Only one mode can run at a time
             await self.mode_changed
@@ -681,7 +674,10 @@ class wave_control:
         err = fv - v_goal
 
         #TODO: integral windup prevention
+        print(fv,err,v_goal)
         self.err_int = self.err_int + err*self.dt
+
+        print(err,self.kp_zerr,self.ki_zerr,self.kd_zerr)
 
         Vp = err * self.kp_zerr
         Vi = self.err_int * self.ki_zerr
