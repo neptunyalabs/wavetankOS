@@ -622,9 +622,12 @@ class hardware_control:
             #Handle Special Cases
             list_check = False
 
-            if k == 'mode' or k == 'title':
+            if k == 'mode':
                 log.info(f'user set mode! {v}')
                 set_procedures[k] = call_later(self.control.set_mode,v)
+                continue
+            elif k == 'title':
+                set_procedures[k] = set_later(cmp,prm,v)
                 continue
             
             #list

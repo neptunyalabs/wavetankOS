@@ -447,7 +447,7 @@ class wave_control:
     def set_mode(self,new_mode):
         log.info(f'setting mode: {new_mode}')
         new_mode = new_mode.strip().lower()
-        assert new_mode in drive_modes,f'bad drive mode! choose: {drive_modes}'
+        assert new_mode in drive_modes,f'bad drive mode {new_mode}! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
 
         if new_mode == self.drive_mode:
@@ -465,7 +465,8 @@ class wave_control:
         self.mode_changed = asyncio.Future()
     
     def set_speed_mode(self,new_mode):
-        assert new_mode in speed_modes,'bad drive mode! choose: {drive_modes}'
+        new_mode = new_mode.strip().lower()
+        assert new_mode in speed_modes,f'bad speed mode {new_mode}! choose: {speed_modes}'
         new_mode = new_mode.lower().strip()
         if new_mode == self.speed_control_mode:
             log.info(f'same speed mode: {new_mode}')
