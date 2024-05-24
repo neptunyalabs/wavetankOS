@@ -258,7 +258,7 @@ async def test_pins(request,hw):
 async def push_data(hw):
     """Periodically looks for new data to upload 1/3 of window time"""
     loop = asyncio.get_running_loop()
-    with asyncio.ProcessPoolExecutor(2) as pool:
+    with ProcessPoolExecutor(2) as pool:
         while True:
 
             try:
