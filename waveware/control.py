@@ -550,7 +550,7 @@ class wave_control:
         
         fv = self.feedback_volts
         err = fv - v_goal
-        print('PID',err,v_goal,fv)
+        #print('PID',err,v_goal,fv)
         #TODO: integral windup prevention
         self.err_int = self.err_int + err*self.dt
 
@@ -571,7 +571,7 @@ class wave_control:
         if set_mode is not False and abs(err)<find_tol:
             self.set_mode(set_mode)
             return
-        print(self.zero_frac,self.upper_frac,self.lower_frac)
+        #print(self.zero_frac,self.upper_frac,self.lower_frac)
         
     async def wave_goal(self):
         ###constantly determines
