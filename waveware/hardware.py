@@ -39,7 +39,7 @@ import threading
 import struct
 
 from collections import deque
-
+import signal
 import sys
 import asyncpio
 asyncpio.exceptions = True
