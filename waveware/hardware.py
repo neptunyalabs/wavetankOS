@@ -239,7 +239,7 @@ class hardware_control:
         for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
             sig = getattr(signal, signame)
             loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
-        loop.run_until_complete(self._setup())        
+             
 
     async def _setup_hardware(self):
         if not hasattr(self.pi,'connected'):

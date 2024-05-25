@@ -234,7 +234,9 @@ class wave_control:
         self.speed_control_mode = default_speed_mode
 
         self.mode_changed = asyncio.Future()
-        self.speed_control_mode_changed = asyncio.Future()        
+        self.speed_control_mode_changed = asyncio.Future()    
+
+        loop.run_until_complete(self._setup())    
 
     def set_speed_tasks(self):
         #SPEED CONTROL MODES
@@ -510,7 +512,8 @@ class wave_control:
         self.goals_task = self.make_control_mode('wave',self.wave_goal)
         self.stop_task = self.make_control_mode('stop',self.run_stop)
         self.center_task = self.make_control_mode('center',self.center_head)
-    
+
+
     #FEEDBACK & CONTROL TASKS
     async def feedback(self,feedback_futr=None):
         log.info(f'starting feedback!')
