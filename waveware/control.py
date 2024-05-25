@@ -580,8 +580,12 @@ class wave_control:
         self.z_wave = self.wave.z_pos(t)
         self.v_wave = self.wave.z_vel(t)
         self.z_cmd = 0
-        v_goal = self.hwave_to_v(self.z_wave)
-        err = await self.pid_control(v_goal)
+        if WAVE_VCMD_DIR:
+            self.v_cmd = self.v_wave
+            await self.sleep(self.control_interval)
+        else:
+            v_goal = self.hwave_to_v(self.z_wave)
+            err = await self.pid_control(v_goal)
         #print(self.zero_frac,self.upper_frac,self.lower_frac)
 
     #Wave Control Goal
