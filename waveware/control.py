@@ -629,6 +629,7 @@ class wave_control:
     @property
     def feedback_pct(self):
         fb = self.feedback_volts
+        fb = 0 if fb is None else fb
         return (fb - self.lower_v)/ (self.upper_v - self.lower_v)
 
     @property
