@@ -210,6 +210,14 @@ class hardware_control:
         self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._adc_alert_pin,self._hlfb_pin,self._torque_pwm_pin,motor_en_pin,pi=self.pi,**cntl_conf)
 
     #Run / Setup
+    async def sig_cb(self,*a,**kw):
+        log.info(f'got signals, killing| {a} {kw}')
+        try:
+            await self._stop()
+        except Exception as e:
+            log.info(f'fail in stop: {e}')
+        os.kill(os.getpid(), signal.SIGKILL)
+
     #Setup & Shutdown
     def setup(self,sensors=False):
         if ON_RASPI:
@@ -224,6 +232,14 @@ class hardware_control:
             self.control.adc_ready = True
 
         self.control.setup()
+
+        #Add Exception & Signal Handling
+        # g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
+        # loop.set_exception_handler(g) #TODO: get this working
+        for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
+            sig = getattr(signal, signame)
+            loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
+        loop.run_until_complete(self._setup())        
 
     async def _setup_hardware(self):
         if not hasattr(self.pi,'connected'):
@@ -335,6 +351,8 @@ class hardware_control:
         self.imu_read_task.cancel() 
         self.print_task.cancel()
         #self.echo_trigger_task.cancel()
+
+        await self.control._stop()
 
         if hasattr(self,'_pool'):
             self._pool.shutdown(wait=True)
@@ -888,6 +906,8 @@ class hardware_control:
         self.zero_biases = bs
 
         return self.zero_biases
+    
+    
 
 def main():
     from waveware.control import regular_wave

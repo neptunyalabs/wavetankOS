@@ -236,14 +236,6 @@ class wave_control:
         self.mode_changed = asyncio.Future()
         self.speed_control_mode_changed = asyncio.Future()        
 
-        #Add Exception & Signal Handling
-        # g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
-        # loop.set_exception_handler(g) #TODO: get this working
-        for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
-            sig = getattr(signal, signame)
-            loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
-        loop.run_until_complete(self._setup())
-
     def set_speed_tasks(self):
         #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
@@ -395,13 +387,7 @@ class wave_control:
     #     await self._stop()
     #     #sys.exit(1) #os.kill(os.getpid(), signal.SIGKILL)
 
-    async def sig_cb(self,*a,**kw):
-        log.info(f'got signals, killing| {a} {kw}')
-        try:
-            await self._stop()
-        except Exception as e:
-            log.info(f'fail in stop: {e}')
-        os.kill(os.getpid(), signal.SIGKILL)
+
     
     def setup_i2c(self,cv_inx = 0,smb=None,lock=None):
         if smb is None:
