@@ -609,14 +609,13 @@ class wave_control:
         self.dzdvref = self.dz_range/(self.v_max - self.v_min)
 
     def hwave_to_v(self,h_in):
-        da = h_in/self.dz_range
-        dvf = da * (self.v_max - self.v_min)
+        dvf = h_in/self.dzdvref
 
         ul = self.v_max - self.v_min
         vu = ul * self.upper_frac
         vl = ul * self.lower_frac
         
-        return min(max(dvf,vl),vu)
+        return min(max(dvf+ self.vz0_ref,vl),vu)
     
 
     def v_to_hwave(self,v_in):
