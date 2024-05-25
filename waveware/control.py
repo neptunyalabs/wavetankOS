@@ -125,8 +125,8 @@ class wave_control:
     
     def reset(self):
         #fail setupso
-        self.last_time = time.perf_counter()
-        
+        self.last_print = time.perf_counter()
+
         self.enabled = False
         self._control_modes = {}
         self._control_mode_fail_parms = {'stop':False,
