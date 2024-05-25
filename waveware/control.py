@@ -947,7 +947,7 @@ class wave_control:
 
         self.dt_st = 0.005
         self.max_wait = 100000 #0.1s
-        self.last_print =
+        #self.last_print =0
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
