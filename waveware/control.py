@@ -1064,7 +1064,7 @@ class wave_control:
 
                     #TORQUE PWM
                     tdc = max(min(int(self.t_command*10),1000-10),0)
-                    if tdc == 0:
+                    if tdc < 10:
                         await self.pi.write(self._tpwm_pin,0)
                     else:
                         await self.pi.set_PWM_dutycycle(self._tpwm_pin,tdc)
