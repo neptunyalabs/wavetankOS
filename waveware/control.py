@@ -947,6 +947,7 @@ class wave_control:
 
         self.dt_st = 0.005
         self.max_wait = 100000 #0.1s
+        self.last_print =
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
@@ -967,7 +968,7 @@ class wave_control:
                         elif v_dmd > 0 and self._last_dir > 0:
                             log.info(f'set fwd')
                             await self.set_dir(1*vdir_bias)
-                        else:
+                        elif DEBUG:
                             log.info(f'v: {v_dmd} dir: {self._last_dir}')
 
                     else:
