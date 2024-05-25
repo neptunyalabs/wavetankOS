@@ -928,12 +928,12 @@ class wave_control:
                         steps = True
 
                         #set directions
-                        if v_dmd < 0 and self._last_dir > 0:
-                            log.info(f'set dir -1')
-                            await self.set_dir(-1)
-                        elif v_dmd > 0 and self._last_dir < 0:
-                            log.info(f'set dir 1')
+                        if v_dmd < 0 and self._last_dir < 0:
+                            log.info(f'set bwk')
                             await self.set_dir(1)
+                        elif v_dmd > 0 and self._last_dir > 0:
+                            log.info(f'set fwd')
+                            await self.set_dir(-1)
                         else:
                             log.info(f'v: {v_dmd} dir: {self._last_dir}')
 
