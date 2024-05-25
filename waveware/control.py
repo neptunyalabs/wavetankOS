@@ -514,117 +514,6 @@ class wave_control:
         self.center_task = self.make_control_mode('center',self.center_head)
 
 
-    #FEEDBACK & CONTROL TASKS
-    async def feedback(self,feedback_futr=None):
-        log.info(f'starting feedback!')
-        self.dvds = None
-        VR = volt_ref[fv_inx]
-        
-
-        #TODO: get interrupt working, IO error on read, try latching?
-        # self._adc_feedback_pin_cb = asyncio.Future()
-        # def trigger_read(gpio,level,tick):
-        #     adc = self._adc_feedback_pin_cb
-        #     adc.set_result(tick)
-        #     self._adc_feedback_pin_cb = asyncio.Future()
-        #     
-        # 
-        # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
-
-        tlast = tnow = time.perf_counter() - self.start
-        
-        self.z_cur = self.wave.z_pos(tnow)
-        self.v_wave = self.wave.z_vel(tnow)
-        vdtlast = vdtnow = self.v_command
-        vlast = vnow = self.feedback_volts #prep vars
-
-
-        while ON_RASPI:
-                  
-            try:
-                while True:
-                    tlast = tnow #push back
-                    vdtlast = vdtnow
-                    vlast = vnow if vnow is not None else 0
-                    st_inx = self.inx
-                    wait = wait_factor/float(dr_inx)
-                    
-                    #TODO: add feedback interrupt on GPIO7
-                    #-await deferred, in pigpio callback set_result
-                    #tick = await self._adc_feedback_pin_cb
-                    await self.sleep(wait)
-                    
-                    try:
-                        with self.i2c_lock:
-                            data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
-                        raw_adc = data[0] * 256 + data[1]
-                        if raw_adc > 32767:
-                            raw_adc -= 65535
-
-                        self.feedback_volts = vnow = (raw_adc/32767)*VR
-                        self.z_cur = (vnow - self.safe_vref_0)*self.dzdvref
-
-                        if feedback_futr is not None:
-                            feedback_futr.set_result(True)
-                            feedback_futr = None #twas, no more                
-                        #ok!
-                        self.fail_feedback = False
-
-                    except Exception as e:
-                        log.info('read i2c issue',e)
-                        continue
-                    
-                    # Convert the data
-                    vdtnow = self.v_command
-                    tnow = time.perf_counter() - self.start
-
-                    kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
-                    self.calc_rates(vdtnow,tnow,**kw)
-
-            except Exception as e:
-                self.fail_feedback = True
-                log.info(f'control error: {e}')       
-                traceback.print_tb(e.__traceback__)
-
-        log.warning(f'NO FEEDBACK!!!!')           
-
-    def calc_rates(self,vdtnow,tnow,**kw):
-        vnow = kw.get('vnow')
-        vlast = kw.get('vlast')
-        tlast = kw.get('tlast')
-        vdtlast = kw.get('vdtlast')
-        st_inx = kw.get('st_inx')
-        dv = (vnow-vlast)
-        self.dt = dt = (tnow-tlast)
-        accel = (vdtnow -vdtlast)/dt #speed
-
-        #calc dynamic rates
-        self.dvdt = vdir_bias*dv / dt
-        self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
-        self.dvdt_10 = (self.dvdt_10*0.95 + self.dvdt*0.05)
-        self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
-
-        #measured
-        self.v_cur = self.dvdt_10*self.dzdvref
-
-        #TODO: determine stationary
-        
-        Nw = abs(int(self.inx - st_inx))
-        
-        #stop catching
-        if self.v_command == 0:
-            return #dont determine rates as vcmd = 0
-
-        elif Nw < 1:
-            #no steps, no thank you
-            return
-        
-        #increment measure if points exist
-        self.dvds = dv/((self._last_dir*Nw))
-        self._coef_2 = (self._coef_2 + self.dvds)/2
-        self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
-        self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
-
 
     #CONTROL MODES
     async def control_mode(self,loop_function:callable,mode_name:str):
@@ -660,7 +549,7 @@ class wave_control:
         
         fv = self.feedback_volts
         err = fv - v_goal
-
+        print('PID',err,v_goal,fv)
         #TODO: integral windup prevention
         self.err_int = self.err_int + err*self.dt
 
@@ -734,8 +623,7 @@ class wave_control:
         vl = ul * self.lower_frac + self.lower_v        
         v_in = min(max(v_in,vl),vu)  
 
-        da = (v_in - self.safe_vref_0) / (self.v_max - self.v_min)
-        return da * self.dz_range
+        return (self.feedback_volts - self.safe_vref_0)*self.dzdvref
 
 
     @property
@@ -780,6 +668,120 @@ class wave_control:
     def vz0_ref(self,inv):
         ck,lv,uv = editable_parmaters['z-ref']
         self.zero_frac = min(max(int(inv),lv),uv)/100.
+
+
+    #FEEDBACK & CONTROL TASKS
+    async def feedback(self,feedback_futr=None):
+        log.info(f'starting feedback!')
+        self.dvds = None
+        VR = volt_ref[fv_inx]
+        
+
+        #TODO: get interrupt working, IO error on read, try latching?
+        # self._adc_feedback_pin_cb = asyncio.Future()
+        # def trigger_read(gpio,level,tick):
+        #     adc = self._adc_feedback_pin_cb
+        #     adc.set_result(tick)
+        #     self._adc_feedback_pin_cb = asyncio.Future()
+        #     
+        # 
+        # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
+
+        tlast = tnow = time.perf_counter() - self.start
+        
+        vdtlast = vdtnow = self.v_command
+        vlast = vnow = self.feedback_volts #prep vars
+        self.last_feedback = 0
+
+        while ON_RASPI:
+                  
+            try:
+                while True:
+                    tlast = tnow #push back
+                    vdtlast = vdtnow
+                    vlast = vnow if vnow is not None else 0
+                    st_inx = self.inx
+                    wait = wait_factor/float(dr_inx)
+                    
+                    #TODO: add feedback interrupt on GPIO7
+                    #-await deferred, in pigpio callback set_result
+                    #tick = await self._adc_feedback_pin_cb
+                    await self.sleep(wait)
+                    
+                    try:
+                        with self.i2c_lock:
+                            data = self.smbus.read_i2c_block_data(0x48, 0x00, 2)
+                        raw_adc = data[0] * 256 + data[1]
+                        if raw_adc > 32767:
+                            raw_adc -= 65535
+
+                        self.last_feedback = self.feedback_volts
+                        vlast = self.last_feedback
+                        vnow = (raw_adc/32767)*VR
+                        #75% LP Filter
+                        self.feedback_volts =fv= vnow*0.25 + vlast*0.75
+                        self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
+
+                        if feedback_futr is not None:
+                            feedback_futr.set_result(True)
+                            feedback_futr = None #twas, no more                
+                        #ok!
+                        self.fail_feedback = False
+
+                    except Exception as e:
+                        log.info('read i2c issue',e)
+                        continue
+                    
+                    # Convert the data
+                    vdtnow = self.v_command
+                    tnow = time.perf_counter() - self.start
+
+                    kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
+                    self.calc_rates(vdtnow,tnow,**kw)
+
+            except Exception as e:
+                self.fail_feedback = True
+                log.info(f'control error: {e}')       
+                traceback.print_tb(e.__traceback__)
+
+        log.warning(f'NO FEEDBACK!!!!')           
+
+    def calc_rates(self,vdtnow,tnow,**kw):
+        vnow = kw.get('vnow')
+        vlast = kw.get('vlast')
+        tlast = kw.get('tlast')
+        vdtlast = kw.get('vdtlast')
+        st_inx = kw.get('st_inx')
+        dv = (vnow-vlast)
+        self.dt = dt = (tnow-tlast)
+        accel = (vdtnow -vdtlast)/dt #speed
+
+        #calc dynamic rates
+        self.dvdt = vdir_bias*dv / dt
+        self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
+        self.dvdt_10 = (self.dvdt_10*0.95 + self.dvdt*0.05)
+        self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
+
+        #measured
+        self.v_cur = self.dvdt_10*self.dzdvref
+
+        #TODO: determine stationary
+        
+        Nw = abs(int(self.inx - st_inx))
+        
+        #stop catching
+        if self.v_command == 0:
+            return #dont determine rates as vcmd = 0
+
+        elif Nw < 1:
+            #no steps, no thank you
+            return
+        
+        #increment measure if points exist
+        self.dvds = dv/((self._last_dir*Nw))
+        self._coef_2 = (self._coef_2 + self.dvds)/2
+        self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
+        self._coef_100 = (self._coef_100*0.99 + self.dvds*0.01)
 
 
     #to handle stepping controls
