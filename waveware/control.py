@@ -577,7 +577,7 @@ class wave_control:
         ###constantly determines
         t = time.perf_counter() - self.start
         self.z_wave = self.wave.z_pos(t)
-        self.v_wave = self.wave.v_pos(t)
+        self.v_wave = self.wave.z_vel(t)
         self.z_cmd = 0
         v_goal = self.hwave_to_v(self.z_wave)
         err = await self.pid_control(v_goal)
