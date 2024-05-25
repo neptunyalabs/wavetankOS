@@ -721,7 +721,7 @@ class wave_control:
                         vlast = self.last_feedback
                         vnow = (raw_adc/32767)*VR
                         #75% LP Filter
-                        self.feedback_volts =fv= vnow*0.25 + vlast*0.75
+                        self.feedback_volts =fv= vnow*0.1 + vlast*0.9
                         self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
 
                         if feedback_futr is not None:
