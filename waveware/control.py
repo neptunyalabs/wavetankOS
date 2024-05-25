@@ -439,6 +439,8 @@ class wave_control:
         assert new_mode in drive_modes,f'bad drive mode {new_mode}! choose: {drive_modes}'
         new_mode = new_mode.lower().strip()
 
+        self.err_int = 0 #reste pid
+
         if new_mode == self.drive_mode:
             if DEBUG: log.info(f'same drive mode: {new_mode}')
             if new_mode == 'stop':
@@ -578,11 +580,20 @@ class wave_control:
         ###constantly determines
         t = time.perf_counter() - self.start
         self.z_wave = self.wave.z_pos(t)
-        self.v_wave = self.wave.z_vel(t)
+        self.v_wave = vw = self.wave.z_vel(t)
         self.z_cmd = 0
         if WAVE_VCMD_DIR:
-            self.v_cmd = self.v_wave
+            #position correction over periods
+            teval = self.wave.ts
+            alpha = self.dt / teval
+            err = self.z_cur #avg should be zero
+            self.err_int = self.err_int*(1-alpha) + err * alpha
+            
+            vcorr = err * self.kp_zerr + self.err_int * self.ki_zerr
+            self.v_cmd = self.v_wave + vcorr
             await self.sleep(self.control_interval)
+            log.info(f'PID e:{err}|i:{self.err_int},vc:{vcorr},{vw}')
+
         else:
             v_goal = self.hwave_to_v(self.z_wave)
             err = await self.pid_control(v_goal)
