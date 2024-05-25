@@ -364,13 +364,13 @@ def sync_write_s3(test,data: dict,title=None):
             key = f"{folder}/{test}/{date}/data_{time}.json"
 
         session = botocore.session.Session(profile=aws_profile)
-        with session.create_client('s3',region_name='us-east-1') as client:
-            resp = client.put_object(
-                Bucket=bucket, Key=key, Body=json.dumps(data)
-            )
-            log.info(f"success writing {key}")
-            log.debug(f"got s3 resp: {resp}")
-            return True
+        client = session.create_client('s3',region_name='us-east-1')
+        resp = client.put_object(
+            Bucket=bucket, Key=key, Body=json.dumps(data)
+        )
+        log.info(f"success writing {key}")
+        log.debug(f"got s3 resp: {resp}")
+        return True
         
     else:
         log.info(f"mock writing s3...: {aws_profile}|{title}|{len(data)}")
