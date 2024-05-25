@@ -41,6 +41,8 @@ if 'AWS_PROFILE' not in os.environ:
 else:
     aws_profile = os.environ.get('AWS_PROFILE','wavetank')
 
+vdir_bias = -1
+
 LOG_TO_S3 = os.environ.get('WAVEWARE_LOG_S3','true').lower().strip()=='true'
 bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
 folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
@@ -49,6 +51,8 @@ PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
 REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://localhost:{embedded_srv_port}')
 
+WAVE_VCMD_DIR = os.environ.get('WAVEWARE_VWAVE_DIRECT','false').lower().strip()=='true'
+
 drive_modes = ['stop','wave','cal','center']
 default_mode = 'wave'
 
@@ -56,7 +60,7 @@ speed_modes = ['step','pwm','off','step-pwm']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
 assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
 
-
+print_interavl = 0.5
 
 #IMPORT GPIO / CONFIGURE RASPI
 try:
@@ -152,7 +156,7 @@ LABEL_DEFAULT = {
     "z-ref": 50,
     "z-range": [33,66],
     "trq-lim": 0,
-    "kp-gain":0,
+    "kp-gain":0.1,
     "ki-gain":0,
     "kd-gain":0,
     "vz-max": 0.1,
@@ -160,6 +164,10 @@ LABEL_DEFAULT = {
     "act-zrange":0.3,
     "dz-p-rot": 0.05,
     "step-p-rot": 360/1.8,
+    "echo_x1":0,
+    "echo_x2":0,
+    "echo_x3":0,
+    "echo_x4":0,
 }
 
 #editable inputs are the difference of wave_inputs and label_defaults
@@ -185,6 +193,10 @@ editable_parmaters = {
     "act-zrange": ('control.dz_range',0.001,1),
     'dz-p-rot': ('control.dz_per_rot',1E-6,0.1),
     'step-p-rot': ('control.steps_per_rot',1,360),
+    "echo_x1":('hw.echo_x1',0,2),
+    "echo_x2":('hw.echo_x2',0,2),
+    "echo_x3":('hw.echo_x3',0,2),
+    "echo_x4":('hw.echo_x4',0,2),
 }
 
 _s_ep = set(editable_parmaters.keys())

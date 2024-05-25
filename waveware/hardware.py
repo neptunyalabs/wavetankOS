@@ -39,7 +39,7 @@ import threading
 import struct
 
 from collections import deque
-
+import signal
 import sys
 import asyncpio
 asyncpio.exceptions = True
@@ -184,6 +184,12 @@ class hardware_control:
             assert len(enc_conf) == len(self.encoder_pins), f'encoder conf mismatch'
             self.encoder_conf = enc_conf
 
+        #Echo X pos for wave calc
+        self.echo_x1 = 0
+        self.echo_x2 = 0
+        self.echo_x3 = 0
+        self.echo_x4 = 0
+
         self._motor_en_pin = motor_en_pin
         #stepper
         self._dir_pin = dir_pin
@@ -204,6 +210,14 @@ class hardware_control:
         self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._adc_alert_pin,self._hlfb_pin,self._torque_pwm_pin,motor_en_pin,pi=self.pi,**cntl_conf)
 
     #Run / Setup
+    async def sig_cb(self,*a,**kw):
+        log.info(f'got signals, killing| {a} {kw}')
+        try:
+            await self._stop()
+        except Exception as e:
+            log.info(f'fail in stop: {e}')
+        os.kill(os.getpid(), signal.SIGKILL)
+
     #Setup & Shutdown
     def setup(self,sensors=False):
         if ON_RASPI:
@@ -218,6 +232,14 @@ class hardware_control:
             self.control.adc_ready = True
 
         self.control.setup()
+
+        #Add Exception & Signal Handling
+        # g =  lambda loop, context: asyncio.create_task(self.exec_cb(context, loop))
+        # loop.set_exception_handler(g) #TODO: get this working
+        for signame in ('SIGINT', 'SIGTERM', 'SIGQUIT'):
+            sig = getattr(signal, signame)
+            loop.add_signal_handler(sig,lambda *a,**kw: asyncio.create_task(self.sig_cb(loop)))
+             
 
     async def _setup_hardware(self):
         if not hasattr(self.pi,'connected'):
@@ -312,6 +334,7 @@ class hardware_control:
         """
         Cancel the rotary encoder decoder, echo sensors and triggers
         """
+
         log.info(f'hw stopping tasks..')
         for cba in self.cbA:
             await cba.cancel()
@@ -326,8 +349,16 @@ class hardware_control:
 
         log.info(f'stopping echos')
         self.imu_read_task.cancel() 
-        self.print_task.cancel()
-        #self.echo_trigger_task.cancel()
+
+        if DEBUG:
+            self.print_task.cancel()
+            #self.echo_trigger_task.cancel()
+
+        await self.control._stop()
+
+        if hasattr(self,'_pool'):
+            print(f'killing process pool!')
+            self._pool.shutdown(wait=True)
 
     #MPU:
     #Interactive MPU Cal 
@@ -557,8 +588,8 @@ class hardware_control:
            'v_cmd': self.control.v_command,
            'v_cmd_raw': self.control.v_cmd,
            'is_safe': self.control.is_safe(),
-           'stuck': self.control.stuck,
-           'maybe_stuck':self.control.maybe_stuck,
+           #'stuck': self.control.stuck,
+           #'maybe_stuck':self.control.maybe_stuck,
            'fail_speed':self.control.fail_sc,
            'fail_step':self.control.fail_st,
            }
@@ -614,31 +645,24 @@ class hardware_control:
         for k,v in kw.items():
 
             #Handle Special Cases
+            list_check = False
+
             if k == 'mode':
                 log.info(f'user set mode! {v}')
                 set_procedures[k] = call_later(self.control.set_mode,v)
                 continue
-
-
-            list_check = False
-            str_check = False
-            if isinstance(v,list):
-                list_check = True
-            elif isinstance(v,str):
-                str_check = True
-            elif not isinstance(v,(float,int,bool)):
-                log.info(f'bad value for: {k}|{v}')
+            elif k == 'title':
+                set_procedures[k] = set_later(cmp,prm,v)
+                continue
             
-            ep = editable_parmaters[k]
-            mn,mx = None,None
-            if str_check and isinstance(ep,str):
-                hwkey = ep
-            elif len(ep) == 1:
-                hwkey = ep[0]
-            elif len(ep) == 3:
-                hwkey,mn,mx = ep #min and max, numeric
+            #list
+            if k == 'z-range':
+                list_check = True
             else:
-                return f'{k} parameter entry, wrong format, 1/3 items:  {ep}'
+                v = float(v)
+
+            ep = editable_parmaters[k]
+            hwkey,mn,mx = ep #min and max, numeric
             
             cmp = None
             segs = hwkey.split('.')
@@ -658,7 +682,7 @@ class hardware_control:
                 if mx is not None:
                     if mx < max(v):
                         return f'{k} value {v} is greater than max: {mx}'
-            elif not str_check:
+            else:
                 if mn is not None:
                     if mn > v:
                         return f'{k} value {v} is less than min: {mn}'
@@ -759,7 +783,7 @@ class hardware_control:
                     out[k] = out[k] + v
 
         #Add control info
-        out['z_wave'] = self.control.v_wave
+        out['z_wave'] = self.control.z_wave
         out['z_cmd'] = self.control.z_cmd
         out['z_cur'] = self.control.z_cur
         out['v_cmd'] = self.control.v_command
@@ -772,8 +796,8 @@ class hardware_control:
         out['coef_10'] = self.control.coef_10
         out['coef_100'] = self.control.coef_100
         
-        out['stuck'] = self.control.stuck
-        out['maybe_stuck'] = self.control.maybe_stuck
+        # out['stuck'] = self.control.stuck
+        # out['maybe_stuck'] = self.control.maybe_stuck
         out['drive_mode'] = self.control.drive_mode
         out['feedback_ok'] = not self.control.fail_feedback
         out['speed_control_mode'] = self.control.speed_control_mode
@@ -782,6 +806,8 @@ class hardware_control:
         out['data_active'] = self.active
         out['ctrl_stopped'] = self.control.stopped
         out['ctrl_enabled'] = self.control.enabled
+
+        out.update({"echo_x1":self.echo_x1,"echo_x2":self.echo_x2,"echo_x3":self.echo_x3,"echo_x4":self.echo_x4})
 
 
         #subtract the bias before it hits the system
@@ -883,6 +909,8 @@ class hardware_control:
         self.zero_biases = bs
 
         return self.zero_biases
+    
+    
 
 def main():
     from waveware.control import regular_wave
