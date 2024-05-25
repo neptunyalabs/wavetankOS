@@ -550,7 +550,7 @@ class wave_control:
         
         fv = self.feedback_volts
         err = fv - v_goal
-        #print('PID',err,v_goal,fv)
+        if DEBUG: log.info('PID e:{err}|i:{self.err_int},vg:{v_goal},fv:{fv}')
         #TODO: integral windup prevention
         self.err_int = self.err_int + err*self.dt
 
@@ -614,7 +614,7 @@ class wave_control:
         ul = self.v_max - self.v_min
         vu = ul * self.upper_frac
         vl = ul * self.lower_frac
-
+        
         return min(max(dvf,vl),vu)
     
 
