@@ -138,7 +138,8 @@ class wave_control:
         self.first_feedback = None
 
         self._last_dir = 1
-        self.feedback_volts = None
+        self.feedback_volts = 0
+        self.last_feedback = 0
         self.fail_feedback = None
 
         self.fail_st = False
