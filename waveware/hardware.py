@@ -355,6 +355,7 @@ class hardware_control:
         await self.control._stop()
 
         if hasattr(self,'_pool'):
+            print(f'killing process pool!')
             self._pool.shutdown(wait=True)
 
     #MPU:
