@@ -783,7 +783,7 @@ class hardware_control:
                     out[k] = out[k] + v
 
         #Add control info
-        out['z_wave'] = self.control.v_wave
+        out['z_wave'] = self.control.z_wave
         out['z_cmd'] = self.control.z_cmd
         out['z_cur'] = self.control.z_cur
         out['v_cmd'] = self.control.v_command

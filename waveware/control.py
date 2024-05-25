@@ -149,7 +149,7 @@ class wave_control:
         self.v_wave = 0
         self.z_cmd = 0
         self.z_cur = 0
-        self.z_est = 0
+        self.z_wave = 0
 
         self.wave_last = None
         self.wave_next = None
@@ -597,12 +597,11 @@ class wave_control:
         dv = (vnow-vlast)
         self.dt = dt = (tnow-tlast)
         accel = (vdtnow -vdtlast)/dt #speed
-        self.z_est = self.z_est + vdtnow*dt+0.5*accel*dt**2
 
         #calc dynamic rates
         self.dvdt = vdir_bias*dv / dt
         self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
-        self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
+        self.dvdt_10 = (self.dvdt_10*0.95 + self.dvdt*0.05)
         self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
 
         #measured
@@ -621,7 +620,6 @@ class wave_control:
             return
         
         #increment measure if points exist
-        self.t_no_inst = False
         self.dvds = dv/((self._last_dir*Nw))
         self._coef_2 = (self._coef_2 + self.dvds)/2
         self._coef_10 = (self._coef_10*0.9 + self.dvds*0.1)
@@ -678,16 +676,22 @@ class wave_control:
 
     async def center_head(self,find_tol = 0.01,set_mode=False):
         err = await self.pid_control(self.safe_vref_0)
-
+        self.z_wave = 0
+        self.z_cmd = self.v_to_hwave(self.safe_vref_0)
         if set_mode is not False and abs(err)<find_tol:
             self.set_mode(set_mode)
             return
+        print(self.zero_frac,self.upper_frac,self.lower_frac)
         
     async def wave_goal(self):
         ###constantly determines
         t = time.perf_counter() - self.start
-        v_goal = self.hwave_to_v(self.wave.z_pos(t))
+        self.z_wave = self.wave.z_pos(t)
+        self.v_wave = self.wave.v_pos(t)
+        self.z_cmd = 0
+        v_goal = self.hwave_to_v(self.z_wave)
         err = await self.pid_control(v_goal)
+        print(self.zero_frac,self.upper_frac,self.lower_frac)
 
     #Wave Control Goal
     async def set_dir(self,dir=None):
@@ -698,7 +702,10 @@ class wave_control:
         await self.pi.write(self._dir_pin,1 if dir > 0 else 0)
 
     async def run_stop(self):
-        self.v_cmd = 0   
+        self.v_cmd = 0
+        self.z_wave = 0
+        self.v_wave = 0
+        self.z_cmd = 0
         await self.sleep(self.control_interval)
                     
 
@@ -719,6 +726,16 @@ class wave_control:
         vl = ul * self.lower_frac + self.lower_v        
 
         return min(max(dvf,vl),vu)
+    
+
+    def v_to_hwave(self,v_in):
+        ul = self.upper_v - self.lower_v
+        vu = ul * self.upper_frac + self.lower_v
+        vl = ul * self.lower_frac + self.lower_v        
+        v_in = min(max(v_in,vl),vu)  
+
+        da = (v_in - self.safe_vref_0) / (self.v_max - self.v_min)
+        return da * self.dz_range
 
 
     @property
