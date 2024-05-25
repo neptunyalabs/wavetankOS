@@ -673,7 +673,7 @@ class wave_control:
 
 
     #FEEDBACK & CONTROL TASKS
-    async def feedback(self,feedback_futr=None):
+    async def feedback(self,feedback_futr=None,alpha=0.25):
         log.info(f'starting feedback!')
         self.dvds = None
         VR = volt_ref[fv_inx]
@@ -694,7 +694,7 @@ class wave_control:
         vdtlast = vdtnow = self.v_command
         vlast = vnow = self.feedback_volts #prep vars
         self.last_feedback = 0
-
+        ialpha = 1 - alpha
         while ON_RASPI:
                   
             try:
@@ -721,7 +721,7 @@ class wave_control:
                         vlast = self.last_feedback
                         vnow = (raw_adc/32767)*VR
                         #75% LP Filter
-                        self.feedback_volts =fv= vnow*0.1 + vlast*0.9
+                        self.feedback_volts =fv= vnow*alpha + vlast*ialpha
                         self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
 
                         if feedback_futr is not None:
