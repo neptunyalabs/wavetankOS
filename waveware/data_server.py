@@ -17,7 +17,7 @@ import pathlib
 import logging
 import requests
 import traceback
-
+import signal
 from concurrent.futures import ProcessPoolExecutor
 
 from waveware.config import *
@@ -251,7 +251,7 @@ async def test_pins(request,hw):
 
 
 
-
+some_flag = False
 
 
 #Data Recording
@@ -260,7 +260,10 @@ async def push_data(hw):
     loop = asyncio.get_running_loop()
     with ProcessPoolExecutor(2) as pool:
         while True:
-
+            global some_flag
+            if some_flag:
+                pool.shutdown(wait=True)
+                sys.exit()
             try:
 
                 if hw.active and hw.unprocessed:
@@ -360,7 +363,7 @@ def sync_write_s3(test,data: dict,title=None):
             #data
             key = f"{folder}/{test}/{date}/data_{time}.json"
 
-        session = botocore.session.AioSession(profile=aws_profile)
+        session = botocore.session.Session(profile=aws_profile)
         with session.create_client('s3',region_name='us-east-1') as client:
             resp = client.put_object(
                 Bucket=bucket, Key=key, Body=json.dumps(data)
@@ -374,3 +377,15 @@ def sync_write_s3(test,data: dict,title=None):
 
         return True
 
+
+def print_some_num():
+    print("From worker :{}".format(os.getpid()))
+
+def handler(arg1, arg2):
+    global some_flag
+    print("Got interrupt")
+    some_flag = True
+    print("Shutdown")
+
+signal.signal(signal.SIGTERM,handler)
+signal.signal(signal.SIGINT,handler)
