@@ -370,7 +370,7 @@ def sync_write_s3(test,data: dict,title=None):
             Bucket=bucket, Key=key, Body=json.dumps(data)
         )
         log.info(f"success writing {key}")
-        log.debug(f"got s3 resp: {resp}")
+        #log.debug(f"got s3 resp: {resp}")
         return True
         
     else:

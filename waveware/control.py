@@ -1062,11 +1062,8 @@ class wave_control:
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)
 
 
-                    # if DEBUG and (it%PR_INT==0): 
-                    #     log.info(f'cntl speed: {v_dmd} | {dc} | / {self.pwm_speed_base}')
-
                     #TORQUE PWM
-                    tdc = max(min(int(self.t_command*1000),1000-10),0)
+                    tdc = max(min(int(self.t_command*10),1000-10),0)
                     if tdc == 0:
                         await self.pi.write(self._tpwm_pin,0)
                     else:
