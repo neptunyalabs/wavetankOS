@@ -349,8 +349,10 @@ class hardware_control:
 
         log.info(f'stopping echos')
         self.imu_read_task.cancel() 
-        self.print_task.cancel()
-        #self.echo_trigger_task.cancel()
+
+        if DEBUG:
+            self.print_task.cancel()
+            #self.echo_trigger_task.cancel()
 
         await self.control._stop()
 
