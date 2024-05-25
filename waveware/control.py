@@ -562,8 +562,7 @@ class wave_control:
         Vi = self.err_int * self.ki_zerr
         Vd = self.dvdt_10 * self.kd_zerr
 
-        print(t,self.last_print)
-        if t - self.last_print > 0.1:
+        if t - self.last_print > print_interavl:
             self.last_print = t
             log.info(f'PID e:{err:5.4f}|ei:{self.err_int:5.4f}|P:{Vp:5.4f}|I:{Vi:5.4f}|D{Vd:5.4f}')        
 
@@ -599,7 +598,7 @@ class wave_control:
             self.v_cmd = self.v_wave + vcorr
             await self.sleep(self.control_interval)
 
-            if t - self.last_print > 0.1:
+            if t - self.last_print > print_interavl:
                 self.last_print = t
                 log.info(f'PID e:{err:5.4f}|i:{self.err_int:5.4f}|vc:{vcorr:5.4f}|vw:{vw:5.4f}')
 

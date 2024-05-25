@@ -60,7 +60,7 @@ speed_modes = ['step','pwm','off','step-pwm']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
 assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
 
-
+print_interavl = 0.5
 
 #IMPORT GPIO / CONFIGURE RASPI
 try:
