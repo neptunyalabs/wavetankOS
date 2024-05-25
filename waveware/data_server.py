@@ -259,6 +259,7 @@ async def push_data(hw):
     """Periodically looks for new data to upload 1/3 of window time"""
     loop = asyncio.get_running_loop()
     with ProcessPoolExecutor(2) as pool:
+        hw._pool = pool
         while True:
             global some_flag
             if some_flag:

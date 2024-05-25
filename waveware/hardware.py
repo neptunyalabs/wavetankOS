@@ -318,6 +318,7 @@ class hardware_control:
         """
         Cancel the rotary encoder decoder, echo sensors and triggers
         """
+
         log.info(f'hw stopping tasks..')
         for cba in self.cbA:
             await cba.cancel()
@@ -334,6 +335,9 @@ class hardware_control:
         self.imu_read_task.cancel() 
         self.print_task.cancel()
         #self.echo_trigger_task.cancel()
+
+        if hasattr(self,'_pool'):
+            self._pool.shutdown(wait=True)
 
     #MPU:
     #Interactive MPU Cal 
