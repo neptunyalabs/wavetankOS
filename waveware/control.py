@@ -963,10 +963,10 @@ class wave_control:
 
                         #set directions
                         if v_dmd < 0 and self._last_dir < 0:
-                            log.info(f'set bwk')
+                            if DEBUG: log.info(f'set bwk')
                             await self.set_dir(-1*vdir_bias)
                         elif v_dmd > 0 and self._last_dir > 0:
-                            log.info(f'set fwd')
+                            if DEBUG: log.info(f'set fwd')
                             await self.set_dir(1*vdir_bias)
                         elif DEBUG:
                             log.info(f'v: {v_dmd} dir: {self._last_dir}')
