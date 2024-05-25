@@ -442,13 +442,12 @@ class wave_control:
         new_mode = new_mode.lower().strip()
 
         self.err_int = 0 #reste pid
+        self.start = time.perf_counter()
 
         if new_mode == self.drive_mode:
             if DEBUG: log.info(f'same drive mode: {new_mode}')
             if new_mode == 'stop':
                 self.v_cmd = 0
-            else:
-                self.start = time.perf_counter()
             return
         
         self.drive_mode = new_mode
@@ -562,6 +561,7 @@ class wave_control:
         Vi = self.err_int * self.ki_zerr
         Vd = self.dvdt_10 * self.kd_zerr
 
+        print(t,self.last_print)
         if t - self.last_print > 0.1:
             self.last_print = t
             log.info(f'PID e:{err:5.4f}|ei:{self.err_int:5.4f}|P:{Vp:5.4f}|I:{Vi:5.4f}|D{Vd:5.4f}')        
