@@ -125,7 +125,7 @@ class wave_control:
     
     def reset(self):
         #fail setupso
-        self.last_print = time.perf_counter()
+        self.last_print = 0
 
         self.enabled = False
         self._control_modes = {}
@@ -443,6 +443,7 @@ class wave_control:
 
         self.err_int = 0 #reste pid
         self.start = time.perf_counter()
+        self.last_print = 0# t- start frame
 
         if new_mode == self.drive_mode:
             if DEBUG: log.info(f'same drive mode: {new_mode}')
