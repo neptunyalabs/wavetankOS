@@ -20,7 +20,7 @@ fdir = path.parent
 disk_cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
 
 #polling & data range
-poll_rate = float(os.environ.get('WAVEWARE_POLL_RATE',1.0 / 50))
+poll_rate = float(os.environ.get('WAVEWARE_POLL_RATE',1.0 / 25))
 poll_temp = float(os.environ.get('WAVEWARE_POLL_TIME',60))
 window = float(os.environ.get('WAVEWARE_WINDOW',30))
 

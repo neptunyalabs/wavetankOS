@@ -100,7 +100,7 @@ async def zero_positions(request,hw):
         raise Exception(f'DAQ not on')
 
     output = await hw._zero_task
-    await write_s3(hw,output,'zero_result')    
+    await write_s3(hw.labels['title'],output,'zero_result')    
     output = json.dumps(output)
     resp = web.Response(text=f'Positions zeroed: {output}')
     return resp
@@ -175,7 +175,7 @@ async def set_control_info(request,hw):
 
         #TODO: enable
         # asyncio.get_running_loop()
-        await write_s3(hw,s_data,'set_input')
+        await write_s3(hw.labels['title'],s_data,'set_input')
 
         out = hw.set_parameters(**params)
         if out is True:
@@ -199,7 +199,7 @@ async def add_note(request,hw):
     dt = datetime.datetime.now()
     bdy = await request.json()
 
-    await write_s3(hw,bdy,title='test_note')
+    await write_s3(hw.labels['title'],bdy,title='test_note')
 
     return web.Response(body=f'Added Note: {bdy}')
 
