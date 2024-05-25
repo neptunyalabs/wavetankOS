@@ -611,17 +611,17 @@ class wave_control:
         da = h_in/self.dz_range
         dvf = da * (self.v_max - self.v_min)
 
-        ul = self.upper_v - self.lower_v
-        vu = ul * self.upper_frac + self.lower_v
-        vl = ul * self.lower_frac + self.lower_v        
+        ul = self.v_max - self.v_min
+        vu = ul * self.upper_frac
+        vl = ul * self.lower_frac
 
         return min(max(dvf,vl),vu)
     
 
     def v_to_hwave(self,v_in):
-        ul = self.upper_v - self.lower_v
-        vu = ul * self.upper_frac + self.lower_v
-        vl = ul * self.lower_frac + self.lower_v        
+        ul = self.v_max - self.v_min
+        vu = ul * self.upper_frac
+        vl = ul * self.lower_frac
         v_in = min(max(v_in,vl),vu)  
 
         return (self.feedback_volts - self.safe_vref_0)*self.dzdvref
@@ -635,13 +635,13 @@ class wave_control:
 
     @property
     def safe_upper_v(self):
-        ul = self.upper_v - self.lower_v
-        return ul * self.upper_frac + self.lower_v
+        ul = self.v_max - self.v_min
+        return ul * self.upper_frac
     
     @property
     def safe_lower_v(self):
-        ul = self.upper_v - self.lower_v
-        return ul * self.lower_frac + self.lower_v
+        ul = self.v_max - self.v_min
+        return ul * self.lower_frac
     
     @property
     def safe_range(self):
@@ -657,10 +657,10 @@ class wave_control:
             
     @property
     def safe_vref_0(self):
-        ul = self.upper_v - self.lower_v
+        ul = self.v_max - self.v_min
         lv = ul * self.lower_frac
         uv = ul * self.upper_frac
-        return (uv-lv) * self.zero_frac + self.lower_v
+        return (uv*self.zero_frac+lv*(1-self.zero_frac)) 
     
     @property
     def vz0_ref(self):
