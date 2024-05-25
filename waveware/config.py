@@ -154,7 +154,7 @@ LABEL_DEFAULT = {
     "z-ref": 50,
     "z-range": [33,66],
     "trq-lim": 0,
-    "kp-gain":0,
+    "kp-gain":0.1,
     "ki-gain":0,
     "kd-gain":0,
     "vz-max": 0.1,

@@ -518,7 +518,7 @@ def update_graphs(n,on):
             fig_vv.update_xaxes(axes_style)              
                                 
             log.info(f'returning 3 graphs {time.perf_counter()-begin}')
-            return [fig_pr,fig_speed,fig_zv,fig_vv]
+            return [fig_zv,fig_vv,fig_pr,fig_speed]
         
         except dash.exceptions.PreventUpdate:
             pass

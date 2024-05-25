@@ -581,7 +581,7 @@ class wave_control:
         self.z_cmd = 0
         v_goal = self.hwave_to_v(self.z_wave)
         err = await self.pid_control(v_goal)
-        print(self.zero_frac,self.upper_frac,self.lower_frac)
+        #print(self.zero_frac,self.upper_frac,self.lower_frac)
 
     #Wave Control Goal
     async def set_dir(self,dir=None):

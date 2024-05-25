@@ -458,10 +458,10 @@ DASH_LAY = html.Div(
             # PLOTS
             html.Div(
                 [   html.H6("",id="current-title",className="graph__title"),
-                    generate_plot("Encoder Z 1-4 (mm)".upper()),
-                    generate_plot("Echo Height (mm)".upper()), #TODO: wave plot
                     generate_plot("Act Position (m)".upper()),
                     generate_plot("Act Velocity (m/s)".upper()),
+                    generate_plot("Encoder Z 1-4 (mm)".upper()),
+                    generate_plot("Echo Height (mm)".upper()), #TODO: wave plot
                     #TODO: test set overview
                     
                 ],
