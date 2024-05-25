@@ -41,6 +41,8 @@ if 'AWS_PROFILE' not in os.environ:
 else:
     aws_profile = os.environ.get('AWS_PROFILE','wavetank')
 
+vdir_bias = -1
+
 LOG_TO_S3 = os.environ.get('WAVEWARE_LOG_S3','true').lower().strip()=='true'
 bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
 folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")

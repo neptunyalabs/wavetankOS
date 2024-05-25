@@ -611,7 +611,7 @@ class wave_control:
         self.z_est = self.z_est + vdtnow*dt+0.5*accel*dt**2
 
         #calc dynamic rates
-        self.dvdt = dv / dt
+        self.dvdt = vdir_bias*dv / dt
         self.dvdt_2 = (self.dvdt_2 + self.dvdt)/2
         self.dvdt_10 = (self.dvdt_10*0.9 + self.dvdt*0.1)
         self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
@@ -930,10 +930,10 @@ class wave_control:
                         #set directions
                         if v_dmd < 0 and self._last_dir < 0:
                             log.info(f'set bwk')
-                            await self.set_dir(1)
+                            await self.set_dir(-1*vdir_bias)
                         elif v_dmd > 0 and self._last_dir > 0:
                             log.info(f'set fwd')
-                            await self.set_dir(-1)
+                            await self.set_dir(1*vdir_bias)
                         else:
                             log.info(f'v: {v_dmd} dir: {self._last_dir}')
 
