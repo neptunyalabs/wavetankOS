@@ -125,6 +125,8 @@ class wave_control:
     
     def reset(self):
         #fail setupso
+        self.last_time = time.perf_counter()
+        
         self.enabled = False
         self._control_modes = {}
         self._control_mode_fail_parms = {'stop':False,
@@ -549,11 +551,10 @@ class wave_control:
 
     #Control
     async def pid_control(self,v_goal):
-        
+        t = time.perf_counter() - self.start
         fv = self.feedback_volts
         err = fv - v_goal
         #if DEBUG: 
-        log.info(f'PID e:{err}|i:{self.err_int},vg:{v_goal},fv:{fv}')
         #TODO: integral windup prevention
         self.err_int = self.err_int + err*self.dt
 
@@ -561,7 +562,11 @@ class wave_control:
         Vi = self.err_int * self.ki_zerr
         Vd = self.dvdt_10 * self.kd_zerr
 
-        self.v_cmd = Vp #+Vi+Vd
+        if t - self.last_print > 0.1:
+            self.last_print = t
+            log.info(f'PID e:{err:5.4f}|ei:{self.err_int:5.4f}|P:{Vp:5.4f}|I:{Vi:5.4f}|D{Vd:5.4f}')        
+
+        self.v_cmd = Vp+Vi+Vd
 
         await self.sleep(self.control_interval)
 
@@ -592,7 +597,10 @@ class wave_control:
             vcorr = err * self.kp_zerr + self.err_int * self.ki_zerr
             self.v_cmd = self.v_wave + vcorr
             await self.sleep(self.control_interval)
-            log.info(f'PID e:{err}|i:{self.err_int},vc:{vcorr},{vw}')
+
+            if t - self.last_print > 0.1:
+                self.last_print = t
+                log.info(f'PID e:{err:5.4f}|i:{self.err_int:5.4f}|vc:{vcorr:5.4f}|vw:{vw:5.4f}')
 
         else:
             v_goal = self.hwave_to_v(self.z_wave)
