@@ -41,6 +41,7 @@ import struct
 from collections import deque
 import signal
 import sys
+from tkinter import E
 import asyncpio
 asyncpio.exceptions = True
 
@@ -334,26 +335,29 @@ class hardware_control:
         """
         Cancel the rotary encoder decoder, echo sensors and triggers
         """
+        try:
+            log.info(f'hw stopping tasks..')
+            for cba in self.cbA:
+                await cba.cancel()
+            for cbb in self.cbB:
+                await cbb.cancel()
+            
+            log.info(f'stopping echos')
+            for cbr in self._cb_rise:
+                await cbr.cancel()
+            for cbf in self._cb_fall:
+                await cbf.cancel()
 
-        log.info(f'hw stopping tasks..')
-        for cba in self.cbA:
-            await cba.cancel()
-        for cbb in self.cbB:
-            await cbb.cancel()
-        
-        log.info(f'stopping echos')
-        for cbr in self._cb_rise:
-            await cbr.cancel()
-        for cbf in self._cb_fall:
-            await cbf.cancel()
+            log.info(f'stopping echos')
+            if hasattr(self,'imu_read_task'):
+                self.imu_read_task.cancel() 
 
-        log.info(f'stopping echos')
-        self.imu_read_task.cancel() 
-
-        if DEBUG:
-            self.print_task.cancel()
-            #self.echo_trigger_task.cancel()
-
+            if DEBUG:
+                self.print_task.cancel()
+                #self.echo_trigger_task.cancel()
+        except Exception as e:
+            log.error(e)
+            
         await self.control._stop()
 
         if hasattr(self,'_pool'):

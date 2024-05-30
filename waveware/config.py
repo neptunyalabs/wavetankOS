@@ -51,7 +51,7 @@ PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
 embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
 REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://localhost:{embedded_srv_port}')
 
-WAVE_VCMD_DIR = os.environ.get('WAVEWARE_VWAVE_DIRECT','false').lower().strip()=='true'
+WAVE_VCMD_DIR = os.environ.get('WAVEWARE_VWAVE_DIRECT','true').lower().strip()=='true'
 
 drive_modes = ['stop','wave','cal','center']
 default_mode = 'wave'
