@@ -1,10 +1,14 @@
+setuptools==58.2.0
 requests
 numpy
 pandas
 dash
 dash_daq
 pigpio
+easydict
 asyncpio@ git+https://github.com/neptunyalabs/asyncpio.git
 imusensor@ git+https://github.com/niru-5/imusensor.git
-aioboto3
+adafruit-circuitpython-si7021
+adafruit-board-toolkit
+aiobotocore[awscli,boto3]
 expiringdict

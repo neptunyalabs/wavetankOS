@@ -17,30 +17,10 @@ import datetime
 import seaborn as sns
 import numpy as np
 
-pst = pytz.timezone('US/Pacific')
-utc = pytz.utc
-
-def to_test_time(timestamp):
-    dt = datetime.datetime.fromtimestamp(timestamp,tz=pytz.UTC)
-    return dt.astimezone(pst)
-
-def to_date(timestamp):
-    return to_test_time(timestamp).date()
-
-bucket = "nept-wavetank-data"
-folder = "V1"
-
-path = pathlib.Path(__file__)
-fdir = path.parent
-cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
-
-logging.basicConfig(level=logging.INFO)
-log = logging.getLogger("data")
-
-#TODO: deploy account for wave tank script
+from waveware.config import *
 
 #login
-session = boto3.Session(profile_name='ottr-iot')
+session = boto3.Session(profile_name=aws_profile)
 client = session.resource('s3')
 bck = client.Bucket(bucket)
 
@@ -88,7 +68,7 @@ close('all')
 test_sessions = []
 
 for dt,testdata in (test_days := data.groupby('date')):
-    print(dt)
+    log.info(dt)
     ts_min = testdata.timestamp.min()
     ts_max = testdata.timestamp.max()
     cal_points =  dict(filter(lambda kv: kv[0] > ts_min and kv[0] < ts_max, calibration.items()))
@@ -135,7 +115,7 @@ for dt,testdata in (test_days := data.groupby('date')):
 
                 #mark record breaks
                 if any( ttime > DT ):
-                    #print( f'big step,{tset}' )
+                    #log.info( f'big step,{tset}' )
                     tdd['gap'] = tdd['t'].diff() > DT
                     tdd['sesh'] = np.cumsum(tdd['gap'])
                 else:
@@ -247,9 +227,9 @@ close(pp2.figure)
 dataset = {}
 for tst,rss in rs.groupby('test'):
     name = tst.upper()
-    #print('\n'+('#'*80))
-    print(name)
-    #print(rss)
+    #log.info('\n'+('#'*80))
+    log.info(name)
+    #log.info(rss)
     dataset[name] = rss
 
 # FILM TEST PLOT

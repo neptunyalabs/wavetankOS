@@ -1,121 +1,170 @@
 import asyncio
+from aiohttp import web
 
-try:
-    import pigpio
-    ON_RASPI = True
-except:
-    ON_RASPI = False
 global ON_RASPI
 
 import logging
 import os, sys
 import pathlib
+import traceback
 
 from waveware.hardware import hardware_control
-from waveware.data_server import make_web_app
-
-# BUCKET CONFIG
-# Permissons only for this bucket so not super dangerous
-bucket = "nept-wavetank-data"
-folder = "TEST"
+from waveware.data_server import make_app,push_data
+from waveware.config import *
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")
 
-async def close(web_app):
-    await web_app.close()
-    if web_app:
-        await web_app.kill()
+
+class program:
+    """a thin stateful class to handle async tasks, and dashboard subprocess"""
+    dash_proc: asyncio.subprocess
+    app:web.TCPSite
+    hw:hardware_control
 
 
+    # MAIN
+    async def run_dashboard(self):
+        """Launches the dashboard task and shuts it down"""
+        pth = pathlib.Path(__file__)
 
-# MAIN
-async def run_dashboard():
-    """Launches the dashboard task and shuts it down"""
-    pth = pathlib.Path(__file__)
+        dash_path = f"live_dashboard.py"
+        dash_path = os.path.join(pth.parent,dash_path)
+    
+        while True:
+            cmd = f'{sys.executable} "{dash_path}"'
+            log.info(f"running {cmd}")
+            # sys.executable,'-c',dash_path,
+            
+            env = os.environ
+            if ON_RASPI:
+                #goal wavetank.local hosting! #BUG: issue with WSL on port 80 (and with MDNS)
+                env['PORT']='80'
 
-    dash_path = f"live_dashboard.py"
-    dash_path = os.path.join(pth.parent,dash_path)
-   
-    while True:
-        cmd = f'{sys.executable} "{dash_path}"'
-        log.info(f"running {cmd}")
-        # sys.executable,'-c',dash_path,
-        dash = await asyncio.create_subprocess_shell(
-            cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=os.environ,
-            shell=True,
-        )
+            #assign dashboard
+            self.dash_proc = dash = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=env,
+                shell=True,
+            )
+            
+            await asyncio.sleep(3)
 
-        await asyncio.sleep(3)
+            await dash.wait()
+            log.info(f'dashboard exited!!!')
+            stdout, stderr = await dash.communicate()
 
-        stdout, stderr = await dash.communicate()
+            log.info(f"[{cmd!r} exited with {dash.returncode}]")
+            if stdout:
+                log.info(f"[stdout]\n{stdout.decode()}")
+            if stderr:
+                log.info(f"[stderr]\n{stderr.decode()}")
 
-        log.info(f"[{cmd!r} exited with {dash.returncode}]")
-        if stdout:
-            log.info(f"[stdout]\n{stdout.decode()}")
-        if stderr:
-            log.info(f"[stderr]\n{stderr.decode()}")
+            await dash.wait()
+            return dash
 
-        await dash.wait()
-        return dash
+    async def main(self,skip_dash=False):
+        try:
+            log.info("starting hw data server..")
+            # Create App & Setup
+            await self.app.setup() #turn on webapp
 
-async def main(hw,web_app,skip_dash=False):
-    log.info("starting data aquisition")
-    # Create App & Setup
 
-    await web_app.setup()
+            # CREATE PIPELINE TASKS
+            # 1. data poll
+            self.poll_task = asyncio.create_task(self.hw.poll_data())
+            self.poll_task.add_done_callback(check_failure('poll task'))
+            # 2. process data
+            self.process_task = asyncio.create_task(self.hw.process_data())
+            self.process_task.add_done_callback(check_failure('proc task'))
+            # 3. push data
+            self.push_task = asyncio.create_task(push_data(self.hw))
+            self.push_task.add_done_callback(check_failure('push task'))
 
-    # CREATE PIPELINE TASKS
-    # 1. data poll
-    poll_task = asyncio.create_task(hw.poll_data())
-    # 2. process data
-    process_task = asyncio.create_task(hw.process_data())
-    # 3. push data
-    push_task = asyncio.create_task(hw.push_data())
+            # Run Site
+            self.site = web.TCPSite(self.app, "0.0.0.0", embedded_srv_port)
+            self.site_task = asyncio.create_task(self.site.start())
 
-    # Run Site
-    site = web_app.TCPSite(web_app, "0.0.0.0", 8777)
-    site_task = asyncio.create_task(site.start())
+            # Run Dashboard
+            if not skip_dash:
+                self.dash = self.run_dashboard()
+                self.dash_task = asyncio.create_task(self.dash)
+                self.dash_task.add_done_callback(check_failure('dash task'))
+            else:
+                self.dash = None
 
-    # Run Dashboard
-    if not skip_dash:
-        dash = run_dashboard()
-        dash_task = asyncio.create_task(dash)
+        except Exception as e:
+            log.info(f'error in main: {e}')
+            traceback.print_tb(e.__traceback__)
+            sys.exit(1)
 
-def cli():
-    """The main task does several things:
-    1. polls data and adds it to the buffer
-    2. process the data from a queue to the cache, and mark timestamp unprocessed
-    3. periodically push the unprocessed data to the bucket
-    4. also run the webserver to serve the cache data, as well as apply labels and start/stop the data process
-    """    
-    import argparse
-    parser = argparse.ArgumentParser('launch control')
-    parser.add_argument("--no-dash",action="store_true",help='dont launch dashboard')
-
-    args = parser.parse_args()
-
-    loop = asyncio.get_event_loop()
-    try:
+    def setup(self):
         #configure the system
-        hw = hardware_control()#TODO: pins init
-        app = make_web_app(hw)
+        try:
+            self.hw = hardware_control(encoder_pins,echo_pins,cntl_conf=control_conf,**pins_kw)
+            self.hw.setup()
+            self.hw.create_sensor_tasks()
+            self.hw.control.setup_control()
+            #self.hw.control.set_speed_tasks()
+            self.app = make_app(self.hw)
+        
+        except Exception as e:
+            log.error(e,'issue with setup')
 
-        task = main(skip_dash=args.no_dash)
-        loop.run_until_complete(task)
-        loop.run_forever()  # to keep tasks spawning
+    def print_dash(self,out):
+        out = out.result()[0]
+        stdout,stderr = out
+        log.info(f'DASH OUT:\n{stdout.decode()}')
+        log.info(f'DASH ERR:\n{stderr.decode()}')
 
-    except KeyboardInterrupt:
-        print("Received exit, exiting")
-        sys.exit("Keyboard Interrupt")
+    
+    async def close(self,print_dash=True):
+        app = self.dash
+        if app is not None:
+            app.close()
 
-    loop.run_until_complete(close())
+        if hasattr(self,'dash_proc'):
+            cb = asyncio.gather(self.dash_proc.communicate())
+            
+            if print_dash:
+                cb.add_done_callback(self.print_dash)
+
+            res = self.dash_proc.kill()
+            log.info(f'dash proc kill: {res}')
+            await cb
+
+        await asyncio.sleep(0.1)
+
+    def cli(self):
+        """The main task does several things:
+        1. polls data and adds it to the buffer
+        2. process the data from a queue to the cache, and mark timestamp unprocessed
+        3. periodically push the unprocessed data to the bucket
+        4. also run the webserver to serve the cache data, as well as apply labels and start/stop the data process
+        """
+        import argparse
+        parser = argparse.ArgumentParser('launch control')
+        parser.add_argument("--no-dash",action="store_true",help='dont launch dashboard')
+        parser.add_argument("--print-dash",action="store_true",help='prints dashboard stdout / stderr on keyboard interrupt')
+
+        args = parser.parse_args()
+
+        loop = asyncio.get_event_loop()
+        self.setup()
+        try:
+            task = self.main(skip_dash=args.no_dash)
+            loop.run_until_complete(task)
+            loop.run_forever()  # to keep tasks spawning
+
+        except KeyboardInterrupt:
+            log.info("Received exit, exiting")
+
+        loop.run_until_complete(self.close(print_dash=args.print_dash))
 
 
 if __name__ == "__main__":
-
-
-    cli()
+    """run the cli"""
+    prog = program()
+    prog.cli()

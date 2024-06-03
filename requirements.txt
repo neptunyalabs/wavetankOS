@@ -1,3 +1,5 @@
+setuptools==58.2.0 #beyond this requires a new instlal strategy
+
 requests
 
 numpy
@@ -14,19 +16,18 @@ dash_daq
 pigpio #gpio fast
 smbus #i2c
 easydict
-asyncpio @ git+https://github.com/neptunyalabs/asyncpio.git
-imusensor @ git+https://github.com/niru-5/imusensor.git
+RPi.GPIO
+asyncpio @ git+https://github.com/neptunyalabs/asyncpio.git#egg=asyncpio
+imusensor @  git+https://github.com/niru-5/imusensor.git#egg=imusensor
 adafruit-circuitpython-si7021
 adafruit-board-toolkit
-
-#pi-plates
-#RPi.GPIO
 
 
 
 #boto3
-aioboto3
-#aiobotocore
-#expiring-dict
+# aioboto3
+# aiobotocore
+aiobotocore[awscli,boto3]
+
 expiringdict
 

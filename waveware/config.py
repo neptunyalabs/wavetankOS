@@ -1,0 +1,221 @@
+import logging
+import diskcache
+import logging
+import pathlib
+import os
+
+import pytz
+import datetime
+import pigpio
+import sys
+
+import traceback
+from math import cos,sin
+from decimal import Decimal
+from waveware.data import *
+
+DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
+base_log = logging.INFO
+if DEBUG:
+    base_log = logging.DEBUG
+
+BASIC_LOG_FMT = "%(asctime)s|%(message)s"
+logging.basicConfig(level=base_log,format=BASIC_LOG_FMT)
+log = logging.getLogger("conf")
+
+mm_accuracy_enc = Decimal('1e-3')
+mm_accuracy_ech = Decimal('1e-4')
+
+pst = pytz.timezone('US/Pacific')
+utc = pytz.utc
+
+def to_test_time(timestamp):
+    dt = datetime.datetime.fromtimestamp(timestamp,tz=pytz.UTC)
+    return dt.astimezone(pst)
+
+def to_date(timestamp):
+    return to_test_time(timestamp).date()
+
+if 'AWS_PROFILE' not in os.environ:
+    os.environ['AWS_PROFILE'] = aws_profile = 'wavetank'
+else:
+    aws_profile = os.environ.get('AWS_PROFILE','wavetank')
+
+vdir_bias = -1
+mock_mass_act = 5
+mock_act_fric = -0.01
+
+mock_bouy_awl = 0.01 #10cm2
+mock_bouy2_awl = 0.0001 #10cm2
+mock_bouy_bwl = -0.001
+mock_bouy2_bwl = -0.01
+mock_bouy_mass = 0.1
+mock_bouy2_mass = 0.5
+
+#IMPORT GPIO / CONFIGURE RASPI
+try:
+    import RPi.GPIO as gpio
+    ON_RASPI = True
+    pigpio.exceptions = DEBUG #TODO: make false
+    from imusensor.MPU9250 import MPU9250
+    import smbus
+except:
+    ON_RASPI = False
+    pigpio.exceptions = DEBUG
+    smbus = None
+    MPU9250 = None
+
+LOG_TO_S3 = os.environ.get('WAVEWARE_LOG_S3','true').lower().strip()=='true'
+bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
+folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
+PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
+
+FW_HOST = os.environ.get('FW_HOST','0.0.0.0' if ON_RASPI else '127.0.0.1')
+embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
+REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://{FW_HOST}:{embedded_srv_port}')
+
+WAVE_VCMD_DIR = os.environ.get('WAVEWARE_VWAVE_DIRECT','true').lower().strip()=='true'
+
+drive_modes = ['stop','wave','center']
+default_mode = 'wave'
+
+speed_modes = ['step','pwm','off','step-pwm']
+default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm' if ON_RASPI else 'off').strip().lower()
+assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
+
+print_interavl = 0.5
+
+
+
+
+log.info(f'Running AWS User: {aws_profile}| {REMOTE_HOST} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}| RASPI: {ON_RASPI}')
+
+path = pathlib.Path(__file__)
+fdir = path.parent
+cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
+
+def check_failure(typ):
+    def f(res):
+        try:
+            res.result()
+        except Exception as e:
+            log.info(f'{typ} failure: {e}')
+            traceback.print_tb(e.__traceback__) 
+    return f
+
+#PINS
+encoder_pins = [(17,18),(27,22),(23,24),(25,5)]
+encoder_sens = [{'sens':0.005*4}]*4
+echo_pins = [16,26,20,21]
+
+pins_kw = dict(dir_pin=4,step_pin=6,speedpwm_pin=12,adc_alert_pin=7,hlfb_pin=13,motor_en_pin=19,torque_pwm_pin=10,echo_trig_pin=8)
+
+log.info(f'PIN SETTINGS:')
+for i,(a,b) in enumerate(encoder_pins):
+    log.info(f'ENCDR CH: {i} A: {a} B:{b}')
+
+for i,ep in enumerate(echo_pins):
+    log.info(f'ECHO CH: {i} A: {ep} TRIG: {pins_kw["echo_trig_pin"]}')
+
+for k,p in pins_kw.items():
+    log.info(f'{k.upper()}: {p}')
+
+#WAVE OBJ
+class regular_wave:
+
+    def __init__(self,Hs=0.0,Ts=10) -> None:
+        self.hs = Hs
+        self.ts = Ts
+        self.update()
+
+    def update(self):
+        self.omg = (2*3.14159)/self.ts
+        self.a = self.hs/2
+
+    #wave interface
+    def z_pos(self,t):
+        return self.a*sin(self.omg*t)
+
+    def z_vel(self,t):
+        return self.a*self.omg*cos(self.omg*t)
+    
+rw = regular_wave()
+control_conf = dict(wave=rw,force_cal='-fc' in sys.argv)
+
+#PINS
+#parameter groupings
+z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave','wave_fb_pct','wave_fb_volt']
+z_sensors = [f'z{i+1}' for i in range(4)]
+e_sensors = [f'e{i+1}' for i in range(4)]
+
+zgraph = ['z_cur','z_cmd','z_wave']
+vgraph = ['v_cur','v_cmd','v_wave']
+
+wave_drive_modes = ['stop','center','wave']
+M = len(wave_drive_modes)
+mode_dict = {i:v.upper() for i,v in enumerate(wave_drive_modes)}
+
+wave_inputs = ['mode','wave-ts','wave-hs','z-ref','z-range','trq-lim']
+Ninputs = len(wave_inputs)
+
+all_sys_vars = z_wave_parms+z_sensors+e_sensors #output only
+all_sys_parms = z_wave_parms+z_sensors+e_sensors+wave_inputs
+
+LABEL_DEFAULT = {
+    "title": "test",
+    'mode':'stop',
+    "wave-hs": 0/1000., #m
+    "wave-ts": 10.0, #s
+    "z-ref": 50,
+    "z-range": [33,66],
+    "trq-lim": 0,
+    "kp-gain":0.1,
+    "ki-gain":0,
+    "kd-gain":0,
+    "vz-max": 0.1,
+    'dz-dvolt':0,
+    "act-zrange":0.3,
+    "dz-p-rot": 0.05,
+    "step-p-rot": 360/1.8,
+    "echo_x1":0,
+    "echo_x2":0,
+    "echo_x3":0,
+    "echo_x4":0,
+}
+
+#editable inputs are the difference of wave_inputs and label_defaults
+prevent_table = ['title'] #list to exclude from table edits
+edit_inputs = {k:v for k,v in LABEL_DEFAULT.items() if k not in wave_inputs}
+
+#list url/attr name lookups
+#1 entry is basic lookup no lims
+#3 entries is key,min,max
+editable_parmaters = {
+    'title': ('hw.title',),
+    'mode': ('control.drive_mode',),
+    'wave-hs': ('control.wave.hs',0,0.3),
+    'wave-ts': ('control.wave.ts',1,10),
+    'z-ref': ('control.vz0_ref',10,90),
+    'z-range': ('control.safe_range',0,100),    
+    'kp-gain': ('control.kp_zerr',-1000,1000),
+    'ki-gain': ('control.ki_zerr',-1000,1000),
+    'kd-gain': ('control.kd_zerr',-1000,1000),
+    'trq-lim': ('control.t_command',0,100),
+    "vz-max": ('control.act_max_speed',0.01,1),
+    "dz-dvolt": ('control.dzdvref',-1,1),
+    "act-zrange": ('control.dz_range',0.001,1),
+    'dz-p-rot': ('control.dz_per_rot',1E-6,0.1),
+    'step-p-rot': ('control.steps_per_rot',1,360),
+    "echo_x1":('hw.echo_x1',0,2),
+    "echo_x2":('hw.echo_x2',0,2),
+    "echo_x3":('hw.echo_x3',0,2),
+    "echo_x4":('hw.echo_x4',0,2),
+}
+
+_s_ep = set(editable_parmaters.keys())
+_s_lp = set(LABEL_DEFAULT.keys())
+su = set.union(_s_ep,_s_lp)
+si = set.intersection(_s_ep,_s_lp)
+assert _s_ep == _s_lp , f'Must Be Equal| Diff: {su.difference(si)}'
+
+table_parms = {k:v for k,v in edit_inputs.items() if k not in prevent_table}
