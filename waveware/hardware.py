@@ -618,7 +618,7 @@ class hardware_control:
                 d['prnt_tsk'] = not self.print_task.cancelled() if self.print_task else None
                 
                 if ON_RASPI:
-                    d['cal_tsk'] = not self.control.cal_task.cancelled() if self.control.cal_task else None
+                    #d['cal_tsk'] = not self.control.cal_task.cancelled() if self.control.cal_task else None
                     d['imu_tsk'] = not self.imu_read_task.cancelled() if self.imu_read_task else None
                     d['temp_task'] = not self.temp_task.cancelled() if self.temp_task else None
 

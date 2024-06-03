@@ -472,12 +472,12 @@ DASH_LAY = html.Div(
     ),
     dcc.Interval(
     id=f"graph-update",
-    interval=2.5*1000,
+    interval=5*1000,
     n_intervals=0,
     ),
     dcc.Interval(
     id=f"num-raw-update",
-    interval=1*500.,
+    interval=1.5*1000.,
     n_intervals=0,
     ),    
     html.Div(id="hidden-div", style={"display":"none"})
