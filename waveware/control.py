@@ -789,8 +789,8 @@ class wave_control:
 
                     # Mock Dynamics 2nd order
                     vdtnow = self.v_command  
-                    v_cur = v_cur + (self.accel + mock_act_fric*v_cur)* self.dt/ mock_mass_act 
-                    z_mock = z_mock + v_cur * self.dt
+                    v_cur = min(max(v_cur + (self.accel + mock_act_fric*v_cur)* self.dt/ mock_mass_act,-self.act_max_speed),self.act_max_speed)
+                    z_mock = min(max(z_mock + v_cur * self.dt,0),self.dz_range)
 
                     if tnow - t_plast > 1:
                         t_plast = tnow
@@ -829,9 +829,11 @@ class wave_control:
 
 
                     if vdir_bias > 0:
-                        self.feedback_volts = fv = z_mock/self.dz_range * self.v_max
+                        fv = z_mock/self.dz_range * self.v_max
                     else:
-                        self.feedback_volts = fv = (self.dz_range - z_mock) * self.v_max/self.dz_range
+                        fv = (self.dz_range - z_mock) * self.v_max/self.dz_range
+
+                    self.feedback_volts = max(min(fv,self.v_max),self.v_min)
                     self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
 
                     if feedback_futr is not None:
