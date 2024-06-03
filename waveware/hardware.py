@@ -41,9 +41,7 @@ import struct
 from collections import deque
 import signal
 import sys
-from tkinter import E
 
-from zmq import has
 import asyncpio
 asyncpio.exceptions = True
 
