@@ -42,6 +42,8 @@ from collections import deque
 import signal
 import sys
 from tkinter import E
+
+from zmq import has
 import asyncpio
 asyncpio.exceptions = True
 
@@ -53,6 +55,7 @@ import logging
 import json,os
 import random
 
+import math
 
 from waveware.control import wave_control
 from waveware.data import *
@@ -221,12 +224,12 @@ class hardware_control:
 
     #Setup & Shutdown
     def setup(self,sensors=False):
+        
+        loop = asyncio.get_event_loop()
         if ON_RASPI:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self._setup_hardware())    
-
-        if ON_RASPI:
+            loop.run_until_complete(self._setup_hardware())
             self.setup_i2c()
+
         else:
             self.temp_ready = False
             self.imu_ready = False
@@ -251,9 +254,10 @@ class hardware_control:
     
     async def _start_sensors(self):
         log.info(f'starting sensors')
-        await self.setup_encoder()
-        self.setup_trigger()
-        await self.setup_echo_sensors()  
+        if ON_RASPI:
+            await self.setup_encoder()
+            self.setup_trigger()
+            await self.setup_echo_sensors()  
 
     def setup_trigger(self):
         log.info(f'eval trigger')
@@ -336,21 +340,22 @@ class hardware_control:
         Cancel the rotary encoder decoder, echo sensors and triggers
         """
         try:
-            log.info(f'hw stopping tasks..')
-            for cba in self.cbA:
-                await cba.cancel()
-            for cbb in self.cbB:
-                await cbb.cancel()
-            
-            log.info(f'stopping echos')
-            for cbr in self._cb_rise:
-                await cbr.cancel()
-            for cbf in self._cb_fall:
-                await cbf.cancel()
+            if ON_RASPI:
+                log.info(f'hw stopping tasks..')
+                for cba in self.cbA:
+                    await cba.cancel()
+                for cbb in self.cbB:
+                    await cbb.cancel()
+                
+                log.info(f'stopping echos')
+                for cbr in self._cb_rise:
+                    await cbr.cancel()
+                for cbf in self._cb_fall:
+                    await cbf.cancel()
 
-            log.info(f'stopping echos')
-            if hasattr(self,'imu_read_task'):
-                self.imu_read_task.cancel() 
+                log.info(f'stopping echos')
+                if hasattr(self,'imu_read_task'):
+                    self.imu_read_task.cancel() 
 
             if DEBUG:
                 self.print_task.cancel()
@@ -611,10 +616,14 @@ class hardware_control:
                 d['goal_tsk'] = not self.control.goals_task.cancelled() if self.control.goals_task else None
                 d['stop_tsk'] = not self.control.stop_task.cancelled() if self.control.stop_task else None
                 d['cent_tsk'] = not self.control.center_task.cancelled() if self.control.center_task else None
-                d['cal_tsk'] = not self.control.cal_task.cancelled() if self.control.cal_task else None
+                
                 d['prnt_tsk'] = not self.print_task.cancelled() if self.print_task else None
-                d['imu_tsk'] = not self.imu_read_task.cancelled() if self.imu_read_task else None
-                d['temp_task'] = not self.temp_task.cancelled() if self.temp_task else None                
+                
+                if ON_RASPI:
+                    d['cal_tsk'] = not self.control.cal_task.cancelled() if self.control.cal_task else None
+                    d['imu_tsk'] = not self.imu_read_task.cancelled() if self.imu_read_task else None
+                    d['temp_task'] = not self.temp_task.cancelled() if self.temp_task else None
+
                 basic['tasks'] = d
             except Exception as e:
                 print(f'error in debug status: {e}')
@@ -636,10 +645,11 @@ class hardware_control:
         #create lambdas to set values at end, ensuring intermediate validation doesnt partial update
         set_procedures = {}
 
-        def set_later(cmp,k,v):
+        def set_later(cmp,ki,vi):
             def cb(*a):
-                setattr(cmp,k,v)
-                return v
+                if DEBUG: log.info(f'setting {cmp}.{ki} = {vi}')
+                setattr(cmp,ki,vi)
+                return vi
             return cb
         
         def call_later(f,*a,**kw):
@@ -656,7 +666,7 @@ class hardware_control:
                 set_procedures[k] = call_later(self.control.set_mode,v)
                 continue
             elif k == 'title':
-                set_procedures[k] = set_later(cmp,prm,v)
+                set_procedures[k] = set_later(cmp,k,v)
                 continue
             
             #list
@@ -695,16 +705,16 @@ class hardware_control:
                         return f'{k} value {v} is greater than max: {mx}'
             
             #finally determine which items to set
-            #log.info(f'setting cb later: {prm} = {v}')
+            if DEBUG: log.info(f'setting cb later: {prm} = {v}')
             set_procedures[k] = set_later(cmp,prm,v)
 
         if not set_procedures and kw:
             raise ValueError(f'no procedures used for {kw}')
 
-        #if DEBUG: log.info(f'setting {set_procedures}')
+        if DEBUG: log.info(f'setting {set_procedures}')
         for k,sp in set_procedures.items():
             v = sp()
-            #if DEBUG: log.info(f'set {k}|{v}')
+            if DEBUG: log.info(f'set {k}|{v}')
             
         #always upate, might as well.
         self.control.update_const()
@@ -756,30 +766,50 @@ class hardware_control:
             for i,echo_pin in enumerate(self.echo_pins):
                 if echo_pin in self.last:
                     out[f'e{i+1}'] = self.read(echo_pin)
-                    out[f'e{i+1}_ts'] = self.last[echo_pin].get('dt_tick',None)
+                    if i == 0:
+                        out[f'e_ts'] = self.last[echo_pin].get('dt_tick',None)    
                 else:
                     out[f'e{i+1}'] = 0
-                    out[f'e{i+1}_ts'] = 0
+                    if i == 0:
+                        out[f'e_ts'] = 0
 
             for i,(enc_a,enc_b) in enumerate(self.encoder_pins):
                 out[f'z{i+1}'] = self.last.get(f'pos_enc_{i}',0)
 
         else:
             #FAKENESS
-            mock_sensors ={ 'e1':0.1*(0.5-random.random()),
-                    'e2':0.1*(0.5-random.random()),
-                    'e3':0.1*(0.5-random.random()),
-                    'e4':0.1*(0.5-random.random()),
-                    'z1':5*(0.5-random.random()),
-                    'z2':5*(0.5-random.random()),
-                    'z3':5*(0.5-random.random()),
-                    'z4':5*(0.5-random.random()),
-                    }
+
+            if hasattr(self.control,'mock_wave'):
+                mock_sensors = self.control.mock_wave
+            else:
+                mock_sensors ={ 'e1':0.1*(0.5-random.random()),
+                        'e2':0.1*(0.5-random.random()),
+                        'e3':0.1*(0.5-random.random()),
+                        'e4':0.1*(0.5-random.random()),
+                        'z1':5*(0.5-random.random()),
+                        'z2':5*(0.5-random.random()),
+                        'z3':5*(0.5-random.random()),
+                        'z4':5*(0.5-random.random()),
+                        }
+            
+            #echo sensors mock
+            tnow = time.perf_counter()
+            if self.control.drive_mode == 'wave':
+                wave_speed = 1.56*self.control.wave.ts #m/s
+                omg = (2*3.14159)/ self.control.wave.ts 
+                kx = omg / wave_speed 
+                hs = self.control.wave.hs
+                min_dz_e = 0.3
+                a_t = lambda x: hs * math.cos(kx*x - omg*tnow)
+                
+                #echo sensors & wave height w/ error
+                mock_sensors[f'e1'] = min_dz_e + a_t(self.echo_x1) + 0.005*(0.5-random.random())
+                mock_sensors[f'e2'] = min_dz_e + a_t(self.echo_x2) + 0.005*(0.5-random.random())
+                mock_sensors[f'e3'] = min_dz_e + a_t(self.echo_x3) + 0.005*(0.5-random.random())
+                mock_sensors[f'e4'] = min_dz_e + a_t(self.echo_x4) + 0.005*(0.5-random.random())                          
+            
+            out[f'e_ts'] = tnow - 0.05*random.random()
             out.update(mock_sensors)
-            #echo ts
-            now = time.perf_counter()
-            for i,echo_pin in enumerate(self.echo_pins):
-                out[f'e{i}_ts'] = now - 0.1*random.random()
 
             #they call it a bias for a reason :)
             for k,v in FAKE_BIAS.items():
@@ -811,6 +841,7 @@ class hardware_control:
         out['ctrl_stopped'] = self.control.stopped
         out['ctrl_enabled'] = self.control.enabled
 
+        #X spacing
         out.update({"echo_x1":self.echo_x1,"echo_x2":self.echo_x2,"echo_x3":self.echo_x3,"echo_x4":self.echo_x4})
 
 
@@ -885,6 +916,7 @@ class hardware_control:
 
             except Exception as e:
                 log.error(str(e), exc_info=1)
+                sys.exit(1) #FIXME: remove
 
     async def mark_zero(self,cal_time=1,delay=1./1000.):
         """average zeros over a second"""

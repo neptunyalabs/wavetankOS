@@ -13,7 +13,7 @@ import json
 import threading
 import time
 import sys,os,pathlib
-
+import math
 from waveware.config import *
 import random
 
@@ -494,11 +494,8 @@ class wave_control:
             except Exception as e:
                 traceback.print_exception(e)
 
-        #def on_start(*res):
         task = loop.create_task(func)
         self._control_modes[mode]=task
-        #setattr(self,tsk_name,task)
-        #self.started.add_done_callback(on_start)
         task.add_done_callback(_fail_control)
         return task
         
@@ -589,9 +586,9 @@ class wave_control:
         self.z_cmd = 0
         if WAVE_VCMD_DIR:
             #position correction over periods
-            teval = self.wave.ts
+            teval = self.wave.ts #TODO: add frac input
             alpha = self.dt / teval
-            err = self.z_cur #avg should be zero
+            err = self.z_cur - self.z_wave #avg should be zero
             self.err_int = self.err_int*(1-alpha) + err * alpha
             
             vcorr = err * self.kp_zerr + self.err_int * self.ki_zerr
@@ -712,7 +709,7 @@ class wave_control:
         # 
         # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
 
-        tlast = tnow = time.perf_counter() - self.start
+        tlast = t_plast=  tnow = time.perf_counter() - self.start
         
         vdtlast = vdtnow = self.v_command
         vlast = vnow = self.feedback_volts #prep vars
@@ -740,11 +737,12 @@ class wave_control:
                         if raw_adc > 32767:
                             raw_adc -= 65535
 
-                        self.last_feedback = self.feedback_volts
                         vlast = self.last_feedback
+                        self.last_feedback = lv = self.feedback_volts
                         vnow = (raw_adc/32767)*VR
+
                         #75% LP Filter
-                        self.feedback_volts =fv= vnow*alpha + vlast*ialpha
+                        self.feedback_volts =fv= vnow*alpha + lv*ialpha
                         self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
 
                         if feedback_futr is not None:
@@ -769,6 +767,90 @@ class wave_control:
                 log.info(f'control error: {e}')       
                 traceback.print_tb(e.__traceback__)
 
+        #Mock Data
+        while not ON_RASPI:
+            z_mock = random.random()*self.dz_range #starting pos
+            v_cur = 0
+            z_bouy = {f'z{i+1}':0 for i in range(4)}
+            v_bouy = {f'z{i+1}':0 for i in range(4)}
+            self.accel = 0
+            try:
+                while True:
+                    tlast = tnow #push back
+                    vdtlast = vdtnow
+                    vlast = vnow if vnow is not None else 0
+                    st_inx = self.inx
+                    wait = wait_factor/float(dr_inx)
+                    
+                    await self.sleep(wait)
+
+                    vlast = self.last_feedback
+                    self.last_feedback = self.feedback_volts
+
+                    # Mock Dynamics 2nd order
+                    vdtnow = self.v_command  
+                    v_cur = v_cur + (self.accel + mock_act_fric*v_cur)* self.dt/ mock_mass_act 
+                    z_mock = z_mock + v_cur * self.dt
+
+                    if tnow - t_plast > 1:
+                        t_plast = tnow
+                        print(z_mock,v_cur,self.accel)
+
+                    #Mock wave positions
+                    #xpos = {"echo_x1":self.echo_x1,"echo_x2":self.echo_x2,"echo_x3":self.echo_x3,"echo_x4":self.echo_x4}
+                    if self.drive_mode == 'wave':
+                        wave_speed = 1.56*self.wave.ts #m/s
+                        omg = self.wave.ts / (2*3.14159)
+                        kx = omg / wave_speed 
+                        hs = self.wave.hs
+                        #min_dz_e = 0.3
+                        a_t = lambda x: hs * math.cos(kx*x - omg*tnow)
+                        mw = {}
+                        #echo sensors & wave height
+        
+                        #mock bouy heights
+                        h_z1 = a_t(1) #where bouy is (z)
+                        a1 = ((h_z1-z_bouy['z1'])*mock_bouy2_awl + v_bouy['z1']*mock_bouy2_bwl)/mock_bouy2_mass
+                        a2 = ((h_z1-z_bouy['z2'])*mock_bouy_awl + v_bouy['z2']*mock_bouy_bwl)/mock_bouy_mass
+
+                        v_bouy['z1'] = v_bouy['z1'] + a1 * self.dt
+                        v_bouy['z2'] = v_bouy['z2'] + a2 * self.dt
+                        z_bouy['z1'] = z_bouy['z1'] + v_bouy['z1']*self.dt
+                        z_bouy['z2'] = z_bouy['z2'] + v_bouy['z2']*self.dt
+                        
+                        #output
+                        mw.update(z_bouy)
+                        mw['z2'] = mw['z2'] - mw['z1'] #diff measurement
+                    else:
+                        mw = {f'e{i+1}':0 for i in range(4)}
+                        mw.update({f'z{i+1}':0 for i in range(4)})
+                        mw['e_ts'] = tnow
+                    self.mock_wave = mw
+
+
+                    if vdir_bias > 0:
+                        self.feedback_volts = fv = z_mock/self.dz_range * self.v_max
+                    else:
+                        self.feedback_volts = fv = (self.dz_range - z_mock) * self.v_max/self.dz_range
+                    self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
+
+                    if feedback_futr is not None:
+                        feedback_futr.set_result(True)
+                        feedback_futr = None #twas, no more                
+
+                    self.fail_feedback = False
+
+                    tnow = time.perf_counter() - self.start
+
+                    kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
+                    self.calc_rates(vdtnow,tnow,**kw)
+                    self.v_cur = v_cur
+
+            except Exception as e:
+                self.fail_feedback = True
+                log.info(f'control error: {e}')       
+                traceback.print_tb(e.__traceback__)
+
         log.warning(f'NO FEEDBACK!!!!')           
 
     def calc_rates(self,vdtnow,tnow,**kw):
@@ -779,7 +861,7 @@ class wave_control:
         st_inx = kw.get('st_inx')
         dv = (vnow-vlast)
         self.dt = dt = (tnow-tlast)
-        accel = (vdtnow -vdtlast)/dt #speed
+        self.accel = (vdtnow -vdtlast)/dt #speed
 
         #calc dynamic rates
         self.dvdt = vdir_bias*dv / dt
@@ -935,6 +1017,8 @@ class wave_control:
             stc = self.speed_control_mode_changed
             while self.speed_control_mode == 'off' and self.speed_control_mode_changed is stc:
                 await self.sleep(0.1)
+                #keep tracks
+                self.inx = self.inx + self._last_dir* int(self.v_command *self.dt/ self.dz_per_step)
 
             await self.speed_control_mode_changed
 
@@ -1046,17 +1130,15 @@ class wave_control:
         it = 0
         maxit = self.pwm_speed_base-1
         while ON_RASPI:
+            
             stc = self.speed_control_mode_changed
             await self.setup_pwm_speed()
+            
             try:
                 while self.speed_control_mode in ['pwm','step-pwm'] and self.speed_control_mode_changed is stc and not self.stopped:
                     self.ct_sc = time.perf_counter()
 
                     v_dmd = self.v_command
-
-                    # if exited and v_dmd != 0:
-                    #     await self.setup_pwm_speed()        
-                    #     exited = False
 
                     dc = max(min(int(self.pwm_mid + (v_dmd*self.pwm_speed_k)),maxit),1)
                     await self.pi.set_PWM_dutycycle(self._vpwm_pin,dc)

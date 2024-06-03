@@ -42,25 +42,15 @@ else:
     aws_profile = os.environ.get('AWS_PROFILE','wavetank')
 
 vdir_bias = -1
+mock_mass_act = 5
+mock_act_fric = -0.01
 
-LOG_TO_S3 = os.environ.get('WAVEWARE_LOG_S3','true').lower().strip()=='true'
-bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
-folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
-PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
-
-embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
-REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://localhost:{embedded_srv_port}')
-
-WAVE_VCMD_DIR = os.environ.get('WAVEWARE_VWAVE_DIRECT','true').lower().strip()=='true'
-
-drive_modes = ['stop','wave','cal','center']
-default_mode = 'wave'
-
-speed_modes = ['step','pwm','off','step-pwm']
-default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm').strip().lower()
-assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
-
-print_interavl = 0.5
+mock_bouy_awl = 0.01 #10cm2
+mock_bouy2_awl = 0.0001 #10cm2
+mock_bouy_bwl = -0.001
+mock_bouy2_bwl = -0.01
+mock_bouy_mass = 0.1
+mock_bouy2_mass = 0.5
 
 #IMPORT GPIO / CONFIGURE RASPI
 try:
@@ -74,6 +64,29 @@ except:
     pigpio.exceptions = DEBUG
     smbus = None
     MPU9250 = None
+
+LOG_TO_S3 = os.environ.get('WAVEWARE_LOG_S3','true').lower().strip()=='true'
+bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
+folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
+PLOT_STREAM = (os.environ.get('PLOT_STREAM','false')=='true')
+
+FW_HOST = os.environ.get('FW_HOST','0.0.0.0' if ON_RASPI else '127.0.0.1')
+embedded_srv_port = int(os.environ.get('WAVEWARE_PORT',"8777"))
+REMOTE_HOST = os.environ.get('WAVEWARE_HOST',f'http://{FW_HOST}:{embedded_srv_port}')
+
+WAVE_VCMD_DIR = os.environ.get('WAVEWARE_VWAVE_DIRECT','true').lower().strip()=='true'
+
+drive_modes = ['stop','wave','center']
+default_mode = 'wave'
+
+speed_modes = ['step','pwm','off','step-pwm']
+default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm' if ON_RASPI else 'off').strip().lower()
+assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
+
+print_interavl = 0.5
+
+
+
 
 log.info(f'Running AWS User: {aws_profile}| {REMOTE_HOST} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}| RASPI: {ON_RASPI}')
 

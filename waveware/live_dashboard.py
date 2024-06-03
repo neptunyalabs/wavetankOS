@@ -541,15 +541,15 @@ def main():
     """runs the dash / plotly process"""
     import os
 
+    
     try:
-        srv_host = '0.0.0.0' if ON_RASPI else '127.0.0.1'
 
-        log.info(f'serving on: {srv_host} with DEBUG={DEBUG}')
+        log.info(f'serving dashboard on: {FW_HOST} with DEBUG={DEBUG}')
 
         #FIXME: debug can cause zombie processes, thanks 70k per year software!
         #You can sometimes change this with PORT env var
         #On WSL zombies can permanently hang causing weird networking issues
-        app.run_server(debug=DEBUG,host=srv_host)
+        app.run_server(debug=DEBUG,host=FW_HOST)
 
     except KeyboardInterrupt:
         sys.exit()
