@@ -506,7 +506,7 @@ DASH_LAY = html.Div(
                         {'name': 'Ts', 'id': 'Ts', 'type': 'numeric'},
                         {'name': 'Hf', 'id': 'Hf', 'type': 'numeric'},
                         {'name': 'run_id', 'id': 'run_id', 'type': 'numeric'},
-                        {'name': 'run_title', 'id': 'run_title', 'type': 'text'}
+                        {'name': 'title', 'id': 'title', 'type': 'text'}
                     ],
                     data=[],
                     page_size=10,

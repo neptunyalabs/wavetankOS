@@ -797,6 +797,11 @@ class hardware_control:
                         'z3':5*(0.5-random.random()),
                         'z4':5*(0.5-random.random()),
                         }
+                
+                #they call it a bias for a reason :)
+                for k,v in FAKE_BIAS.items():
+                    if k in out:
+                        out[k] = out[k] + v                
             
             #echo sensors mock
             tnow = time.perf_counter()
@@ -805,7 +810,7 @@ class hardware_control:
                 omg = (2*3.14159)/ self.control.wave.ts 
                 kx = omg / wave_speed 
                 hs = self.control.wave.hs
-                min_dz_e = 0.3
+                min_dz_e = 0.0
                 a_t = lambda x: hs * math.cos(kx*x - omg*tnow)
                 
                 #echo sensors & wave height w/ error
@@ -817,10 +822,6 @@ class hardware_control:
             out[f'e_ts'] = tnow - 0.05*random.random()
             out.update(mock_sensors)
 
-            #they call it a bias for a reason :)
-            for k,v in FAKE_BIAS.items():
-                if k in out:
-                    out[k] = out[k] + v
 
         #Add control info
         out['z_wave'] = self.control.z_wave
@@ -914,31 +915,32 @@ class hardware_control:
                     t_elps = ts - ctl_st
                     lp_a = (t_elps-dt)/t_elps
                     lp_b = dt/t_elps
-
+                    Hps = self.control.wave.hs 
+                    Tps = self.control.wave.ts 
                     for kv in ['z','e']:
-                        for num in range(1,4):
+                        for num in range(1,5):
                             prm = f'{kv}{num}'
                             if prm in new:
                                 
-                                av = avgs[f'{prm}_lp'] = avgs.get(f'{prm}_lp',0)*0.1 + abs(new[prm])*0.9
+                                av = avgs[f'{prm}_lp'] = avgs.get(f'{prm}_lp',0)*0.1 + new[prm]*0.9
                                 
-                                avgs[f'{prm}_hs'] = avgs.get(f'{prm}_hs',0)*lp_a + avgs[f'{prm}_lp']*lp_b*3.14159/2
+                                avgs[f'{prm}_hs'] = avgs.get(f'{prm}_hs',Hps)*lp_a + abs(avgs[f'{prm}_lp']*lp_b*3.14159/2)
 
                                 #zero cross
                                 if prm in last:
                                     lsav = last[prm]
-                                    if (av * lsav) < 0: #its crossed
+                                    if (av * lsav) < 0 and av > 0: #up crossing
                                         if f'{prm}_ts' in last:
                                             tlast = last[f'{prm}_ts']
-                                            zc_time = ts - tlast
+                                            zc_time = (ts - tlast)*2
                                             if zc_time > 0.05:
-                                                avgs[f'{prm}_ts'] = avgs[f'{prm}_ts']*lp_a + zc_time *lp_b*2
+                                                avgs[f'{prm}_ts'] = avgs.get(f'{prm}_ts',Tps)*lp_a + zc_time *lp_b
                                         last[f'{prm}_ts'] = ts
                                 last[prm] = av
                     
                     
                     self.run_summary[run_id] = avgs.copy()
-                    self.run_summary[run_id].update({'run_id':run_id,'title':self.title})
+                    self.run_summary[run_id].update({'run_id':run_id,'title':self.title,'Hs':Hps,'Ts':Tps})
                     self.run_summary[run_id].update(**good_lab)
 
                     new.update(**avgs)

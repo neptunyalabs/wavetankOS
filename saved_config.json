@@ -1,1 +1,1 @@
-{"kp-gain": 0.1, "ki-gain": 0, "kd-gain": 0, "vz-max": 0.1, "dz-dvolt": 0, "act-zrange": 0.3, "dz-p-rot": 0.05, "step-p-rot": 200, "echo_x1": 0, "echo_x2": 0, "echo_x3": 0, "echo_x4": 0}
+{"kp-gain": "1", "ki-gain": 0, "kd-gain": 0, "vz-max": "0.3", "dz-dvolt": 0, "act-zrange": 0.3, "dz-p-rot": 0.05, "step-p-rot": 200, "echo_x1": 0, "echo_x2": 0, "echo_x3": 0, "echo_x4": 0}

@@ -569,6 +569,7 @@ def fetch_data():
 # Callback to update the data
 @app.callback(
     [Output('data-table', 'data'),
+     Output('data-table', 'columns'),
      Output('x-parm-id', 'options'),
      Output('y-parm-id', 'options')],
     [Input('summary-update', 'n_intervals')]
@@ -579,8 +580,11 @@ def update_data(n_intervals):
     runs = pd.unique(df['title'])
     dropdown_options = [{'label': str(run_id), 'value': run_id} 
                                   for run_id in runs]
+    
+    columns = [c for c in df.columns if not c.endswith('_lp')]
+    cols = [{'name':c,'id':c,'type': 'text' if c == 'title' else 'numeric'} for c in columns]
     #dropdown_options,
-    return data,  df.columns,df.columns
+    return data, cols, columns,columns
 
 # Callback to update the scatter plot based on filters
 @app.callback(
@@ -604,7 +608,8 @@ def update_scatter_plot( hs_range, ts_range, title_filter,xparm,yparm, data):
     if title_filter:
         df = df[df['title'].str.contains(title_filter, case=False, na=False)]
 
-    fig = px.line(df, x=xparm, y=yparm, color='title', title=f'Scatter Plot of {xparm} vs {yparm}')
+    print(f'plot {xparm} {yparm}')
+    fig = px.scatter(df, x=xparm, y=yparm, color='title', title=f'Scatter Plot of {xparm} vs {yparm}')
     fig.update_layout(
         plot_bgcolor='#001f3f',
         paper_bgcolor='#001f3f',
