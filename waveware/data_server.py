@@ -21,6 +21,7 @@ import signal
 from concurrent.futures import ProcessPoolExecutor
 
 from waveware.config import *
+from waveware.data import *
 from waveware.hardware import LABEL_DEFAULT
 
 #### Dashboard data server
@@ -39,6 +40,7 @@ def make_app(hw):
             #the data broker to front end
             web.get("/getdata", hwfi(get_data,hw)), #works
             web.get("/getcurrent", hwfi(get_current,hw)), #works
+            web.get("/run_summary", hwfi(get_current,hw)), #works
 
             web.post("/log_note", hwfi(add_note,hw)),
 

@@ -64,7 +64,6 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("hw")
 
 
-FAKE_INIT_TIME = 60.
 
 #SI07 temp sensor registers
 HUMIDITY = 0xF5
@@ -161,8 +160,6 @@ class hardware_control:
         self.last_time = None
 
         self.title = f'Test At {datetime.datetime.now().isoformat()}'
-
-        self.is_fake_init = lambda: True if (time.perf_counter() - self.start_time) <  FAKE_INIT_TIME else False
 
         self.default_labels = LABEL_DEFAULT
         self.labels = self.default_labels.copy()

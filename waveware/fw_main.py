@@ -11,6 +11,7 @@ import traceback
 from waveware.hardware import hardware_control
 from waveware.data_server import make_app,push_data
 from waveware.config import *
+from waveware.data import *
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("data")

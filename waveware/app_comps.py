@@ -7,6 +7,7 @@ from dash import dcc, html, dash_table
 import dash_daq as daq
 
 from waveware.config import *
+from waveware.data import *
 from waveware.app_comps import *
 from dash.dependencies import Input, Output,State
 import sys
@@ -63,10 +64,9 @@ wave_input_parms = {
                             name="Ts".upper(),
                             id="wave-ts",
                             type="number",
-                            min=1,
-                            max=10,
-                            value=10,
-                            step=0.1,
+                            min=editable_parmaters['wave-ts'][-2],
+                            max=editable_parmaters['wave-ts'][-1],
+                            value=editable_parmaters['wave-ts'][-1],
                             vertical=True,
                             N=Ninputs
                         ),
@@ -74,11 +74,10 @@ wave_input_parms = {
                             name="Hs".upper(),
                             id="wave-hs",
                             type="number",
-                            min=0,
-                            max=0.2,
-                            value=0,
+                            min=editable_parmaters['wave-hs'][-2],
+                            max=editable_parmaters['wave-hs'][-1],
+                            value=editable_parmaters['wave-hs'][-2],
                             marks=None,
-                            step=0.01,
                             vertical=True,
                             N=Ninputs
                         ),
@@ -89,7 +88,6 @@ wave_input_parms = {
                         min=0,
                         max=100,
                         value=50,
-                        step=1,
                         vertical=True,
                         N=Ninputs
                     ),
@@ -120,10 +118,12 @@ wave_input_parms = {
                                                
                     }
 
-def generate_plot(title, id=None):
+def generate_plot(title, id=None,add_to_plots=True,**kwargs):
 
     mark = id if id else title.lower().split("(")[0].strip().replace(" ", "-")
-    PLOTS.append(mark)
+    if add_to_plots: 
+        PLOTS.append(mark)
+
     o = html.Div(
         [
             html.Div([html.H6(title.upper(), className="graph__title")]),
@@ -135,6 +135,7 @@ def generate_plot(title, id=None):
                         paper_bgcolor=app_color["graph_bg"],
                     )
                 ),
+                **kwargs
             ),
         ],
         id=f"graph-container-{mark}",
@@ -344,7 +345,7 @@ DASH_LAY = html.Div(
                     html.Div([
                     dcc.Input("Record Data With This Title", id="title-in", style={'width':'75%','padding-right':'1%','justify-content':'left'}),
                     html.Button("GET",id='drive-refresh',style={'background-color':'#33CAFF','height':'38px','width':"12%",'padding-top':'0%','padding-bottom':'5%','flex-grow': 1,'justify-content':'left'}),
-                    html.Button("SET",id='drive-set-exec',style={'background-color':'#5FFFFF','height':'38px','width':"12%",'padding-top':'0%','padding-bottom':'5%','flex-grow': 1,'justify-content':'left'})
+                    html.Button("SET",id='drive-set-exec',style={'background-color':'#59F','height':'38px','width':"12%",'padding-top':'0%','padding-bottom':'5%','flex-grow': 1,'justify-content':'left'})
                     ],style={'display':'flex'}),
                     dcc.RadioItems(
                             [mode_input_parms[k] for k in wave_drive_modes],
@@ -374,9 +375,15 @@ DASH_LAY = html.Div(
                     },
                     className="graph__container first",
                 ),
-                html.Div(
-                    [
-                    html.H6("Read / Edit Values:".upper(),className="edit_title",style={'display':'none'}), dash_table.DataTable(  data=[{'key':k,'val':v} for k,v in table_parms.items()],
+                # Write Test Log
+                dcc.Tabs([
+                    dcc.Tab(label='LOG',children=[html.Div(
+                        [
+                            dcc.Textarea(id='console',value='',readOnly=True,style={'width': '100%', 'height': "100%"}),
+                        ]
+                    )]),                    
+                    dcc.Tab(label='EDIT',children=[html.Div([
+                                dash_table.DataTable(  data=[{'key':k,'val':v} for k,v in table_parms.items()],
                                 columns=[{'id':'key','name':'Parm','deletable': False,'renamable': False,'editable': False},
                                          {'id':'val','name':'Val','deletable': False,'renamable': False,'editable': True}],
                                 page_action='none',
@@ -408,22 +415,17 @@ DASH_LAY = html.Div(
                                         # "backgroundColor": "rgba(255,255,255, 0.1)",
                                         "backgroundColor": "white",
                                     },
-                                ],)
-                ]),
-                # Write Test Log
-                dcc.Tabs([
-                    dcc.Tab(label='CONSOLE',children=[html.Div(
-                        [
-                            dcc.Textarea(id='console',value='',readOnly=True,style={'width': '100%', 'height': "20%"}),
+                                ],),
+                        html.Button("save".upper(),id='cntl-vals-save',style={'background-color':'#FFFFFF','height':'30px','padding-top':'0%','padding-bottom':'5%'})                                
                         ]
                     )]),                     
-                    dcc.Tab(label='TEST LOG',children=[html.Div(
+                    dcc.Tab(label='NOTE',children=[html.Div(
                         [
-                            dcc.Textarea(id='test-log',value='',style={'width': '100%', 'height': "20%"}),
+                            dcc.Textarea(id='test-log',value='',style={'width': '100%', 'height': "100%"}),
                             html.Button("record".upper(),id='test-log-send',style={'background-color':'#FFFFFF','height':'30px','padding-top':'0%','padding-bottom':'5%'})
                         ]
                     )]),                                
-                ]),
+                ],style={'height':'100%','overflowY': 'auto'}),
                 html.Div(
                     [
                     # Station 1
@@ -456,31 +458,76 @@ DASH_LAY = html.Div(
             style={'width':'25%'}
             ),
             # PLOTS
-            html.Div(
-                [   html.H6("",id="current-title",className="graph__title"),
+            dcc.Tabs(id='main-tabs',children=
+            [
+                dcc.Tab(label='Live Data',
+                        style = {'width':'49%','background-color':'#001f3f','color':'#FFFFFF'},
+                        selected_style={'background-color':'#59F'},
+                        children=[
+                html.Div(
+                [   #html.H6("",id="current-title",className="graph__title"),
                     generate_plot("Act Position (m)".upper()),
                     generate_plot("Act Velocity (m/s)".upper()),
                     generate_plot("Encoder Z 1-4 (mm)".upper()),
                     generate_plot("Echo Height (mm)".upper()), #TODO: wave plot
                     #TODO: test set overview
                     
-                ],
-                className="two-thirds column wind__speed__container",
-            ),
-        ],
-        className="app__content body",
-    ),
+                ],className="column wind__speed__container"),
+                ],className="column wind__speed__container"),
+                dcc.Tab(label='Test Summary',
+                        style = {'width':'49%','background-color':'#001f3f','color':'#FFFFFF'},
+                        selected_style={'background-color':'#59F'},
+                        children=[
+                html.Div([
+                html.Div([
+                html.Div([
+                    dcc.Dropdown(id='x-parm-id',value='Hf',style={'backgroundColor': '#001f3f', 'color': '#000000'}),
+                    dcc.Dropdown(id='y-parm-id',value='Ts',style={'backgroundColor': '#001f3f', 'color': '#000000'}),     
+                    html.H6('Hs Selection',style={'color':'#FFFFFF'}),          
+                    dcc.RangeSlider(id='hs-range-slider', min=0, max=3, value=[0, 10], tooltip={"placement": "bottom", "always_visible": True}, updatemode='drag'),
+                    html.H6('Ts Selection',style={'color':'#FFFFFF'}),
+                    dcc.RangeSlider(id='ts-range-slider', min=0, max=3, value=[0, 10], tooltip={"placement": "bottom", "always_visible": True}, updatemode='drag'),
+                    html.H6('Filter Titles',style={'color':'#FFFFFF'}),
+                    dcc.Input(id='run-title-input', type='text', placeholder='Filter by run_title'),
+                ], style={'width': '25%', 'display': 'inline-block', 'vertical-align': 'top', 'padding': '20px'}),
+                html.Div([
+                    #dcc.Graph(id='scatter-plot', style={'height': '100vh'})
+                    generate_plot('results-plot', style={'height': '75vh','width':'100%'},add_to_plots=False)
+                ], style={'width': '70%', 'display': 'inline-block'})
+                ]),
+                html.Div(id='table-div', children=[
+                html.H6('Test Data',style={'color':'#FFFFFF'}),
+                dash_table.DataTable(
+                    id='data-table',
+                    columns=[
+                        {'name': 'Hs', 'id': 'Hs', 'type': 'numeric'},
+                        {'name': 'Ts', 'id': 'Ts', 'type': 'numeric'},
+                        {'name': 'Hf', 'id': 'Hf', 'type': 'numeric'},
+                        {'name': 'run_id', 'id': 'run_id', 'type': 'numeric'},
+                        {'name': 'run_title', 'id': 'run_title', 'type': 'text'}
+                    ],
+                    data=[],
+                    page_size=10,
+                    style_header={'backgroundColor': '#0074D9', 'color': '#ffffff'},
+                    style_cell={'backgroundColor': '#001f3f', 'color': '#ffffff'}
+                )
+                ]),
+                ])
+            ]),
+            ],content_style={'width':'100%'},
+              style={'width':'100%','height':'50px'},
+              parent_style={'width':'100%','margin-left':'20px'})
+                
+        ], className="app__content body",),
     dcc.Interval(
     id=f"graph-update",
-    interval=5*1000,
+    interval=1000*graph_update_interval,
     n_intervals=0,
     ),
     dcc.Interval(
     id=f"num-raw-update",
-    interval=1.5*1000.,
+    interval=1000*num_update_interval,
     n_intervals=0,
     ),    
     html.Div(id="hidden-div", style={"display":"none"})
-    ],
-    className="app__container body",
-)
+    ],className="app__container body")

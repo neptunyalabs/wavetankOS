@@ -15,6 +15,7 @@ import time
 import sys,os,pathlib
 import math
 from waveware.config import *
+from waveware.data import *
 import random
 
 # Get I2C bus

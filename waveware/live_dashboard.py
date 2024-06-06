@@ -10,6 +10,7 @@ from dash import dcc, html, dash_table
 import dash_daq as daq
 
 from waveware.config import *
+from waveware.data import *
 from waveware.app_comps import *
 from dash.dependencies import Input, Output,State
 import sys
@@ -530,6 +531,71 @@ def update_graphs(n,on):
     raise dash.exceptions.PreventUpdate
 
 
+
+# Function to fetch data from the endpoint
+def fetch_data():
+    response = requests.get('http://localhost:8777/run_summary')
+    if response.status_code == 200:
+        data = response.json()
+        df = pd.DataFrame.from_dict(data, orient='index')
+        df.reset_index(inplace=True)
+        df.rename(columns={'index': 'run_id'}, inplace=True)
+        return df
+    else:
+        return pd.DataFrame(columns=['run_id', 'run_title', 'Ts', 'Hs', 'Hf'])
+
+# Callback to update the data
+@app.callback(
+    [Output('data-table', 'data'),
+     Output('x-parm-id', 'options'),
+     Output('y-parm-id', 'options')],
+    [Input('interval-component', 'n_intervals')]
+)
+def update_data(n_intervals):
+    df = fetch_data() 
+    data = df.to_dict('records')
+    runs = pd.unique(df['run_title'])
+    dropdown_options = [{'label': str(run_id), 'value': run_id} 
+                                  for run_id in runs]
+    #dropdown_options,
+    return data,  df.columns,df.columns
+
+# Callback to update the scatter plot based on filters
+@app.callback(
+    Output('results-plot-graph', 'figure'),
+    [Input('hs-range-slider', 'value'),
+     Input('ts-range-slider', 'value'),
+     Input('run-title-input', 'value'),
+     Input('x-parm-id', 'value'),
+     Input('y-parm-id', 'value')],     
+    [State('data-table', 'data')]
+)
+def update_scatter_plot( hs_range, ts_range, title_filter,xparm,yparm, data):
+    if not data:
+        raise dash.PreventUpdate
+    
+    df = pd.DataFrame(data)
+    if hs_range:
+        df = df[(df['Hs'] >= hs_range[0]) & (df['Hs'] <= hs_range[1])]
+    if ts_range:
+        df = df[(df['Ts'] >= ts_range[0]) & (df['Ts'] <= ts_range[1])]
+    if title_filter:
+        df = df[df['run_title'].str.contains(title_filter, case=False, na=False)]
+
+    fig = px.line(df, x=xparm, y=yparm, color='run_title', title=f'Scatter Plot of {xparm} vs {yparm}')
+    fig.update_layout(
+        plot_bgcolor='#001f3f',
+        paper_bgcolor='#001f3f',
+        font_color='#ffffff',
+        legend=dict(
+            bgcolor='#001f3f',
+            font=dict(color='#ffffff')
+        ),
+        xaxis=dict(tickfont=dict(color='#ffffff')),
+        yaxis=dict(tickfont=dict(color='#ffffff')),
+        
+    )
+    return fig
 
 
 

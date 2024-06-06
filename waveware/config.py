@@ -12,7 +12,6 @@ import sys
 import traceback
 from math import cos,sin
 from decimal import Decimal
-from waveware.data import *
 
 DEBUG = os.environ.get('WAVEWARE_DEBUG','false').lower().strip()=='true'
 base_log = logging.INFO
@@ -42,6 +41,8 @@ else:
     aws_profile = os.environ.get('AWS_PROFILE','wavetank')
 
 vdir_bias = -1
+
+#MOCK Specifications
 mock_mass_act = 5
 mock_act_fric = -0.01
 
@@ -84,8 +85,12 @@ default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm' if ON_RASPI el
 assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
 
 print_interavl = 0.5
-
-
+graph_update_interval = float(os.environ.get('WAVEWARE_DASH_GRAPH_UPT','3.3'))
+num_update_interval = float(os.environ.get('WAVEWARE_DASH_READ_UPT','1.5'))
+#polling & data range
+poll_rate = float(os.environ.get('WAVEWARE_POLL_RATE',1.0 / 20))
+poll_temp = float(os.environ.get('WAVEWARE_POLL_TEMP',60))
+window = float(os.environ.get('WAVEWARE_WINDOW',10))
 
 
 log.info(f'Running AWS User: {aws_profile}| {REMOTE_HOST} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}| RASPI: {ON_RASPI}')
@@ -194,7 +199,7 @@ editable_parmaters = {
     'title': ('hw.title',),
     'mode': ('control.drive_mode',),
     'wave-hs': ('control.wave.hs',0,0.3),
-    'wave-ts': ('control.wave.ts',1,10),
+    'wave-ts': ('control.wave.ts',0.1,2.5), #wave period scales w/ sqrt
     'z-ref': ('control.vz0_ref',10,90),
     'z-range': ('control.safe_range',0,100),    
     'kp-gain': ('control.kp_zerr',-1000,1000),
@@ -219,3 +224,4 @@ si = set.intersection(_s_ep,_s_lp)
 assert _s_ep == _s_lp , f'Must Be Equal| Diff: {su.difference(si)}'
 
 table_parms = {k:v for k,v in edit_inputs.items() if k not in prevent_table}
+#TODO: load parms from config
