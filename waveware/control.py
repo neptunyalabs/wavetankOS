@@ -795,7 +795,6 @@ class wave_control:
 
                     if tnow - t_plast > 1:
                         t_plast = tnow
-                        print(z_mock,v_cur,self.accel)
 
                     #Mock wave positions
                     #xpos = {"echo_x1":self.echo_x1,"echo_x2":self.echo_x2,"echo_x3":self.echo_x3,"echo_x4":self.echo_x4}

@@ -7,6 +7,7 @@ import logging
 import os, sys
 import pathlib
 import traceback
+import json
 
 from waveware.hardware import hardware_control
 from waveware.data_server import make_app,push_data
@@ -71,6 +72,13 @@ class program:
             log.info("starting hw data server..")
             # Create App & Setup
             await self.app.setup() #turn on webapp
+
+            #LOAD: config file
+            if os.path.exists(config_file):
+                log.info(f'loading config: {config_file}')
+                with open(config_file,'r') as fp:
+                    data = json.load(fp)
+                self.hw.set_parameters(**data)
 
 
             # CREATE PIPELINE TASKS

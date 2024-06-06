@@ -336,6 +336,28 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
 
     raise dash.exceptions.PreventUpdate
 
+#Save Table Config
+@app.callback(
+    Output('console','value',allow_duplicate=True),
+    Input('cntl-vals-save','n_clicks'),
+    State('console','value'),
+    State('edit-control-table','data'),
+    prevent_initial_call=True
+)
+def save_config(n_clicks,console,tb_data):
+    
+    updates = {d['key']:d['val'] for d in tb_data}
+
+    log.info(f'set updates: {updates}')
+    resp = requests.post(f'{REMOTE_HOST}/save_table_config',
+                    data=json.dumps(updates))
+    
+    if resp.status_code == 200:
+        output = append_log(console,f'Successfuly Set: {updates}')
+    else:
+        output = append_log(console,f'Issue Setting Wave: {resp.text}')
+
+    return output
 
 
 
@@ -538,27 +560,31 @@ def fetch_data():
     if response.status_code == 200:
         data = response.json()
         df = pd.DataFrame.from_dict(data, orient='index')
-        df.reset_index(inplace=True)
         df.rename(columns={'index': 'run_id'}, inplace=True)
+        print(df)
         return df
     else:
-        return pd.DataFrame(columns=['run_id', 'run_title', 'Ts', 'Hs', 'Hf'])
+        return pd.DataFrame(columns=['run_id', 'title', 'Ts', 'Hs', 'Hf'])
 
 # Callback to update the data
 @app.callback(
     [Output('data-table', 'data'),
+     Output('data-table', 'columns'),
      Output('x-parm-id', 'options'),
      Output('y-parm-id', 'options')],
-    [Input('interval-component', 'n_intervals')]
+    [Input('summary-update', 'n_intervals')]
 )
 def update_data(n_intervals):
     df = fetch_data() 
     data = df.to_dict('records')
-    runs = pd.unique(df['run_title'])
+    runs = pd.unique(df['title'])
     dropdown_options = [{'label': str(run_id), 'value': run_id} 
                                   for run_id in runs]
+    
+    columns = [c for c in df.columns if not c.endswith('_lp')]
+    cols = [{'name':c,'id':c,'type': 'text' if c == 'title' else 'numeric'} for c in columns]
     #dropdown_options,
-    return data,  df.columns,df.columns
+    return data, cols, columns,columns
 
 # Callback to update the scatter plot based on filters
 @app.callback(
@@ -580,9 +606,10 @@ def update_scatter_plot( hs_range, ts_range, title_filter,xparm,yparm, data):
     if ts_range:
         df = df[(df['Ts'] >= ts_range[0]) & (df['Ts'] <= ts_range[1])]
     if title_filter:
-        df = df[df['run_title'].str.contains(title_filter, case=False, na=False)]
+        df = df[df['title'].str.contains(title_filter, case=False, na=False)]
 
-    fig = px.line(df, x=xparm, y=yparm, color='run_title', title=f'Scatter Plot of {xparm} vs {yparm}')
+    print(f'plot {xparm} {yparm}')
+    fig = px.scatter(df, x=xparm, y=yparm, color='title', title=f'Scatter Plot of {xparm} vs {yparm}')
     fig.update_layout(
         plot_bgcolor='#001f3f',
         paper_bgcolor='#001f3f',

@@ -208,6 +208,10 @@ class hardware_control:
         self.pi = asyncpio.pi()
         self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._adc_alert_pin,self._hlfb_pin,self._torque_pwm_pin,motor_en_pin,pi=self.pi,**cntl_conf)
 
+        #Count Up Runs
+        self.run_num_id = 0
+        self.run_summary = {}
+
     #Run / Setup
     async def sig_cb(self,*a,**kw):
         log.info(f'got signals, killing| {a} {kw}')
@@ -650,8 +654,13 @@ class hardware_control:
         def call_later(f,*a,**kw):
             return lambda *__a: f(*a,**kw)        
 
+        change_mode = False
+
         #Set Parameters When Appropriate
         for k,v in kw.items():
+
+            if k in control_parms:
+                change_mode = True
 
             #Handle Special Cases
             list_check = False
@@ -715,6 +724,8 @@ class hardware_control:
         self.control.update_const()
         self.control.wave.update()
 
+        if change_mode and self.control.drive_mode=='wave':
+            self.run_num_id += 1
 
         #match raw update
         self.labels.update(kw)
@@ -786,6 +797,11 @@ class hardware_control:
                         'z3':5*(0.5-random.random()),
                         'z4':5*(0.5-random.random()),
                         }
+                
+                #they call it a bias for a reason :)
+                for k,v in FAKE_BIAS.items():
+                    if k in out:
+                        out[k] = out[k] + v                
             
             #echo sensors mock
             tnow = time.perf_counter()
@@ -794,7 +810,7 @@ class hardware_control:
                 omg = (2*3.14159)/ self.control.wave.ts 
                 kx = omg / wave_speed 
                 hs = self.control.wave.hs
-                min_dz_e = 0.3
+                min_dz_e = 0.0
                 a_t = lambda x: hs * math.cos(kx*x - omg*tnow)
                 
                 #echo sensors & wave height w/ error
@@ -806,10 +822,6 @@ class hardware_control:
             out[f'e_ts'] = tnow - 0.05*random.random()
             out.update(mock_sensors)
 
-            #they call it a bias for a reason :)
-            for k,v in FAKE_BIAS.items():
-                if k in out:
-                    out[k] = out[k] + v
 
         #Add control info
         out['z_wave'] = self.control.z_wave
@@ -871,15 +883,68 @@ class hardware_control:
 
     async def process_data(self):
         """a simple function to provide efficient calculation of variables out of a queue before writing to S3"""
+        run_id = None
+        ts = None
         while True:
             try:
                 # #swap refs with namespace fancyness
                 # last = locals().get('new',None)
 
                 new = await self.buffer.get()
-                ts = new["timestamp"]
+                
                 #no replace data
                 good_lab ={k:v for k,v in self.labels.items() if k not in new}
+
+                #TODO: filter height values
+                #TODO: write ampitude averageing
+                #TODO: write zero cross period determination
+                #TODO: update current run with averaged
+                tlast = ts
+                ts = new["timestamp"]
+                self.start_time
+                if tlast is not None and self.control.drive_mode == 'wave':
+                    dt = ts - tlast
+                    #check data
+                    last_run = run_id
+                    run_id = self.run_num_id
+                    if last_run != run_id:
+                        avgs = {}
+                        last = {}
+
+                    ctl_st = self.control.start
+                    t_elps = ts - ctl_st
+                    lp_a = (t_elps-dt)/t_elps
+                    lp_b = dt/t_elps
+                    Hps = self.control.wave.hs 
+                    Tps = self.control.wave.ts 
+                    for kv in ['z','e']:
+                        for num in range(1,5):
+                            prm = f'{kv}{num}'
+                            if prm in new:
+                                
+                                av = avgs[f'{prm}_lp'] = avgs.get(f'{prm}_lp',0)*0.1 + new[prm]*0.9
+                                
+                                avgs[f'{prm}_hs'] = avgs.get(f'{prm}_hs',Hps)*lp_a + abs(avgs[f'{prm}_lp']*lp_b*3.14159/2)
+
+                                #zero cross
+                                if prm in last:
+                                    lsav = last[prm]
+                                    if (av * lsav) < 0 and av > 0: #up crossing
+                                        if f'{prm}_ts' in last:
+                                            tlast = last[f'{prm}_ts']
+                                            zc_time = (ts - tlast)*2
+                                            if zc_time > 0.05:
+                                                avgs[f'{prm}_ts'] = avgs.get(f'{prm}_ts',Tps)*lp_a + zc_time *lp_b
+                                        last[f'{prm}_ts'] = ts
+                                last[prm] = av
+                    
+                    
+                    self.run_summary[run_id] = avgs.copy()
+                    self.run_summary[run_id].update({'run_id':run_id,'title':self.title,'Hs':Hps,'Ts':Tps})
+                    self.run_summary[run_id].update(**good_lab)
+
+                    new.update(**avgs)
+                    
                 new.update(**good_lab)
 
                 self.last_time = ts
