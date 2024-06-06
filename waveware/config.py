@@ -170,7 +170,7 @@ LABEL_DEFAULT = {
     "title": "test",
     'mode':'stop',
     "wave-hs": 0/1000., #m
-    "wave-ts": 10.0, #s
+    "wave-ts": 2.5, #s
     "z-ref": 50,
     "z-range": [33,66],
     "trq-lim": 0,
@@ -224,4 +224,10 @@ si = set.intersection(_s_ep,_s_lp)
 assert _s_ep == _s_lp , f'Must Be Equal| Diff: {su.difference(si)}'
 
 table_parms = {k:v for k,v in edit_inputs.items() if k not in prevent_table}
+
+here = pathlib.Path(__file__).parent.parent
+config_file = os.path.join(here,'saved_config.json')
+
 #TODO: load parms from config
+
+control_parms = ['wave-hs','wave-ts','z-ref','trq-lim']

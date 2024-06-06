@@ -40,7 +40,8 @@ def make_app(hw):
             #the data broker to front end
             web.get("/getdata", hwfi(get_data,hw)), #works
             web.get("/getcurrent", hwfi(get_current,hw)), #works
-            web.get("/run_summary", hwfi(get_current,hw)), #works
+            web.get("/run_summary", hwfi(run_summary,hw)), #works
+            web.post("/save_table_config", hwfi(save_config,hw)), #works
 
             web.post("/log_note", hwfi(add_note,hw)),
 
@@ -167,6 +168,20 @@ async def get_data(request,hw):
     return web.Response(body='no data!',status=420)
 
 #DATA LABELS & LOGGING
+async def save_config(request,hw):
+    try:
+        params =  await request.json()
+        hw.set_parameters(**params)
+        with open(config_file,'w') as fp:
+            fp.write(json.dumps(params))
+        
+        return web.Response(body=f'success')
+    
+    except Exception as e:
+        return web.Response(body=f'error in setting: {e}',status=400)
+
+async def run_summary(request,hw):
+    return web.Response(body=json.dumps(hw.run_summary))
 
 async def set_control_info(request,hw):
     try:

@@ -68,6 +68,7 @@ wave_input_parms = {
                             max=editable_parmaters['wave-ts'][-1],
                             value=editable_parmaters['wave-ts'][-1],
                             vertical=True,
+                            step=0.01,
                             N=Ninputs
                         ),
                     'wave-hs':dict(
@@ -78,6 +79,7 @@ wave_input_parms = {
                             max=editable_parmaters['wave-hs'][-1],
                             value=editable_parmaters['wave-hs'][-2],
                             marks=None,
+                            step=0.001,
                             vertical=True,
                             N=Ninputs
                         ),
@@ -519,6 +521,11 @@ DASH_LAY = html.Div(
               parent_style={'width':'100%','margin-left':'20px'})
                 
         ], className="app__content body",),
+    dcc.Interval(
+    id=f"summary-update",
+    interval=1000*graph_update_interval,
+    n_intervals=0,
+    ),        
     dcc.Interval(
     id=f"graph-update",
     interval=1000*graph_update_interval,

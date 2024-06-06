@@ -208,6 +208,10 @@ class hardware_control:
         self.pi = asyncpio.pi()
         self.control = wave_control(self._dir_pin,self._step_pin,self._speedpwm_pin,self._adc_alert_pin,self._hlfb_pin,self._torque_pwm_pin,motor_en_pin,pi=self.pi,**cntl_conf)
 
+        #Count Up Runs
+        self.run_num_id = 0
+        self.run_summary = {}
+
     #Run / Setup
     async def sig_cb(self,*a,**kw):
         log.info(f'got signals, killing| {a} {kw}')
@@ -650,8 +654,13 @@ class hardware_control:
         def call_later(f,*a,**kw):
             return lambda *__a: f(*a,**kw)        
 
+        change_mode = False
+
         #Set Parameters When Appropriate
         for k,v in kw.items():
+
+            if k in control_parms:
+                change_mode = True
 
             #Handle Special Cases
             list_check = False
@@ -715,6 +724,8 @@ class hardware_control:
         self.control.update_const()
         self.control.wave.update()
 
+        if change_mode and self.control.drive_mode=='wave':
+            self.run_num_id += 1
 
         #match raw update
         self.labels.update(kw)
@@ -871,15 +882,67 @@ class hardware_control:
 
     async def process_data(self):
         """a simple function to provide efficient calculation of variables out of a queue before writing to S3"""
+        run_id = None
+        ts = None
         while True:
             try:
                 # #swap refs with namespace fancyness
                 # last = locals().get('new',None)
 
                 new = await self.buffer.get()
-                ts = new["timestamp"]
+                
                 #no replace data
                 good_lab ={k:v for k,v in self.labels.items() if k not in new}
+
+                #TODO: filter height values
+                #TODO: write ampitude averageing
+                #TODO: write zero cross period determination
+                #TODO: update current run with averaged
+                tlast = ts
+                ts = new["timestamp"]
+                self.start_time
+                if tlast is not None and self.control.drive_mode == 'wave':
+                    dt = ts - tlast
+                    #check data
+                    last_run = run_id
+                    run_id = self.run_num_id
+                    if last_run != run_id:
+                        avgs = {}
+                        last = {}
+
+                    ctl_st = self.control.start
+                    t_elps = ts - ctl_st
+                    lp_a = (t_elps-dt)/t_elps
+                    lp_b = dt/t_elps
+
+                    for kv in ['z','e']:
+                        for num in range(1,4):
+                            prm = f'{kv}{num}'
+                            if prm in new:
+                                
+                                av = avgs[f'{prm}_lp'] = avgs.get(f'{prm}_lp',0)*0.1 + abs(new[prm])*0.9
+                                
+                                avgs[f'{prm}_hs'] = avgs.get(f'{prm}_hs',0)*lp_a + avgs[f'{prm}_lp']*lp_b*3.14159/2
+
+                                #zero cross
+                                if prm in last:
+                                    lsav = last[prm]
+                                    if (av * lsav) < 0: #its crossed
+                                        if f'{prm}_ts' in last:
+                                            tlast = last[f'{prm}_ts']
+                                            zc_time = ts - tlast
+                                            if zc_time > 0.05:
+                                                avgs[f'{prm}_ts'] = avgs[f'{prm}_ts']*lp_a + zc_time *lp_b*2
+                                        last[f'{prm}_ts'] = ts
+                                last[prm] = av
+                    
+                    
+                    self.run_summary[run_id] = avgs.copy()
+                    self.run_summary[run_id].update({'run_id':run_id,'title':self.title})
+                    self.run_summary[run_id].update(**good_lab)
+
+                    new.update(**avgs)
+                    
                 new.update(**good_lab)
 
                 self.last_time = ts
