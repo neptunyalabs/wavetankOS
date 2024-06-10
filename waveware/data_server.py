@@ -191,7 +191,7 @@ async def set_control_info(request,hw):
         s_data = {'data':params,'asOf':str(datetime.datetime.now())}
 
         #TODO: enable
-        # asyncio.get_running_loop()
+        loop = asyncio.get_running_loop()
         await write_s3(hw.labels['title'].replace(' ','-'),s_data,'set_input')
 
         out = hw.set_parameters(**params)
@@ -200,12 +200,19 @@ async def set_control_info(request,hw):
         else:
             o = web.Response(body=f'validation error: {out}',status=400)
 
+        loop.call_soon(write_results,hw)
+
         return o
 
     except Exception as e:
         log.info(f'issue in remote set control: {e}')
         traceback.print_tb(e.__traceback__)
         return web.Response(status=500,body=str(e))
+    
+async def write_results(hw):
+        results = hw.run_summary
+        s_data = {'data':results,'asOf':str(datetime.datetime.now())}
+        await write_s3('summary',s_data,'session_results')
 
 async def get_control_info(request,hw):
     return web.Response(body=json.dumps(hw.parameters()))

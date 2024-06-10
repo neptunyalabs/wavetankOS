@@ -40,11 +40,12 @@ if 'AWS_PROFILE' not in os.environ:
 else:
     aws_profile = os.environ.get('AWS_PROFILE','wavetank')
 
-vdir_bias = -1
+#positive vdir indicates positive velocity increases z.
+vdir_bias = -1 
 
 #MOCK Specifications
-mock_mass_act = 5
-mock_act_fric = -0.01
+mock_mass_act = 2.5
+mock_act_fric = -0.005
 
 mock_bouy_awl = 0.01 #10cm2
 mock_bouy2_awl = 0.0001 #10cm2
@@ -84,11 +85,11 @@ speed_modes = ['step','pwm','off','step-pwm']
 default_speed_mode = os.environ.get('WAVE_SPEED_DRIVE_MODE','pwm' if ON_RASPI else 'off').strip().lower()
 assert default_speed_mode in speed_modes, f'bad speed mode, check WAVE_SPEED_DRIVE_MODE!'
 
-print_interavl = 0.5
+print_interavl = 0.5 if not DEBUG else 0.1
 graph_update_interval = float(os.environ.get('WAVEWARE_DASH_GRAPH_UPT','3.3'))
 num_update_interval = float(os.environ.get('WAVEWARE_DASH_READ_UPT','1.5'))
 #polling & data range
-poll_rate = float(os.environ.get('WAVEWARE_POLL_RATE',1.0 / 20))
+poll_rate = float(os.environ.get('WAVEWARE_POLL_RATE',1.0 / 33))
 poll_temp = float(os.environ.get('WAVEWARE_POLL_TEMP',60))
 window = float(os.environ.get('WAVEWARE_WINDOW',10))
 
@@ -125,42 +126,22 @@ for i,ep in enumerate(echo_pins):
 for k,p in pins_kw.items():
     log.info(f'{k.upper()}: {p}')
 
-#WAVE OBJ
-class regular_wave:
-
-    def __init__(self,Hs=0.0,Ts=10) -> None:
-        self.hs = Hs
-        self.ts = Ts
-        self.update()
-
-    def update(self):
-        self.omg = (2*3.14159)/self.ts
-        self.a = self.hs/2
-
-    #wave interface
-    def z_pos(self,t):
-        return self.a*sin(self.omg*t)
-
-    def z_vel(self,t):
-        return self.a*self.omg*cos(self.omg*t)
-    
-rw = regular_wave()
-control_conf = dict(wave=rw,force_cal='-fc' in sys.argv)
 
 #PINS
 #parameter groupings
-z_wave_parms = ['z_cur','z_cmd','z_wave','v_cur','v_cmd','v_wave','wave_fb_pct','wave_fb_volt']
+z_wave_parms = ['z_cur','z_err','z_wave','v_cur','v_cmd','v_wave','wave_fb_pct','wave_fb_volt']
 z_sensors = [f'z{i+1}' for i in range(4)]
 e_sensors = [f'e{i+1}' for i in range(4)]
 
-zgraph = ['z_cur','z_cmd','z_wave']
+zgraph = ['z_cur','z_err','z_wave']
 vgraph = ['v_cur','v_cmd','v_wave']
+acclgryo = ['az','ax','ay','gx','gy','gz','mz']
 
 wave_drive_modes = ['stop','center','wave']
 M = len(wave_drive_modes)
 mode_dict = {i:v.upper() for i,v in enumerate(wave_drive_modes)}
 
-wave_inputs = ['mode','wave-ts','wave-hs','z-ref','z-range','trq-lim']
+wave_inputs = ['mode','wave-steep','wave-hs','z-ref','z-range','trq-lim']
 Ninputs = len(wave_inputs)
 
 all_sys_vars = z_wave_parms+z_sensors+e_sensors #output only
@@ -170,7 +151,7 @@ LABEL_DEFAULT = {
     "title": "test",
     'mode':'stop',
     "wave-hs": 0/1000., #m
-    "wave-ts": 2.5, #s
+    "wave-steep": 80, #s
     "z-ref": 50,
     "z-range": [33,66],
     "trq-lim": 0,
@@ -199,7 +180,7 @@ editable_parmaters = {
     'title': ('hw.title',),
     'mode': ('control.drive_mode',),
     'wave-hs': ('control.wave.hs',0,0.3),
-    'wave-ts': ('control.wave.ts',0.1,2.5), #wave period scales w/ sqrt
+    'wave-steep': ('control.wave.steepness',7,80), #wave period scales w/ sqrt
     'z-ref': ('control.vz0_ref',10,90),
     'z-range': ('control.safe_range',0,100),    
     'kp-gain': ('control.kp_zerr',-1000,1000),
@@ -230,4 +211,47 @@ config_file = os.path.join(here,'saved_config.json')
 
 #TODO: load parms from config
 
-control_parms = ['wave-hs','wave-ts','z-ref','trq-lim']
+control_parms = ['wave-hs','wave-steep','z-ref','trq-lim']
+
+mock_noise_fb = 0.033
+
+#WAVE OBJ
+center_time = 5
+N_phases_in = 5
+
+class regular_wave:
+
+    full_wave_time: float
+    ts: float = 2.5
+    steepness: float = 50
+
+    def __init__(self,Hs=editable_parmaters['wave-hs'][1],steepness=editable_parmaters['wave-steep'][-1]) -> None:
+        self.hs = Hs
+        self.steepness = steepness
+        self.update()
+
+    def update(self):
+        self.ts = max((self.steepness*self.hs*3.14159/9.81)**0.5,0.025)
+        self.omg = (2*3.14159)/self.ts
+        self.a = self.hs/2
+
+        self.full_wave_time = center_time + N_phases_in*self.ts
+
+    #wave interface
+    def z_pos(self,t):
+        if t < center_time:
+            return 0 #allow PID to work
+        elif t< self.full_wave_time:
+            return vdir_bias*self.a*((t-center_time)/self.full_wave_time)*sin(self.omg*t)
+        return vdir_bias*self.a*sin(self.omg*t)
+
+    def z_vel(self,t):
+        if t < center_time:
+            return 0 #allow PID error to work
+        elif t< self.full_wave_time:
+            Tfw =self.full_wave_time
+            return self.a*((t-center_time)/Tfw)*self.omg*cos(self.omg*t) + self.a*sin(self.omg*t)/Tfw
+        return self.a*self.omg*cos(self.omg*t)
+    
+rw = regular_wave()
+control_conf = dict(wave=rw)
