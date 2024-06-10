@@ -538,10 +538,14 @@ def update_graphs(n,on):
 
             fig_vv= plotly.express.line(df,x='timestamp',y=vgraph)
             fig_vv.update_layout(layout_style)
-            fig_vv.update_xaxes(axes_style)              
+            fig_vv.update_xaxes(axes_style)
+
+            fig_ag= plotly.express.line(df,x='timestamp',y=acclgryo)
+            fig_ag.update_layout(layout_style)
+            fig_ag.update_xaxes(axes_style)                    
                                 
             log.info(f'returning 3 graphs {time.perf_counter()-begin}')
-            return [fig_zv,fig_vv,fig_pr,fig_speed]
+            return [fig_zv,fig_vv,fig_pr,fig_speed,fig_ag]
         
         except dash.exceptions.PreventUpdate:
             pass
@@ -556,12 +560,11 @@ def update_graphs(n,on):
 
 # Function to fetch data from the endpoint
 def fetch_data():
-    response = requests.get('http://localhost:8777/run_summary')
+    response = requests.get(f'{REMOTE_HOST}/run_summary')
     if response.status_code == 200:
         data = response.json()
         df = pd.DataFrame.from_dict(data, orient='index')
         df.rename(columns={'index': 'run_id'}, inplace=True)
-        print(df)
         return df
     else:
         return pd.DataFrame(columns=['run_id', 'title', 'Ts', 'Hs', 'Hf'])
@@ -576,6 +579,8 @@ def fetch_data():
 )
 def update_data(n_intervals):
     df = fetch_data() 
+    if df.empty:
+        raise dash.exceptions.PreventUpdate
     data = df.to_dict('records')
     runs = pd.unique(df['title'])
     dropdown_options = [{'label': str(run_id), 'value': run_id} 
@@ -598,7 +603,7 @@ def update_data(n_intervals):
 )
 def update_scatter_plot( hs_range, ts_range, title_filter,xparm,yparm, data):
     if not data:
-        raise dash.PreventUpdate
+        raise dash.exceptions.PreventUpdate
     
     df = pd.DataFrame(data)
     if hs_range:

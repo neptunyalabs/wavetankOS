@@ -809,7 +809,7 @@ class hardware_control:
                 wave_speed = 1.56*self.control.wave.ts #m/s
                 omg = (2*3.14159)/ self.control.wave.ts 
                 kx = omg / wave_speed 
-                hs = self.control.wave.hs
+                hs = self.control.wave.hs/2
                 min_dz_e = 0.0
                 a_t = lambda x: hs * math.cos(kx*x - omg*tnow)
                 
@@ -817,16 +817,20 @@ class hardware_control:
                 mock_sensors[f'e1'] = min_dz_e + a_t(self.echo_x1) + 0.005*(0.5-random.random())
                 mock_sensors[f'e2'] = min_dz_e + a_t(self.echo_x2) + 0.005*(0.5-random.random())
                 mock_sensors[f'e3'] = min_dz_e + a_t(self.echo_x3) + 0.005*(0.5-random.random())
-                mock_sensors[f'e4'] = min_dz_e + a_t(self.echo_x4) + 0.005*(0.5-random.random())                          
+                mock_sensors[f'e4'] = min_dz_e + a_t(self.echo_x4) + 0.005*(0.5-random.random())    
+
+            #accel / gyro /mag
+            for var in ['ax','ay','az','gx','gy','gz','mx','my','mz']:
+                mock_sensors[var] = random.random()
             
             out[f'e_ts'] = tnow - 0.05*random.random()
             out.update(mock_sensors)
 
 
         #Add control info
-        out['z_wave'] = self.control.z_wave
-        out['z_cmd'] = self.control.z_cmd
-        out['z_cur'] = self.control.z_cur
+        out['z_wave'] = self.control.z_wave + self.control.z_center
+        out['z_err'] = self.control.z_err
+        out['z_cur'] = self.control.z_cur + self.control.z_center
         out['v_cmd'] = self.control.v_command
         out['v_cur'] = self.control.v_cur
         out['v_wave'] = self.control.v_wave
@@ -863,7 +867,7 @@ class hardware_control:
 
         return out 
 
-    async def print_data(self,intvl:int=1):
+    async def print_data(self,intvl:int=10):
         while True:
             try:
                 if not self.active and not DEBUG:
@@ -912,36 +916,41 @@ class hardware_control:
                         last = {}
 
                     ctl_st = self.control.start
-                    t_elps = ts - ctl_st
+                    Tgap_st = self.control.wave.full_wave_time
+
+                    t_elps = (ts - ctl_st) - Tgap_st
                     lp_a = (t_elps-dt)/t_elps
                     lp_b = dt/t_elps
-                    Hps = self.control.wave.hs 
-                    Tps = self.control.wave.ts 
-                    for kv in ['z','e']:
-                        for num in range(1,5):
-                            prm = f'{kv}{num}'
-                            if prm in new:
-                                
-                                av = avgs[f'{prm}_lp'] = avgs.get(f'{prm}_lp',0)*0.1 + new[prm]*0.9
-                                
-                                avgs[f'{prm}_hs'] = avgs.get(f'{prm}_hs',Hps)*lp_a + abs(avgs[f'{prm}_lp']*lp_b*3.14159/2)
+                    Hps = self.control.wave.hs
+                    Tps = self.control.wave.ts
+                    
+                    if t_elps >= 0:
 
-                                #zero cross
-                                if prm in last:
-                                    lsav = last[prm]
-                                    if (av * lsav) < 0 and av > 0: #up crossing
-                                        if f'{prm}_ts' in last:
-                                            tlast = last[f'{prm}_ts']
-                                            zc_time = (ts - tlast)*2
-                                            if zc_time > 0.05:
-                                                avgs[f'{prm}_ts'] = avgs.get(f'{prm}_ts',Tps)*lp_a + zc_time *lp_b
-                                        last[f'{prm}_ts'] = ts
-                                last[prm] = av
-                    
-                    
-                    self.run_summary[run_id] = avgs.copy()
-                    self.run_summary[run_id].update({'run_id':run_id,'title':self.title,'Hs':Hps,'Ts':Tps})
-                    self.run_summary[run_id].update(**good_lab)
+                        for kv in ['z','e']:
+                            for num in range(1,5):
+                                prm = f'{kv}{num}'
+                                if prm in new:
+                                    
+                                    av = avgs[f'{prm}_lp'] = avgs.get(f'{prm}_lp',0)*0.1 + new[prm]*0.9
+                                    
+                                    avgs[f'{prm}_hs'] = avgs.get(f'{prm}_hs',Hps)*lp_a + abs(avgs[f'{prm}_lp']*lp_b*3.14159/2)
+
+                                    #zero cross
+                                    if prm in last:
+                                        lsav = last[prm]
+                                        if (av * lsav) < 0 and av > 0: #up crossing
+                                            if f'{prm}_ts' in last:
+                                                tlast = last[f'{prm}_ts']
+                                                zc_time = (ts - tlast)*2
+                                                if zc_time > 0.05:
+                                                    avgs[f'{prm}_ts'] = avgs.get(f'{prm}_ts',Tps)*lp_a + zc_time *lp_b
+                                            last[f'{prm}_ts'] = ts
+                                    last[prm] = av
+                        
+                        
+                        self.run_summary[run_id] = avgs.copy()
+                        self.run_summary[run_id].update({'run_id':run_id,'title':self.title,'Hs':Hps,'Ts':Tps,'t_measure':t_elps})
+                        self.run_summary[run_id].update(**good_lab)
 
                     new.update(**avgs)
                     

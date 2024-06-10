@@ -60,13 +60,13 @@ mode_input_parms = dict(
                         )
 
 wave_input_parms = { 
-                    'wave-ts':dict(
-                            name="Ts".upper(),
-                            id="wave-ts",
+                    'wave-steep':dict(
+                            name="slope".upper(),
+                            id="wave-steep",
                             type="number",
-                            min=editable_parmaters['wave-ts'][-2],
-                            max=editable_parmaters['wave-ts'][-1],
-                            value=editable_parmaters['wave-ts'][-1],
+                            min=editable_parmaters['wave-steep'][-2],
+                            max=editable_parmaters['wave-steep'][-1],
+                            value=editable_parmaters['wave-steep'][-1],
                             vertical=True,
                             step=0.01,
                             N=Ninputs
@@ -436,7 +436,7 @@ DASH_LAY = html.Div(
                     readout_card("fb volts",mark='wave_fb_volt'),
                     readout_card("act pct",mark="wave_fb_pct"),
                     readout_card("z_cur"),
-                    readout_card("z_cmd"),
+                    readout_card("z_err"),
                     readout_card("z_wave"),
                     readout_card("v_cur"),
                     readout_card("v_cmd"),
@@ -471,8 +471,8 @@ DASH_LAY = html.Div(
                     generate_plot("Act Position (m)".upper()),
                     generate_plot("Act Velocity (m/s)".upper()),
                     generate_plot("Encoder Z 1-4 (mm)".upper()),
-                    generate_plot("Echo Height (mm)".upper()), #TODO: wave plot
-                    #TODO: test set overview
+                    generate_plot("Echo Height (mm)".upper()), 
+                    generate_plot("Accel Gyro Out".upper()), 
                     
                 ],className="column wind__speed__container"),
                 ],className="column wind__speed__container"),

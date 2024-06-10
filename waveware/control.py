@@ -151,9 +151,9 @@ class wave_control:
         self.v_cur =v= 0
         self.v_sup = 0
         self.v_wave = 0
-        self.z_cmd = 0
         self.z_cur = 0
         self.z_wave = 0
+        self.z_err = 0        
 
         self.wave_last = None
         self.wave_next = None
@@ -172,8 +172,7 @@ class wave_control:
         self._coef_100 = c0        
         self.dvdt_2 = 0
         self.dvdt_10 = 0
-        self.dvdt_100 = 0        
-        self.z_err_cuml = 0
+        self.dvdt_100 = 0
 
         tol = 0.25
         self.v_active_tol = 0.1
@@ -187,6 +186,7 @@ class wave_control:
         self.upper_v = self.v_max - tol
         self.lower_v = tol
         self.vref_0 = (self.upper_v + self.lower_v)*self.zero_frac
+        self.z_center = self.dz_range*self.zero_frac
 
         self.update_const()  
 
@@ -444,12 +444,12 @@ class wave_control:
 
         self.err_int = 0 #reste pid
         self.start = time.perf_counter()
-        self.last_print = 0# t- start frame
+        self.last_print = 0
 
         if new_mode == self.drive_mode:
             if DEBUG: log.info(f'same drive mode: {new_mode}')
             if new_mode == 'stop':
-                self.v_cmd = 0
+                self.v_cmd = 0 #safe repeat
             return
         
         self.drive_mode = new_mode
@@ -548,10 +548,11 @@ class wave_control:
         await self._stop()
 
     #Control
-    async def pid_control(self,v_goal):
+    async def pid_control(self,v_goal,enf_max=None):
         t = time.perf_counter() - self.start
         fv = self.feedback_volts
-        err = fv - v_goal
+        err = vdir_bias*(v_goal-fv)
+        self.z_err = err * self.dzdvref
         #if DEBUG: 
         #TODO: integral windup prevention
         self.err_int = self.err_int + err*self.dt
@@ -560,20 +561,23 @@ class wave_control:
         Vi = self.err_int * self.ki_zerr
         Vd = self.dvdt_10 * self.kd_zerr
 
+        if self.last_print > t:
+            self.last_print = 0
         if t - self.last_print > print_interavl:
             self.last_print = t
             log.info(f'PID e:{err:5.4f}|ei:{self.err_int:5.4f}|P:{Vp:5.4f}|I:{Vi:5.4f}|D{Vd:5.4f}')        
 
-        self.v_cmd = Vp+Vi+Vd
+        if enf_max is not None:
+            self.v_cmd = min(max(Vp+Vi+Vd,-self.act_max_speed*enf_max),self.act_max_speed*enf_max)
 
         await self.sleep(self.control_interval)
 
         return err
 
     async def center_head(self,find_tol = 0.01,set_mode=False):
-        err = await self.pid_control(self.safe_vref_0)
+        err = await self.pid_control(self.safe_vref_0,enf_max=0.1)
         self.z_wave = 0
-        self.z_cmd = self.v_to_hwave(self.safe_vref_0)
+        self.v_wave = 0
         if set_mode is not False and abs(err)<find_tol:
             self.set_mode(set_mode)
             return
@@ -582,20 +586,24 @@ class wave_control:
     async def wave_goal(self):
         ###constantly determines
         t = time.perf_counter() - self.start
+        
+
+
         self.z_wave = self.wave.z_pos(t)
         self.v_wave = vw = self.wave.z_vel(t)
-        self.z_cmd = 0
         if WAVE_VCMD_DIR:
             #position correction over periods
             teval = self.wave.ts #TODO: add frac input
             alpha = self.dt / teval
-            err = self.z_cur - self.z_wave #avg should be zero
+            self.z_err = err = vdir_bias*(self.z_wave - self.z_cur) #avg should be zero
             self.err_int = self.err_int*(1-alpha) + err * alpha
             
             vcorr = err * self.kp_zerr + self.err_int * self.ki_zerr
             self.v_cmd = self.v_wave + vcorr
             await self.sleep(self.control_interval)
 
+            if self.last_print > t:
+                self.last_print = 0
             if t - self.last_print > print_interavl:
                 self.last_print = t
                 log.info(f'PID e:{err:5.4f}|i:{self.err_int:5.4f}|vc:{vcorr:5.4f}|vw:{vw:5.4f}')
@@ -617,7 +625,6 @@ class wave_control:
         self.v_cmd = 0
         self.z_wave = 0
         self.v_wave = 0
-        self.z_cmd = 0
         await self.sleep(self.control_interval)
                     
 
@@ -745,6 +752,12 @@ class wave_control:
                         #75% LP Filter
                         self.feedback_volts =fv= vnow*alpha + lv*ialpha
                         self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
+                        self.z_center = self.safe_vref_0 * self.dzdvref
+
+                        # if self.drive_mode == 'wave' and  (fv > self.safe_upper_v  or fv < self.safe_lower_v):
+                        #     log.warning(f'BOUNDS FAILURE: {fv}')
+                        #     self.set_mode('center')  
+                            
 
                         if feedback_futr is not None:
                             feedback_futr.set_result(True)
@@ -802,7 +815,7 @@ class wave_control:
                         wave_speed = 1.56*self.wave.ts #m/s
                         omg = self.wave.ts / (2*3.14159)
                         kx = omg / wave_speed 
-                        hs = self.wave.hs
+                        hs = self.wave.hs/2
                         #min_dz_e = 0.3
                         a_t = lambda x: hs * math.cos(kx*x - omg*tnow)
                         mw = {}
@@ -833,8 +846,16 @@ class wave_control:
                     else:
                         fv = (self.dz_range - z_mock) * self.v_max/self.dz_range
 
+                    noise = (random.random()-0.5)*(self.v_max-self.v_min)*mock_noise_fb
+                    fv += noise
+
                     self.feedback_volts = max(min(fv,self.v_max),self.v_min)
                     self.z_cur = (fv - self.safe_vref_0)*self.dzdvref
+                    self.z_center = self.safe_vref_0 * self.dzdvref
+
+                    # if self.drive_mode == 'wave' and  (fv > self.safe_upper_v  or fv < self.safe_lower_v):
+                    #     self.warning(f'BOUNDS FAILURE: {fv}')
+                    #     self.set_mode('center')                 
 
                     if feedback_futr is not None:
                         feedback_futr.set_result(True)
@@ -997,8 +1018,17 @@ class wave_control:
         vdmd = self.v_cmd
         
         #limit max speed
+        fv = self.feedback_volts
+        
+        if (fv > self.safe_upper_v) and (vdmd > 0 if vdir_bias==1 else vdmd <0):
+            return 0
+
+        if (fv < self.safe_lower_v) and (vdmd < 0 if vdir_bias==1 else vdmd >0):
+            return 0
+        
         Kspd = min(self.act_max_speed,abs(vdmd))
-        vnew = Kspd*(1 if vdmd > 0 else -1)     
+        vnew = Kspd*(1 if vdmd > 0 else -1)              
+
         return vnew   
         
         # v_cur = self.feedback_volts
@@ -1033,7 +1063,7 @@ class wave_control:
 
         self.dt_st = 0.005
         self.max_wait = 100000 #0.1s
-        #self.last_print =0
+
         it = 0
         while ON_RASPI:
             stc = self.speed_control_mode_changed
