@@ -297,7 +297,7 @@ async def push_data(hw):
                     data_set = {
                         "data": data_rows,
                         "num": len(hw.unprocessed),
-                        "test": hw.labels['title'],
+                        "test": hw.title,
                     }
                     #add items from deque
                     while hw.unprocessed:
@@ -312,7 +312,7 @@ async def push_data(hw):
                         if DEBUG: log.info(f"writing to S3")
                         
                         out = await asyncio.gather(
-                            loop.run_in_executor(pool,sync_write_s3, hw.labels['title'].replace(' ','-'),data_set)
+                            loop.run_in_executor(pool,sync_write_s3, hw.title.replace(' ','-'),data_set)
                             )
 
                         if DEBUG: log.info(f"wrote to S3, got: {out}")
