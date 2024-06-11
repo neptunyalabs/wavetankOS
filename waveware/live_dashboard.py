@@ -275,19 +275,24 @@ def update_control(n_clk,g_int,ms_last,title_in,console,motor_on,tb_data,*wave_i
         
         #check updates    
         updates = {}
+
+        set_tab = False
         for k,cval in rm_parms.items():
             if k in st_parms:
                 st = st_parms[k]
                 if st != cval:
                     updates[k] = cval
-            if k in ed_parms:
-                if k in tb_data:
-                    tb_data[k] = cval
-                    output[Nfo-1] = tb_data #keep updating is fine same ref...
-                else:   
-                    updates[k] = cval #others
+            elif k in tb_data:
+                set_tab = True
+                tb_data[k] = cval
+            elif k in ed_parms:   
+                updates[k] = cval #others
             elif k not in ed_parms:
-                log.info(f'missing status: {k}')  
+                log.info(f'missing status: {k}') 
+
+        if set_tab:
+            tab_data = [{'key':k,'val':v} for k,v in tb_data.items()]
+            output[Nfo-1] = tab_data
 
         if updates:
             log.info(f'got updates: {updates}| {ed_parms}')
