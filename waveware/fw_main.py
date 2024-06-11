@@ -78,7 +78,12 @@ class program:
                 log.info(f'loading config: {config_file}')
                 with open(config_file,'r') as fp:
                     data = json.load(fp)
-                self.hw.set_parameters(**data)
+                loop = asyncio.get_running_loop()
+
+                loop.call_later(10, lambda *ign: self.hw.set_parameters(**data))
+                
+            else:
+                log.info(f'config file: {config_file} not found')
 
 
             # CREATE PIPELINE TASKS

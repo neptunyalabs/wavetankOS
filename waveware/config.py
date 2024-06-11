@@ -208,6 +208,7 @@ table_parms = {k:v for k,v in edit_inputs.items() if k not in prevent_table}
 
 here = pathlib.Path(__file__).parent.parent
 config_file = os.path.join(here,'saved_config.json')
+print(f'looking for {config_file}')
 
 #TODO: load parms from config
 
