@@ -718,7 +718,7 @@ class hardware_control:
         log.info(f'setting {set_procedures}')
         for k,sp in set_procedures.items():
             v = sp()
-            if DEBUG: log.info(f'set {k}|{v}')
+            log.info(f'set {k}|{v}')
             
         #always upate, might as well.
         self.control.update_const()
