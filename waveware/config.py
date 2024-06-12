@@ -47,6 +47,7 @@ vdir_bias = -1
 mock_mass_act = 2.5
 mock_act_fric = -0.005
 
+
 mock_bouy_awl = 0.01 #10cm2
 mock_bouy2_awl = 0.0001 #10cm2
 mock_bouy_bwl = -0.001
@@ -67,6 +68,7 @@ except:
     smbus = None
     MPU9250 = None
 
+#S3 Happens by deault ON_RASPI=true or if WAVEWARE_FLDR_NAME==test
 LOG_TO_S3 = os.environ.get('WAVEWARE_LOG_S3','true').lower().strip()=='true'
 bucket = os.environ.get('WAVEWARE_S3_BUCKET',"nept-wavetank-data")
 folder = os.environ.get('WAVEWARE_FLDR_NAME',"V1")
@@ -91,7 +93,7 @@ num_update_interval = float(os.environ.get('WAVEWARE_DASH_READ_UPT','1.5'))
 #polling & data range
 poll_rate = float(os.environ.get('WAVEWARE_POLL_RATE',1.0 / 33))
 poll_temp = float(os.environ.get('WAVEWARE_POLL_TEMP',60))
-window = float(os.environ.get('WAVEWARE_WINDOW',10))
+window = float(os.environ.get('WAVEWARE_WINDOW',6))
 
 
 log.info(f'Running AWS User: {aws_profile}| {REMOTE_HOST} S3: {bucket} fld: {folder}| DEBUG: {DEBUG}| RASPI: {ON_RASPI}')

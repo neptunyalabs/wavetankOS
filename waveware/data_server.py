@@ -54,9 +54,7 @@ def make_app(hw):
             web.get('/hw/zero_pos',hwfi(zero_positions,hw)), #works
             web.get('/hw/mpu_calibrate',hwfi(mpu_calibrate,hw)),
             
-            #TODO: EN pin High, speed ctl on
             web.get('/control/enable',hwfi(start_control,hw)),  #works
-            #TODO: EN pin High, speed ctl off
             web.get('/control/disable',hwfi(stop_control,hw)), #works
             web.get('/control/stop',hwfi(stop_control,hw)), #works
             #web.get('/control/calibrate',hwfi(control_cal,hw)),
@@ -103,7 +101,7 @@ async def zero_positions(request,hw):
         raise Exception(f'DAQ not on')
 
     output = await hw._zero_task
-    await write_s3(hw.labels['title'].replace(' ','-'),output,'zero_result')    
+    await write_s3_in_pool(hw,hw.title.replace(' ','-'),output,'zero_result')
     output = json.dumps(output)
     resp = web.Response(text=f'Positions zeroed: {output}')
     return resp
@@ -190,9 +188,8 @@ async def set_control_info(request,hw):
         log.info(f'got {params} from {request}')
         s_data = {'data':params,'asOf':str(datetime.datetime.now())}
 
-        #TODO: enable
         loop = asyncio.get_running_loop()
-        await write_s3(hw.labels['title'].replace(' ','-'),s_data,'set_input')
+        await write_s3_in_pool(hw,hw.title.replace(' ','-'),s_data,'set_input')
 
         out = hw.set_parameters(**params)
         if out is True:
@@ -212,7 +209,8 @@ async def set_control_info(request,hw):
 async def write_results(hw):
         results = hw.run_summary
         s_data = {'data':results,'asOf':str(datetime.datetime.now())}
-        await write_s3('summary',s_data,'session_results')
+        await write_s3_in_pool(hw,hw.title.replace(' ','-'),s_data,'session_results')
+        
 
 async def get_control_info(request,hw):
     return web.Response(body=json.dumps(hw.parameters()))
@@ -223,7 +221,7 @@ async def add_note(request,hw):
     dt = datetime.datetime.now()
     bdy = await request.json()
 
-    await write_s3(hw.labels['title'].replace(' ','-'),bdy,title='test_note')
+    await write_s3_in_pool(hw,hw.title.replace(' ','-'),bdy,'session_results')
 
     return web.Response(body=f'Added Note: {bdy}')
 
@@ -237,8 +235,6 @@ async def test_pins(request,hw):
     obj = hw.control
     fails = False
     
-    #enc_pins = [v for vs in hw.encoder_pins for v in vs]
-    #+hw.echo_pins+enc_pins#FIXME: this destroys sensor cbs ect, only output for now
     save_last = hw.last
 
     for pin in [obj._motor_en_pin,obj._dir_pin,obj._step_pin,obj._tpwm_pin,obj._vpwm_pin,hw._echo_trig_pin]:
@@ -312,7 +308,7 @@ async def push_data(hw):
                         if DEBUG: log.info(f"writing to S3")
                         
                         out = await asyncio.gather(
-                            loop.run_in_executor(pool,sync_write_s3, hw.title.replace(' ','-'),data_set)
+                            loop.run_in_executor(pool,sync_write_s3,hw.title.replace(' ','-'),data_set )
                             )
 
                         if DEBUG: log.info(f"wrote to S3, got: {out}")
@@ -366,6 +362,14 @@ async def write_s3(test,data: dict,title=None):
         log.info(f"mock writing s3...: {aws_profile}|{title}|{len(data)}")
 
         return True
+    
+async def write_s3_in_pool(hw,test,data,title=None):
+    loop = asyncio.get_running_loop()
+    with ProcessPoolExecutor(1) as pool:
+        out = await asyncio.gather(
+            loop.run_in_executor(pool,sync_write_s3,test,data,title ))
+        if DEBUG: log.info(f"wrote to S3, got: {out}")
+
 
 def sync_write_s3(test,data: dict,title=None):
     """writes the dictionary to the bucket
@@ -401,6 +405,8 @@ def sync_write_s3(test,data: dict,title=None):
         log.info(f"mock writing s3...: {aws_profile}|{title}|{len(data)}")
 
         return True
+
+
 
 
 def print_some_num():

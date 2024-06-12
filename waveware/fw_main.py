@@ -80,7 +80,7 @@ class program:
                     data = json.load(fp)
                 loop = asyncio.get_running_loop()
 
-                loop.call_later(10, lambda *ign: self.hw.set_parameters(**data))
+                loop.call_later(0.1, lambda *ign: self.hw.set_parameters(**data))
                 
             else:
                 log.info(f'config file: {config_file} not found')
