@@ -549,7 +549,7 @@ class wave_control:
 
     #Control
     async def pid_control(self,v_goal,enf_max=None):
-        t = time.perf_counter() - self.start
+        t = time.perf_counter()
         fv = self.feedback_volts
         err = vdir_bias*(v_goal-fv)
         self.z_err = err * self.dzdvref
@@ -585,12 +585,12 @@ class wave_control:
         
     async def wave_goal(self):
         ###constantly determines
-        t = time.perf_counter() - self.start
+        t = time.perf_counter()
         
 
 
-        self.z_wave = self.wave.z_pos(t)
-        self.v_wave = vw = self.wave.z_vel(t)
+        self.z_wave = self.wave.z_pos(t-self.start)
+        self.v_wave = vw = self.wave.z_vel(t-self.start)
         if WAVE_VCMD_DIR:
             #position correction over periods
             teval = self.wave.ts #TODO: add frac input
@@ -717,7 +717,7 @@ class wave_control:
         # 
         # await self.pi.callback(self._adc_feedback_pin,asyncpio.FALLING_EDGE,trigger_read)
 
-        tlast = t_plast=  tnow = time.perf_counter() - self.start
+        tlast = t_plast=  tnow = time.perf_counter()
         
         vdtlast = vdtnow = self.v_command
         vlast = vnow = self.feedback_volts #prep vars
@@ -771,10 +771,12 @@ class wave_control:
                     
                     # Convert the data
                     vdtnow = self.v_command
-                    tnow = time.perf_counter() - self.start
+                    tnow = time.perf_counter()
 
                     kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
                     self.calc_rates(vdtnow,tnow,**kw)
+                    #measured
+                    self.v_cur = self.dvdt_10*self.dzdvref
 
             except Exception as e:
                 self.fail_feedback = True
@@ -863,7 +865,7 @@ class wave_control:
 
                     self.fail_feedback = False
 
-                    tnow = time.perf_counter() - self.start
+                    tnow = time.perf_counter()
 
                     kw = dict(tlast=tlast,vdtlast=vdtlast,vlast=vlast,st_inx=st_inx,vnow=vnow)
                     self.calc_rates(vdtnow,tnow,**kw)
@@ -892,8 +894,6 @@ class wave_control:
         self.dvdt_10 = (self.dvdt_10*0.95 + self.dvdt*0.05)
         self.dvdt_100 = (self.dvdt_100*0.99 + self.dvdt*0.01)
 
-        #measured
-        self.v_cur = self.dvdt_10*self.dzdvref
 
         #TODO: determine stationary
         
