@@ -69,7 +69,13 @@ wave_input_parms = {
                             value=editable_parmaters['wave-steep'][-1],
                             vertical=True,
                             step=0.01,
-                            N=Ninputs
+                            N=Ninputs,
+                            marks=None,
+                            tooltip={
+                                "always_visible": True,
+                                'placement':'left',
+                                'fontSize': "15px"
+                            },  
                         ),
                     'wave-hs':dict(
                             name="Hs".upper(),
@@ -81,7 +87,12 @@ wave_input_parms = {
                             marks=None,
                             step=0.001,
                             vertical=True,
-                            N=Ninputs
+                            N=Ninputs,
+                            tooltip={
+                                "always_visible": True,
+                                'placement':'left',
+                                'fontSize': "15px"
+                            },           
                         ),
                     'z-ref':dict(
                         name="z0".upper(),
@@ -99,7 +110,7 @@ wave_input_parms = {
                         type="range",
                         min=0,
                         max=100,
-                        verticalHeight=250,#px
+                        #verticalHeight=250,#px
                         value=[33,66],
                         step=1,
                         vertical=True,
@@ -157,7 +168,7 @@ def input_card(name, id="",N=1, type="number", **kwargs):
 
     widget = dcc.Input
     if type == "number":
-        widget = daq.Slider
+        widget = dcc.Slider
         inp.pop("type")
         inp.pop("style")
     if type == "choice":
