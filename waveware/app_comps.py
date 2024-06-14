@@ -102,7 +102,12 @@ wave_input_parms = {
                         max=100,
                         value=50,
                         vertical=True,
-                        N=Ninputs
+                        N=Ninputs,
+                        tooltip={
+                            "always_visible": True,
+                            'placement':'left',
+                            'fontSize': "15px"
+                        },                         
                     ),
                     'z-range':dict(
                         name="range".upper(),
@@ -114,7 +119,7 @@ wave_input_parms = {
                         value=[33,66],
                         step=1,
                         vertical=True,
-                        N=Ninputs
+                        N=Ninputs,                         
                     ),
                     'trq-lim':dict(
                         name="Torque".upper(),
@@ -126,7 +131,12 @@ wave_input_parms = {
                         step=1,
                         marks=None,
                         vertical=True,
-                        N=Ninputs
+                        N=Ninputs,
+                        tooltip={
+                            "always_visible": True,
+                            'placement':'left',
+                            'fontSize': "15px"
+                        },                          
                     ), 
                                                
                     }
