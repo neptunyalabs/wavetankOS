@@ -536,7 +536,7 @@ class hardware_control:
             self._cb_rise.append(await self.pi.callback(echo_pin, asyncpio.RISING_EDGE, self._rise))
             self._cb_fall.append(await self.pi.callback(echo_pin, asyncpio.FALLING_EDGE, self._fall))
 
-    async def trigger_task(self,rate=0.1):
+    async def trigger_task(self,rate=0.25):
         #TODO: set a repeating waveform on trigger pin 20us on
         delay = int(rate*1E6)
         pulse_us = 50

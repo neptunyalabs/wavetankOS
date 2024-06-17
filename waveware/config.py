@@ -181,7 +181,7 @@ edit_inputs = {k:v for k,v in LABEL_DEFAULT.items() if k not in wave_inputs}
 editable_parmaters = {
     'title': ('hw.title',),
     'mode': ('control.drive_mode',),
-    'wave-hs': ('control.wave.hs',0,0.3),
+    'wave-hs': ('control.wave.hs',0,0.1),
     'wave-steep': ('control.wave.steepness',7,80), #wave period scales w/ sqrt
     'z-ref': ('control.vz0_ref',10,90),
     'z-range': ('control.safe_range',0,100),    
