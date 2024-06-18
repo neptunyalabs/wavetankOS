@@ -851,6 +851,9 @@ class hardware_control:
         out['data_active'] = self.active
         out['ctrl_stopped'] = self.control.stopped
         out['ctrl_enabled'] = self.control.enabled
+        
+        out['start'] = self.control.start
+        out['start_dt'] = self.control.start_dt
 
         #X spacing
         out.update({"echo_x1":self.echo_x1,"echo_x2":self.echo_x2,"echo_x3":self.echo_x3,"echo_x4":self.echo_x4})
@@ -990,7 +993,7 @@ class hardware_control:
     async def mark_zero(self,cal_time=1,delay=1./1000.):
         """average zeros over a second"""
         lt = st = time.perf_counter()
-        bs = {}
+        bs = {'start':self.control.start,'start_dt':self.control.start_dt}
         while (ct:=time.perf_counter() - st) < cal_time:
             d = self.output_data(add_bias=False)
             tm = time.perf_counter()

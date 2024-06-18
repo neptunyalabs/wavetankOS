@@ -219,10 +219,12 @@ class wave_control:
             await self.pi.write(self._vpwm_pin,0)
             log.info(f'raspi setup!')   
 
-
+    def mark_start(self):
+        self.start = time.perf_counter()
+        self.start_dt = datetime.datetime.now(tz=pytz.utc)
 
     def setup(self,i2c=False,cntl=False):
-        self.start = time.perf_counter()
+        self.mark_start()
         loop = asyncio.get_event_loop()
 
         self.feedback_task = loop.create_task(self.feedback())
@@ -245,7 +247,8 @@ class wave_control:
     def set_speed_tasks(self):
         #SPEED CONTROL MODES
         loop = asyncio.get_event_loop()
-        self.start = time.perf_counter()
+        self.mark_start()
+        
         
         if DEBUG: log.info(f'set tasks ex feedback / speed / pwm & steps')
 
@@ -270,7 +273,7 @@ class wave_control:
 
         def go(*args,docal=True,**kw):
             nonlocal self, loop
-            self.start = time.perf_counter()
+            self.mark_start()
             log.info(f'feedback OK. cal = {docal}')
             self.set_mode('center')
             
@@ -301,7 +304,7 @@ class wave_control:
             log.info(f'already enabled!')
 
     async def start_control(self):
-        self.start = time.perf_counter()
+        self.mark_start()
         await self.enable_control()
         if self.enabled and self.stopped:
             self.set_speed_tasks()
@@ -443,7 +446,7 @@ class wave_control:
         new_mode = new_mode.lower().strip()
 
         self.err_int = 0 #reste pid
-        self.start = time.perf_counter()
+        self.mark_start()
         self.last_print = 0
 
         if new_mode == self.drive_mode:
