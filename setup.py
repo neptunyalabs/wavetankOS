@@ -8,11 +8,12 @@ import distutils
 import distutils.text_file
 from pathlib import Path
 from typing import List
+import platform
 
 import re
 
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 
 # Utility function to read the README file.
@@ -84,6 +85,12 @@ print(new_pip_format)
 install_requires = new_pip_format + install_requires  # add git repos
 
 
+ignore_raspi = ['smbus','RPi.GPIO']
+if platform.system() in ['Darwin','Windows'] or not platform.machine() in ('armv7l', 'armv6l'):
+    #install_requires
+    install_requires = [k for k in install_requires if not any([ig in k for ig in ignore_raspi])]
+
+
 setup(
     name="waveware",
     version=__version__,
@@ -107,7 +114,8 @@ setup(
     ],
     entry_points={
         "console_scripts": ["wavedaq=waveware.fw_main:cli",
-                            "wavedash=waveware.live_dashboard:main"]
+                            "wavedash=waveware.live_dashboard:main",
+                            "wavepost=waveware.post_processing:main"]
                             #"hwstream=waveware.hardware:main"]
     },
 )

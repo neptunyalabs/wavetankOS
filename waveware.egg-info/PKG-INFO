@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: waveware
-Version: 0.0.1
+Version: 0.1.0
 Summary: Firmware For Neptunya Wave Tank
 Home-page: https://github.com/neptunya/waveware
 Author: Kevin Russell
@@ -18,6 +18,6 @@ Classifier: License :: CONFIDENTIAL | SMARTX USE ONLY
 firmware for the neptunya demo system
 
 # How Do You Use This
-run `wavedash` to run the dashboard, and `wavedaq` to run the data aqusition system
+run `wavedash` to run the dashboard, and `wavedaq` to run the data acquisition system
 
 

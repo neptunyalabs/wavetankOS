@@ -221,7 +221,7 @@ async def add_note(request,hw):
     dt = datetime.datetime.now()
     bdy = await request.json()
 
-    await write_s3_in_pool(hw,hw.title.replace(' ','-'),bdy,'session_results')
+    await write_s3_in_pool(hw,hw.title.replace(' ','-'),bdy,'test_note')
 
     return web.Response(body=f'Added Note: {bdy}')
 
