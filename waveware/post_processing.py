@@ -268,7 +268,7 @@ def load_data():
             key_rec = records[stinx]
             if key_rec not in data:
                 continue
-            data[key_rec]['notes'].append(note)        
+            data[key_rec]['notes'].append(note)     
 
             enval = np.max( denmk[denmk<=0] )
             eninx = int(np.where(denmk==enval)[0])
@@ -297,7 +297,7 @@ def create_summary(data):
 
     #summary data
     sum_dat = {}
-    for k,d in data.items():
+    for i,(k,d) in enumerate(data.items()):
         sum_dat[k]= di = d['input']['data'].copy()
         di['key'] = k
         di['at'] = d['input']['asOf']
@@ -313,7 +313,7 @@ def create_summary(data):
     cols = [c for c in df_sum.columns.tolist() if c not in header_columns]
     cols = header_columns + cols
     df_sum = df_sum[cols]
-    df_sum.to_csv(os.path.join(results_dir,f'summary.csv'))
+    df_sum.to_csv(os.path.join(results_dir,f'summary.csv'),index=False)
 
     return df_sum
 
@@ -424,6 +424,16 @@ def diff_values(zz):
     
     return v,a,mot_weights
 
+def process_runs(df_sum,**kwargs):
+
+    for rec in df_sum.iloc:
+        try:
+            process_run(df_sum,rec.name,**kwargs)
+        except Exception as e:
+            print(f'error: {e}')
+
+    df_sum.to_csv(os.path.join(results_dir,f'summary.csv'),index=False)
+
 def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     """provided the summary dataframe and the index id, gather dataframe and analyze"""
 
@@ -529,8 +539,18 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     ts_est =ts_est,
 
     hfact2 = hfact2,
-    hfact1 = hfact1
+    hfact1 = hfact1,
+    toff=toff,
+    dt=dt,
+    omg=wave_omg,
+    dof_3d=no_z1
     )
+
+    for k,v in analysis_kw.items():
+        if isinstance(v,(float,int,bool)):
+            if k not in df_sum:
+                df_sum[k] = None
+            df_sum.loc[run_id,k] = v
 
 
     fig,ax = None,None
@@ -557,7 +577,14 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
         ax2.plot(tm,v1,'g',label='v1',alpha=0.5)
         ax2.plot(tm,v2,'b',label='v2',alpha=0.5)
         ax2.grid()
-        ax2.legend()        
+        ax2.legend()
+        
+        case = rec['title']
+        case_dir = os.path.join(results_dir,case.replace('-','_').strip())
+        os.makedirs(case_dir,exist_ok=True,mode=754)
+        fig.savefig(os.path.join(case_dir,f'analy_{run_id}.png'))
+
+        close()     
     
     time = time.to_numpy()
 
@@ -566,35 +593,6 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     return out
 
 
-# 
-# 
-#     U = xf.reshape(len(xf),1)
-#     XX = np.stack((x1,v1,x2,v2),axis=-1)
-# 
-#     differentiation_method = ps.FiniteDifference(order=2)
-#     feature_lib = ps.PolynomialLibrary(degree=1, include_bias=True)
-#     parameter_lib = ps.PolynomialLibrary(degree=1, include_bias=True)
-#     optimizer = ps.STLSQ(threshold=1)
-# 
-#     model = ps.SINDy(
-#         feature_library=feature_lib,
-#         optimizer=optimizer,
-#         feature_names=[ "z1","v1", "z2","v2",'u'],
-#     )
-#     #model.n_control_features_ = 1
-# 
-#     model.fit(XX, t=tm.to_numpy(), u=U)
-# 
-#     print(model.print())
-# 
-#     return dfr,model,
-
-# def simulate_model(model,dfr):
-# 
-#     out = mod.simulate([0,0,0,0],**kwrun)
-#     z1sim,v1sim,z2sim,v2sim = np.split(out,np.arange(1,4),axis=1)
-# 
-#     return z1sim,v1sim,z2sim,v2sim
 
 def main():
     """runs the cli for post-processing"""
@@ -603,13 +601,14 @@ def main():
     parser = argparse.ArgumentParser('WaveTank OS Post-Processing')
 
     kwarg = {'action':'store_true'}
-    parser.add_argument('--sync',help='downloads from S3',**kwarg)
-    parser.add_argument('-L','--load',help='load data to `data`',**kwarg)
-    parser.add_argument('-S','--summary', help='activates --load if called',**kwarg)
+    parser.add_argument('-SY','--sync',help='downloads from S3',**kwarg)
+    parser.add_argument('-LD','--load',help='load data to `data`',**kwarg)
+    parser.add_argument('-SM','--summary', help='activates --load if called',**kwarg)
+    parser.add_argument('-PR','--process', help='run processing and add data to summary',**kwarg)    
     parser.add_argument('-LS','--load-summary', help='activates --load if called',**kwarg)
-    parser.add_argument('--pl-sum', help='activates --load and -sum if called',**kwarg)
-    parser.add_argument('--plot-data', help='activates --load if called',**kwarg)
-    parser.add_argument('--run-all', help='runs everything',**kwarg)
+    parser.add_argument('-PS','--pl-sum', help='activates --load and -sum if called',**kwarg)
+    parser.add_argument('-PD','--plot-data', help='activates --load if called',**kwarg)
+    parser.add_argument('-RA','--run-all', help='runs everything',**kwarg)
 
     args = parser.parse_args()
 
@@ -628,10 +627,14 @@ def main():
     elif args.load_summary or args.pl_sum:
         df_sum = load_summary()
 
+    if args.process or args.run_all:
+        do_plot = args.plot_data or args.run_all
+        process_runs(df_sum,plot=do_plot)
+
     if args.pl_sum or args.run_all:
         plot_summary(df_sum)
 
-    if args.plot_data or args.run_all:
+    if data and args.plot_data or args.run_all:
         plot_data(data['data'])
 
     return data,df_sum

@@ -102,7 +102,7 @@ log.info(f'Running AWS User: {aws_profile}| {REMOTE_HOST} S3: {bucket} fld: {fol
 
 path = pathlib.Path(__file__)
 fdir = path.parent
-cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
+cache = diskcache.Cache(os.path.join(fdir,'data_cache','dl_cache.db'))
 
 def check_failure(typ):
     def f(res):
