@@ -28,7 +28,11 @@ from scipy import signal
 
 import glob
 import subprocess
+import traceback
 
+import time
+
+from sympy import EX
 
 from waveware.config import *
 from waveware.data import *
@@ -171,11 +175,15 @@ def load_data():
 
     #sort data
     rmv = []
+    run_id = 0
     for inpt_fil in data.keys():
         recs = dict(sorted(data[inpt_fil]['records'].items(), key=lambda kv: kv[0]))
         if recs:
+            run_id += 1
+            data[inpt_fil]['run_id'] = run_id
             data[inpt_fil]['df']= df = pd.DataFrame(list(recs.values()))
             L = df.iloc[0]
+            
             case = L['title']
             #print(f'case: {case} from {inpt_fil}')   
             df['time'] = df['timestamp']-df['timestamp'].min() #time is relative!
@@ -186,6 +194,12 @@ def load_data():
             df['ts'] = df['wavelength'] / df['wavespeed']
             df['az_acl'] = df['az'] - df['az'].mean()
             data[inpt_fil]['records'] = recs
+
+            case_dir = os.path.join(results_dir,case.replace('-','_').strip())
+            os.makedirs(case_dir,exist_ok=True,mode=754)
+            time.sleep(1)
+            df.to_csv(os.path.join(case_dir,f'run_{run_id}.csv')) 
+
         else:
             print(f'no data: {inpt_fil}')
             rmv.append(inpt_fil)
@@ -303,6 +317,7 @@ def create_summary(data):
         di['at'] = d['input']['asOf']
         di['notes'] = '\n'.join(d['notes'])
         di['cal'] = d['cal']
+        di['run_id'] = d['run_id']
 
     df_sum = pd.DataFrame(list(sum_dat.values()))
     df_sum['hs'] = df_sum['wave-hs']
@@ -367,19 +382,19 @@ def plot_data(data):
     y3 = ['gz','gx','gy']
     ys = [y1,y2,y3]
     for i,(inpt,dat) in enumerate(data.items()):
-        
+        run_id = dat['run_id']
         df = dat['df']
         L = df.iloc[0]
         hs = L['hs']
         ts = L['ts']
         case = L['title']
 
-        title = f'Run {i}: {case} | Hs: {hs:5.4f} Ts: {ts:5.4f}'
+        title = f'Run {run_id}: {case} | Hs: {hs:5.4f} Ts: {ts:5.4f}'
         print(f'plotting {title} from {inpt} inpt: {dat["input"]["data"]["title"]}')
 
         case_dir = os.path.join(results_dir,case.replace('-','_').strip())
         os.makedirs(case_dir,exist_ok=True,mode=754)
-        df.to_csv(os.path.join(case_dir,f'run_{i}.csv'))
+        #df.to_csv(os.path.join(case_dir,f'run_{i}.csv'))
         fig,axs = subplots(nrows=len(ys),figsize=(24,6),sharex=True)
         for pj,yss in enumerate(ys):
             for y in yss:
@@ -393,18 +408,23 @@ def plot_data(data):
             axs[pj].grid()
             axs[pj].legend()
         fig.suptitle(title)
-        fig.savefig(os.path.join(case_dir,f'run_{i}.png'))
+        fig.savefig(os.path.join(case_dir,f'run_{run_id}.png'))
         close('all')
 
 
 def get_run_data(df_sum,run_id):
-    title = df_sum['title'].iloc[run_id]
-    case = title.replace('-','_').strip()
-    path = os.path.join(results_dir,case,f'run_{run_id}.csv')
-    print(f'getting: {title} | run: {run_id}')
-    notes = df_sum['notes'].iloc[run_id]
-    print(f'notes: {notes}')
-    return pd.read_csv(path)
+    try:
+        title = df_sum['title'].iloc[run_id]
+        case = title.replace('-','_').strip()
+        path = os.path.join(results_dir,case,f'run_{run_id}.csv')
+        print(f'getting: {title} | run: {run_id}')
+        notes = df_sum['notes'].iloc[run_id]
+        if not np.isnan(notes):
+            print(f'notes: {notes}')
+        return pd.read_csv(path)
+    except Exception as e:
+        print(f'couldnt get run: {run_id}| {e}')
+        return None
 
 
 def diff_values(zz):
@@ -430,7 +450,7 @@ def process_runs(df_sum,**kwargs):
         try:
             process_run(df_sum,rec.name,**kwargs)
         except Exception as e:
-            print(f'error: {e}')
+            print(f'error: {e}|\n{traceback.print_tb(e.__traceback__)}')
 
     df_sum.to_csv(os.path.join(results_dir,f'summary.csv'),index=False)
 
@@ -439,6 +459,8 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
 
     rec = df_sum.iloc[run_id]
     dfr = get_run_data(df_sum,run_id)
+    if dfr is None:
+        return None
 
     time = tm = dfr['time']
 
@@ -459,11 +481,16 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     else:
         z1 = z1.to_numpy()
         a1 = z1_acc
+        
+
+    zrel_vel,zrel_acc,zrel_wght= diff_values(dfr['z2'])
+    zrel_pos = np.average(dfr['z2'],weights=zrel_wght)
+    zrel = dfr['z2'] - zrel_pos
 
     if no_z1:    
         z2_vel,z2_acc,z2_wght= diff_values(dfr['z2'])
         z2_pos = np.average(dfr['z2'],weights=z2_wght)
-        z2 = dfr['z2'] - z2_pos
+        z2 = zrel
     else:
         z2_vel,z2_acc,z2_wght= diff_values(dfr['z2_abs'])
         z2_pos = np.average(dfr['z2_abs'],weights=z2_wght)
@@ -494,39 +521,116 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     ans = sciopt.minimize_scalar(f,bounds=bnd,args=args)
     toff = ans.x
     xf = np.interp(tm,tm+toff,z_act)
-    x1 = z1
-    x2 = z2.to_numpy()
-    v1 = z1_vel
-    v2 = z2_vel
-    a1 = a1
 
     #Max Filter Analysis
     dt = np.median(np.diff(time))
     N_osll = int(rec['ts']/dt)
-    z1_hmax = stld.sliding_window_view(z1,N_osll).max(axis=1)
-    z1_hmin = stld.sliding_window_view(z1,N_osll).min(axis=1)
-    z2_hmax = stld.sliding_window_view(z2,N_osll).max(axis=1)
-    z2_hmin = stld.sliding_window_view(z2,N_osll).min(axis=1)
-    zf_hmax = stld.sliding_window_view(xf,N_osll).max(axis=1)
-    zf_hmin = stld.sliding_window_view(xf,N_osll).min(axis=1)      
     tm_roll = stld.sliding_window_view(tm,N_osll).max(axis=1)
+    zf_hmax = stld.sliding_window_view(xf,N_osll).max(axis=1)
+    zf_hmin = stld.sliding_window_view(xf,N_osll).min(axis=1)
+    hs_zf = zf_hmax - zf_hmin
 
+    #Check On Time When HsZf > 0
+    is_act = (hs_zf > 0).astype(int)
+    switch = np.array([0]+np.diff(is_act).tolist())
+    on_times = tm_roll[switch > 0]
+    off_times = tm_roll[switch < 0]
+
+    #Find Valid Time Ranges
+    time_sels = {}
+    if len(off_times) and len(on_times):
+        for offt in off_times:
+            dt_cans = offt-on_times
+            dt_min = (dt_cans[dt_cans > 0]).min()
+            if not np.isnan(dt_min):
+                inx_min = np.where(dt_cans==dt_min)[0]
+                on_time = on_times[inx_min][0]
+                time_sels[dt_min] = (on_time,offt)
+
+    is_wave_motion = False
+    if len(time_sels) > 0 and max(time_sels.keys()) > 30:
+        is_wave_motion = True
+        run_time = max(time_sels.keys())
+        on_time,off_time = time_sels[run_time]
+        time_mask = np.logical_and(time>=on_time-1,time<=off_time+1)
+
+    else:
+        time_mask = np.ones(time.shape)==1
+    
+    #Resample To Largest Contigious Input Time
+    tm = time = time[time_mask]
+    xf = xf[time_mask]
+    z1 = x1 = z1[time_mask]
+    z2 = x2 = z2.to_numpy()[time_mask]
+    v1 = z1_vel[time_mask]
+    v2 = z2_vel[time_mask]
+    a1 = a1[time_mask]
+    a2 = a2[time_mask]
+
+    diff_z1 = np.diff(z1)
+    diff_z2 = np.diff(z2)
+
+    x_rel = zrel[time_mask]
+    v_rel = zrel_vel[time_mask]
+    a_rel = zrel_acc[time_mask]
+    
+    tm_roll = stld.sliding_window_view(time,N_osll).max(axis=1)
+    zf_hmax = stld.sliding_window_view(xf,N_osll).max(axis=1)
+    zf_hmin = stld.sliding_window_view(xf,N_osll).min(axis=1)
+    z1_hmax = stld.sliding_window_view(x1,N_osll).max(axis=1)
+    z1_hmin = stld.sliding_window_view(x1,N_osll).min(axis=1)
+    z2_hmax = stld.sliding_window_view(x2,N_osll).max(axis=1)
+    z2_hmin = stld.sliding_window_view(x2,N_osll).min(axis=1)     
+    xr_hmax = stld.sliding_window_view(x_rel,N_osll).max(axis=1)
+    xr_hmin = stld.sliding_window_view(x_rel,N_osll).min(axis=1)
+    
     hs_zf = zf_hmax - zf_hmin
     hs_z1 = z1_hmax - z1_hmin
     hs_z2 = z2_hmax - z2_hmin
+    hs_xr = xr_hmax - xr_hmin
 
     hinx = hs_zf >= 1
-    hfact2 = np.median(hs_z2[hinx]/hs_zf[hinx])
-    hfact1 = np.median(hs_z1[hinx]/hs_zf[hinx])
+    h2f_ratio = hs_z2[hinx]/hs_zf[hinx]
+    h1f_ratio = hs_z1[hinx]/hs_zf[hinx]
+    xrf_ratio = hs_xr[hinx]/hs_zf[hinx]
+    h2f_med = np.median(h2f_ratio)
+    h1f_med = np.median(h1f_ratio)
+    xrf_med = np.median(xrf_ratio)
+    h2f_avg = np.nanmean(h2f_ratio)
+    h1f_avg = np.nanmean(h1f_ratio)
+    xrf_avg = np.nanmean(xrf_ratio)  
+    h2f_std = np.nanstd(h2f_ratio)
+    h1f_std = np.nanstd(h1f_ratio)
+    xrf_std = np.nanstd(xrf_ratio)    
 
     #zero cross estimate
-    zc_time = z1[:-1]*z1[1:]
+    zc_time = x1[:-1]*x1[1:]
     zc_times = (time[1:][zc_time <= 0])
     dt_zc = np.diff(zc_times).mean()
     ts_est = dt_zc*2
 
+    #data is valid if some z2 motion
+    z2_rel = np.median(np.abs(np.diff(x2)))
+    is_rel_motion = z2_rel > 0
+
+    #Check for spikes
+    has_spikes1 = np.any(np.abs(diff_z1) >  xrf_ratio.max()*0.75)
+    has_spikes2 = np.any(np.abs(diff_z2) >  xrf_ratio.max()*0.75)
+    has_spikes = has_spikes1 or has_spikes2
+
+    #check for timegaps
+    dt_max = np.diff(time).max()
+    has_gaps = dt_max > 1
+
+
+    #zref diff check to ensure motiono
+    valid_data = not np.isnan(xrf_med) and is_wave_motion and is_rel_motion
+
+    #items in analysis_kw are added to summary if they are int/float/bool
     analysis_kw = dict(
+    run_id=run_id,
     N_osll = N_osll,
+    tm_roll = tm_roll,
     z1_hmax = z1_hmax,
     z1_hmin = z1_hmin,
     z2_hmax = z2_hmax,
@@ -537,13 +641,22 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     hs_z1 = hs_z1,
     hs_z2 = hs_z2,
     ts_est =ts_est,
-
-    hfact2 = hfact2,
-    hfact1 = hfact1,
+    h2f_med = h2f_med,
+    h2f_avg = h2f_avg,
+    h2f_std = h2f_std,    
+    h1f_med = h1f_med,
+    h1f_avg = h1f_avg,
+    h1f_std = h1f_std,
+    xrf_med = xrf_med,
+    xrf_avg = xrf_avg,
+    xrf_std = xrf_std,
     toff=toff,
     dt=dt,
     omg=wave_omg,
-    dof_3d=no_z1
+    has_gaps = int(has_gaps),
+    has_spikes = int(has_spikes),
+    valid_data = int(valid_data),
+    dof_3d=int(no_z1 and valid_data) 
     )
 
     for k,v in analysis_kw.items():
@@ -556,12 +669,12 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     fig,ax = None,None
     if plot:
         fig,(ax,ax2) = subplots(nrows=2,figsize=(20,10),sharex=True)
-        ax.scatter(tm,z1,c='m',label='z1',alpha=0.7,s=1)
-        ax.plot(tm,z1,'m',alpha=0.5)
+        ax.scatter(tm,x1,c='m',label='z1',alpha=0.7,s=1)
+        ax.plot(tm,x1,'m',alpha=0.5)
         ax.plot(tm_roll,z1_hmax,'m--',alpha=0.25)
         ax.plot(tm_roll,z1_hmin,'m--',alpha=0.25)
         ax.scatter(tm,z2,c='c',label='z2',alpha=0.7,s=1)
-        ax.plot(tm,z2,'c',alpha=0.5)
+        ax.plot(tm,x2,'c',alpha=0.5)
         ax.plot(tm_roll,z2_hmax,'c--',alpha=0.25)
         ax.plot(tm_roll,z2_hmin,'c--',alpha=0.25)        
         ax.plot(tm,xf,'k',label='za',alpha=0.1)
@@ -588,7 +701,7 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     
     time = time.to_numpy()
 
-    out = dict(z1=x1,z2=x2,v1=v1,v2=v2,xf=xf,a1=a1,a2=a2,df=dfr,rec=rec,time=time,z_act=z_act,toff=toff,fig=fig,ax=ax,dof_3d=no_z1,dt=dt,omg=wave_omg,ts=rec['ts'],hs=rec['hs'],analysisKw=analysis_kw)
+    out = dict(z1=x1,z2=x2,v1=v1,v2=v2,xf=xf,a1=a1,a2=a2,df=dfr,rec=rec,time=time,z_act=z_act,toff=toff,fig=fig,ax=ax,dof_3d=no_z1,dt=dt,x_rel=x_rel,v_rel=v_rel,a_rel=a_rel,omg=wave_omg,ts=rec['ts'],hs=rec['hs'],analysisKw=analysis_kw)
 
     return out
 
@@ -604,7 +717,8 @@ def main():
     parser.add_argument('-SY','--sync',help='downloads from S3',**kwarg)
     parser.add_argument('-LD','--load',help='load data to `data`',**kwarg)
     parser.add_argument('-SM','--summary', help='activates --load if called',**kwarg)
-    parser.add_argument('-PR','--process', help='run processing and add data to summary',**kwarg)    
+    parser.add_argument('-PR','--process', help='run processing and add data to summary',**kwarg)
+    parser.add_argument('-PRPD','--process-plot', help='run processing plots',**kwarg)
     parser.add_argument('-LS','--load-summary', help='activates --load if called',**kwarg)
     parser.add_argument('-PS','--pl-sum', help='activates --load and -sum if called',**kwarg)
     parser.add_argument('-PD','--plot-data', help='activates --load if called',**kwarg)
@@ -628,13 +742,13 @@ def main():
         df_sum = load_summary()
 
     if args.process or args.run_all:
-        do_plot = args.plot_data or args.run_all
+        do_plot = args.process_plot or args.run_all
         process_runs(df_sum,plot=do_plot)
 
     if args.pl_sum or args.run_all:
         plot_summary(df_sum)
 
-    if data and args.plot_data or args.run_all:
+    if data and (args.plot_data or args.run_all):
         plot_data(data['data'])
 
     return data,df_sum
