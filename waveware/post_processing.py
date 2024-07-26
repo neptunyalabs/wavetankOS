@@ -419,7 +419,7 @@ def get_run_data(df_sum,run_id):
         path = os.path.join(results_dir,case,f'run_{run_id}.csv')
         print(f'getting: {title} | run: {run_id}')
         notes = df_sum['notes'].iloc[run_id]
-        if not np.isnan(notes):
+        if 'nan' != str(notes):
             print(f'notes: {notes}')
         return pd.read_csv(path)
     except Exception as e:
@@ -433,8 +433,8 @@ def diff_values(zz):
     v = np.concatenate(([0],np.diff(zz)))
     a = np.concatenate(([0],np.diff(v)))
     
-    ac_max = np.abs(a).max()
-    vc_max = np.abs(v).max()
+    ac_max = np.nanmax(np.abs(a))
+    vc_max = np.nanmax(np.abs(v))
     
     mot =  ((v/vc_max)**2 + (a/ac_max)**2)**0.5
     mot_sig = signal.filtfilt(bcoef,acoef, mot)
@@ -449,6 +449,7 @@ def process_runs(df_sum,**kwargs):
     for rec in df_sum.iloc:
         try:
             process_run(df_sum,rec.name,**kwargs)
+            close('all')
         except Exception as e:
             print(f'error: {e}|\n{traceback.print_tb(e.__traceback__)}')
 
@@ -500,7 +501,11 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     
     key = 'z_wave'
     hs = rec['hs']
-    scale = 1000 * hs/(dfr[key].max() - dfr[key].min())
+    dh_max = (dfr[key].max() - dfr[key].min())
+    if dh_max > 0:
+        scale = 1000 * hs/dh_max
+    else:
+        scale = 1000
 
     z_act = scale*dfr[u_key]
     v_wc,a_wc,wave_wght = diff_values(z_act)
@@ -523,7 +528,7 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     xf = np.interp(tm,tm+toff,z_act)
 
     #Max Filter Analysis
-    dt = np.median(np.diff(time))
+    dt = np.maximum(np.median(np.diff(time)),0.0001)
     N_osll = int(rec['ts']/dt)
     tm_roll = stld.sliding_window_view(tm,N_osll).max(axis=1)
     zf_hmax = stld.sliding_window_view(xf,N_osll).max(axis=1)
@@ -541,11 +546,13 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     if len(off_times) and len(on_times):
         for offt in off_times:
             dt_cans = offt-on_times
-            dt_min = (dt_cans[dt_cans > 0]).min()
-            if not np.isnan(dt_min):
-                inx_min = np.where(dt_cans==dt_min)[0]
-                on_time = on_times[inx_min][0]
-                time_sels[dt_min] = (on_time,offt)
+            dt_inx = dt_cans > 0
+            if np.any(dt_inx):
+                dt_min = (dt_cans[dt_inx]).min()
+                if not np.isnan(dt_min):
+                    inx_min = np.where(dt_cans==dt_min)[0]
+                    on_time = on_times[inx_min][0]
+                    time_sels[dt_min] = (on_time,offt)
 
     is_wave_motion = False
     if len(time_sels) > 0 and max(time_sels.keys()) > 30:
@@ -589,16 +596,21 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     hs_z2 = z2_hmax - z2_hmin
     hs_xr = xr_hmax - xr_hmin
 
+    
+
     hinx = hs_zf >= 1
     h2f_ratio = hs_z2[hinx]/hs_zf[hinx]
     h1f_ratio = hs_z1[hinx]/hs_zf[hinx]
     xrf_ratio = hs_xr[hinx]/hs_zf[hinx]
+    hs_zf_med = np.median(hs_zf[hinx])
     h2f_med = np.median(h2f_ratio)
     h1f_med = np.median(h1f_ratio)
     xrf_med = np.median(xrf_ratio)
+    hs_zf_avg = np.nanmean(hs_zf[hinx])
     h2f_avg = np.nanmean(h2f_ratio)
     h1f_avg = np.nanmean(h1f_ratio)
-    xrf_avg = np.nanmean(xrf_ratio)  
+    xrf_avg = np.nanmean(xrf_ratio)
+    hs_zf_std = np.nanstd(hs_zf[hinx])
     h2f_std = np.nanstd(h2f_ratio)
     h1f_std = np.nanstd(h1f_ratio)
     xrf_std = np.nanstd(xrf_ratio)    
@@ -650,6 +662,9 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     xrf_med = xrf_med,
     xrf_avg = xrf_avg,
     xrf_std = xrf_std,
+    hs_zf_std=hs_zf_std,
+    hs_zf_avg=hs_zf_avg,
+    hs_zf_med=hs_zf_med,
     toff=toff,
     dt=dt,
     omg=wave_omg,
@@ -697,8 +712,6 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
         os.makedirs(case_dir,exist_ok=True,mode=754)
         fig.savefig(os.path.join(case_dir,f'analy_{run_id}.png'))
 
-        close()     
-    
     time = time.to_numpy()
 
     out = dict(z1=x1,z2=x2,v1=v1,v2=v2,xf=xf,a1=a1,a2=a2,df=dfr,rec=rec,time=time,z_act=z_act,toff=toff,fig=fig,ax=ax,dof_3d=no_z1,dt=dt,x_rel=x_rel,v_rel=v_rel,a_rel=a_rel,omg=wave_omg,ts=rec['ts'],hs=rec['hs'],analysisKw=analysis_kw)
