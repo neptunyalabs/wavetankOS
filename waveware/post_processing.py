@@ -29,7 +29,8 @@ from scipy import signal
 import glob
 import subprocess
 import traceback
-
+import typing
+import fnmatch
 import time
 
 from sympy import EX
@@ -338,14 +339,75 @@ def load_summary():
     df_sum = pd.read_csv(pth)
     return df_sum
 
-def plot_summary(df_sum):
-    #Summary Plot
+
+valid_fitler_keys = set(['parm','fnmatch','regex','callable','no_match'])
+
+def categorize_summary(df_sum,filt:typing.Union[dict],prevent_override=False):
+    """
+    applies new columns in the filter dictionary based on the contents of a column defined by `parm`, with matching filter rules based on `fnmatch`, `regex` or `callable` rules. 
+    
+    Each filter set will write the key of the matching sub-dictionary if it matches anything. For string matches the underlying data will be put in lowercase first. If no match is found None will be inserted, if `no_match` key exists in the filter rule that value will be used (only applies for fnmatch and regex)
+    
+    example filter:
+    .. highlight:: python
+    .. code-block:: python
+
+        exfilter = dict(
+        test_type = {'parm':'title', 'fnmatch':{'bouy 1': ['bouy 1*','test-*'],
+                                                'bouy 2': ['bouy 2*','bouy2*'],
+                                                '3d': ['3d motion*','3dmotion*']},
+        power_ext = {'parm':'title', 'regex': {'pto': ['.*-spring.*','.*pto.*']},
+                                            'no_match': 'no_pto'},
+        custom = {'parm':'title', 'callable': lambda x: x.lower().strip()})
+    """
+    for new_parm,filter_rule in filt.items():
+        assert set(filter_rule.keys()).issubset(valid_fitler_keys), f"invalid fitler rule for {new_parm}, should only contain keys in {valid_fitler_keys}"
+        
+        if prevent_override:
+            assert new_parm not in df_sum.columns, f'not allowed to override existing columns'
+        
+        #Apply Matching Rules
+        if 'fnmatch' in filter_rule:
+            col_dat = df_sum.apply(_categorize_fn,axis=1,args=(filter_rule['parm'],filter_rule['fnmatch'],filter_rule.get('no_match',None)))
+            df_sum[new_parm] = col_dat
+        
+        elif 'regex' in filter_rule:
+            col_dat = df_sum.apply(_categorize_re,axis=1,args=(filter_rule['parm'],filter_rule['regex'],filter_rule.get('no_match',None)))
+            df_sum[new_parm] = col_dat
+
+        elif 'callable' in filter_rule:
+            col_dat = df_sum[filter_rule['parm']].apply(filter_rule['callable'])
+            df_sum[new_parm] = col_dat
+
+
+def _categorize_fn(row,parm,rules,no_match=None):
+    """returns the key of rules if any of its test match, otherwise returns no_match"""
+    value = row[parm].strip().lower()
+    for set_val, tests in rules.items():
+        for test in tests:
+            if fnmatch.fnmatch(value,test):
+                return set_val
+    return no_match
+
+def _categorize_re(row,parm,rules,no_match=None):
+    """returns the key of rules if any of its test match, otherwise returns no_match"""    
+    value = row[parm].strip().lower()
+    for set_val, tests in rules.items():
+        for test in tests:
+            regexp = re.compile(test)
+            if regexp.search(value):
+                return set_val
+    return no_match
+
+
+def plot_summary(df_sum,ignore_parms=['bouy','spring']):
+    """creates a summary plot of TS vs Hs of each test by title"""
 
     log.info(f'plotting summary to: {results_dir}')
 
     fig,ax = subplots(figsize=(10,10))
     for title,dfs in df_sum.groupby('title'):
-        if not any([t in  title.lower() for t in ['bouy','spring']]):
+        if not any([t in  title.lower() for t in ignore_parms]):
             continue
         #for hs,dfh in dfs.groupby('hs'):
         ax.scatter(dfs.ts,dfs.hs,label=title,alpha=0.5,s=10)
@@ -357,7 +419,7 @@ def plot_summary(df_sum):
     close('all')
 
     for title,dfs in df_sum.groupby('title'):
-        if not any([t in  title.lower() for t in ['bouy','spring']]):
+        if not any([t in  title.lower() for t in ignore_parms]):
             continue
 
         fig,ax = subplots(figsize=(10,10))
@@ -410,7 +472,6 @@ def plot_data(data):
         fig.suptitle(title)
         fig.savefig(os.path.join(case_dir,f'run_{run_id}.png'))
         close('all')
-
 
 def get_run_data(df_sum,run_id):
     try:

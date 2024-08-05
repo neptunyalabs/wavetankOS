@@ -1,0 +1,104 @@
+import seaborn as sns
+import matplotlib as mpl
+
+from waveware.post_processing import *
+
+df_sum = load_summary()
+
+exfilter = dict(
+        test_type = {'parm':'title', 'fnmatch':{'bouy 1': ['bouy 1*','test-*'],
+                                                'bouy 2': ['bouy 2*','bouy2*'],
+                                                '3d': ['3d motion*','3dmotion*']}},
+        power_ext = {'parm':'title', 'regex': {'pto': ['.*-spring.*','.*pto.*']},
+                                            'no_match': 'no_pto'},
+        min_title = {'parm':'title', 'callable': lambda x: x.lower().strip().replace(' ','_') } )
+        
+categorize_summary( df_sum, exfilter)
+
+df = df_sum[df_sum.valid_data==1]
+b1inx = df.test_type=='bouy 1'
+b2inx = df.test_type=='bouy 2'
+ptoinx = df.power_ext != 'no'
+noptoinx = df.power_ext == 'no'
+
+b1_no = np.logical_and(b1inx,noptoinx)
+b2_no = np.logical_and(b2inx,noptoinx)
+
+b1_pto = np.logical_and(b1inx,ptoinx)
+b2_pto = np.logical_and(b2inx,ptoinx)
+
+dfb1 = df[b1_no]
+dfb2 = df[b2_no]
+
+dfb1p = df[b1_pto]
+dfb2p = df[b2_pto]
+
+def quad_bouy_plot(dfs,group_by='hs',title=''):
+    dfb1,dfb2 = dfs
+    
+    fix,arrrows= subplots(ncols=2,nrows=2,sharex=True,sharey=True)
+    if title: fix.suptitle(title)
+    
+    ((ax1,ax2),(bx1,bx2)) = arrrows
+    
+    err_style  = {'linestyle':':','alpha':0.25}
+    
+    viridis = mpl.colormaps['viridis']
+    norm = mpl.colors.Normalize(vmin=0, vmax=df[group_by].median()*2)
+    cmap = cm.ScalarMappable(norm=norm, cmap=viridis)
+    
+    xp = 'omg'
+    hp1 = 'h1f_avg'
+    ep1 = 'h1f_std'
+    hp2 = 'h2f_avg'
+    ep2 = 'h2f_std'
+    
+    for hs,dfb1g in dfb1.groupby(group_by):
+        col = viridis(norm(hs))
+        dfb1g = dfb1g.sort_values(xp)
+        x = dfb1g[xp]
+        y = dfb1g[hp2]*100
+        e = dfb1g[ep2]*100
+        ax1.plot(x,y,label=f'b1 {hs*1000:3.2f}',color=col )
+        ax1.errorbar(x,y,yerr=e,fmt='o',color=col,**err_style)
+        ax1.set_title('Bouy 1')
+    
+        y = dfb1g[hp1]*100
+        e = dfb1g[ep1]*100   
+        c = bx1.plot(x,y,label=f'b1 {hs*1000:3.2f}',color=col )
+        bx1.errorbar(x,y,yerr=e,fmt='o',color=col,**err_style)
+        #bx1.set_title('Spar B2')
+    
+    for hs,dfb2g in dfb2.groupby(group_by):
+        col = viridis(norm(hs))
+        dfb2g = dfb2g.sort_values(xp)
+        x = dfb2g[xp]
+        y = dfb2g[hp2]*100
+        e = dfb2g[ep2]*100
+        c = ax2.plot(x,y,label=f'b2 {hs*1000:3.2f}' ,color=col)
+        ax2.errorbar(x,y,yerr=e,fmt='o',color=col,**err_style)
+        ax2.set_title('Bouy 2')
+    
+        y = dfb2g[hp1]*100
+        e = dfb2g[ep1]*100
+        c = bx2.plot(x,y,label=f'b2 {hs*1000:3.2f}' ,color=col)
+        bx2.errorbar(x,y,yerr=e,fmt='o',color=col,**err_style)
+        #bx2.set_title('Bouy 2')
+    
+    #ax1.set_xlim(2,25)
+    ax1.set_ylim(0,125)
+    bx2.set_xlabel(xp)
+    bx1.set_xlabel(xp)
+    
+    ax1.set_ylabel(hp2)
+    bx1.set_ylabel(hp1)
+    
+    fix.colorbar(cmap,ax=arrrows[:,-1],label=group_by.title())
+    
+    for arrr in arrrows:
+        for ax_ in arrr:
+            ax_.grid()
+    return fix,arrrows
+
+quad_bouy_plot([dfb1,dfb2],title='No PTO')
+quad_bouy_plot([dfb1p,dfb2p],title='PTO')
