@@ -90,7 +90,7 @@ Additionally you can change any one of these when running manually using instruc
 While using a computer on the same network as the raspberry pi navigate to `http://<your_hostname>.local:8050/` in your browser of choice.
 
 #### Dashboard Overview
-![Dashboard Overview](media/dashboard.png)
+![Dashboard Overview](media/dashboard.PNG)
 
 ##### Drive Config Section:
 1. enable the motor controller with the `wave on/off` button
