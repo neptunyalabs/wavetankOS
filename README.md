@@ -3,6 +3,9 @@ Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-o
 
 ![IMG_2885](https://github.com/user-attachments/assets/2179e094-084b-4762-91b1-377b0703086f)
 
+# Warning
+This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts I would suggest only experienced makers attempt this project as there are probably several ways to hurt yourself.
+
 
 # What Is Included:
 1. a set of structural plans, a bom, and construction guidance for the physical wavetank.
@@ -22,11 +25,12 @@ Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-o
 # How Do I Use The Software
 run `wavedash` to run the live dashboard, and `wavedaq` to run the data acquisition system. Use `-h` to expose menus.
 
-# Bill Of Materials
+# Components, Instructions, Bill Of Materials:
+
+### Bill of Materials
 The bill of materials is located here, if you have questions on something feel free to leave a comment, or if you want to contribute an alternative idea feel free suggest alternatives.
 https://docs.google.com/spreadsheets/d/107yxzDKXDjfQvaocU3NCo5I_NLpH0Xee_oWynt8TL3E/edit?usp=sharing
 
-
-
-# Warning
-This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts I would suggest only experienced makers attempt this project as there are probably several ways to hurt yourself.
+### PCB Design Files:
+You can order your PCB's from this website, as well as modify the design. If you do make significant improvements to the design please fork this project and submit a PR with your design files.
+https://oshwlab.com/neptunya/waveware
