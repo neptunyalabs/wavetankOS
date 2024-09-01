@@ -24,4 +24,4 @@ run `wavedash` to run the live dashboard, and `wavedaq` to run the data acquisit
 
 
 # Warning
-This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts I would suggest only experienced makers attempt this project as there are probably several ways to hurt yourself.
+This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts we would suggest only experienced makers attempt this project as there are probably several ways to hurt or kill yourself.

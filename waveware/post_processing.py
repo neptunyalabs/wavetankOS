@@ -45,7 +45,7 @@ min_span = 20
 
 
 #low_pass_fraction = 0.05 #perecent of time series
-
+#FIXME: too hacky and implicit
 nept_dir = pathlib.Path(os.path.abspath(__file__)).parent.parent.parent.parent
 test_dir = os.environ.get('WAVEWARE_TESTDATA_DIR',os.path.join(nept_dir,'test_data'))
 test_data = os.environ.get('WAVEWARE_TESTDATA_FLDR',os.path.join(test_dir,folder.lower()))
@@ -273,7 +273,7 @@ def load_data():
                     continue
                 data[key_rec]['notes'].append(note)
 
-        else: #add notes to both before and after runs (config/issues)
+        else: # add notes to both before and after runs (config/issues)
             nptm =np.datetime64(mktime)
             dstmk = (nptm - starts).astype(int)
             denmk = (ends -nptm).astype(int)
@@ -589,6 +589,7 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     xf = np.interp(tm,tm+toff,z_act)
 
     #Max Filter Analysis
+    #only select period of motion where there is a significant period of motion
     dt = np.maximum(np.median(np.diff(time)),0.0001)
     N_osll = int(rec['ts']/dt)
     tm_roll = stld.sliding_window_view(tm,N_osll).max(axis=1)
@@ -615,6 +616,7 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
                     on_time = on_times[inx_min][0]
                     time_sels[dt_min] = (on_time,offt)
 
+    #Make a mask if nessicary
     is_wave_motion = False
     if len(time_sels) > 0 and max(time_sels.keys()) > 30:
         is_wave_motion = True
@@ -680,7 +682,6 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     zc_time = x1[:-1]*x1[1:]
     zc_times = (time[1:][zc_time <= 0])
     dt_zc = np.diff(zc_times).mean()
-    ts_est = dt_zc*2
 
     #data is valid if some z2 motion
     z2_rel = np.median(np.abs(np.diff(x2)))
@@ -713,7 +714,6 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
     hs_zf = hs_zf,
     hs_z1 = hs_z1,
     hs_z2 = hs_z2,
-    ts_est =ts_est,
     h2f_med = h2f_med,
     h2f_avg = h2f_avg,
     h2f_std = h2f_std,    
