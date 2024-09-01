@@ -48,7 +48,7 @@ min_span = 20
 #FIXME: too hacky and implicit
 nept_dir = pathlib.Path(os.path.abspath(__file__)).parent.parent.parent.parent
 test_dir = os.environ.get('WAVEWARE_TESTDATA_DIR',os.path.join(nept_dir,'test_data'))
-test_data = os.environ.get('WAVEWARE_TESTDATA_FLDR',os.path.join(test_dir,folder.lower()))
+test_data = os.environ.get('WAVEWARE_FLDR_NAME',os.path.join(test_dir,folder.lower()))
 test_data = os.path.abspath(test_data)
 
 results_dir = os.path.join(test_dir,'results')

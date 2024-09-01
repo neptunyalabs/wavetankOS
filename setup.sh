@@ -111,16 +111,43 @@ sudo systemctl start pigpiod #run now too
 
 
 #TODO: install wavetank daeomon to run on startup
-#TODO: RUN AS SEPARATE FW/DASH SERVICES
+
 sudo bash -c '/bin/cat <<EOM >"/lib/systemd/system/wavetank.service"
 [Unit]
 WaveTankOS Firmware & Dashboard
 [Service]
-ExecStart=/home/neptunya/wave_tank_driver/waveware/fw_main.py
+ExecStart=/home/$(whoami)/wavetankOS/waveware/fw_main.py
 ExecStop=/bin/systemctl kill -s SIGKILL wavetank
 Type=forking
+
+#here are the potential enviornmental varables for your use
+
+#where to log on aws (if at all)
+#Environment="WAVEWARE_LOG_S3=true"
+#Environment="WAVEWARE_S3_BUCKET=custom_aws_bucket_name" 
+#Environment="WAVEWARE_FLDR_NAME=v1" 
+
+#where to run the daq / control api
+#Environment="WAVEWARE_PORT=8777"
+#Environment="FW_HOST=0.0.0.0"  
+
+#control based on speed with correction
+#Environment="WAVEWARE_VWAVE_DIRECT=true" 
+#use 'step','pwm','off','step-pwm' depending on your motor type
+#Environment="WAVE_SPEED_DRIVE_MODE=pwm"  
+
+#Dashboard Customization
+#Environment="WAVEWARE_DASH_GRAPH_UPT=3.3"
+#Environment="WAVEWARE_DASH_READ_UPT=1.5"
+
+#DAQ Rates
+#Environment="WAVEWARE_POLL_RATE=0.033"
+#Environment="WAVEWARE_POLL_TEMP=60"
+#Environment="WAVEWARE_WINDOW=6" #wavelengths to show for buffer size
+
 [Install]
 WantedBy=multi-user.target
+
 EOM'
 
 sudo systemctl enable wavetank #run at startup
