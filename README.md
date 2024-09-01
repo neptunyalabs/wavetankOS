@@ -1,10 +1,10 @@
 # What Is This:
-Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-office or in-classroom wavetank with a real data aquisition program this might be the cheapest & easiest way to get started. 
+Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-office or in-classroom wavetank with a real data aquisition program this might be the cheapest & easiest way to get started.
 
-![Wave Tank Example](media/wave_tank_overview.jpeg)
+![Wave Tank Example](media/waves_test.gif)
 
-# Warning
-This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts I would suggest only experienced makers attempt this project as there are probably several ways to hurt yourself.
+> [!CAUTION]
+> This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts I would suggest only experienced makers attempt this project as there are probably several ways to hurt yourself.
 
 
 # What Is Included:
@@ -125,3 +125,8 @@ https://docs.google.com/spreadsheets/d/107yxzDKXDjfQvaocU3NCo5I_NLpH0Xee_oWynt8T
 ### PCB Design Files:
 You can order your PCB's from this website, as well as modify the design. If you do make significant improvements to the design please fork this project and submit a PR with your design files.
 https://oshwlab.com/neptunya/waveware
+
+
+### Project Share Folder:
+Please see additional media for the construction of the wave tank or assembly of the electronics
+https://drive.google.com/drive/folders/0AGw2YOvWZK7JUk9PVA
