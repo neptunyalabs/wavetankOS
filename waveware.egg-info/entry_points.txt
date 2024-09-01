@@ -1,4 +1,4 @@
 [console_scripts]
-wavedaq = waveware.fw_main:cli
+wavedaq = waveware.fw_main:main
 wavedash = waveware.live_dashboard:main
-
+wavepost = waveware.post_processing:main

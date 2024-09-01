@@ -15,46 +15,17 @@ fi
 
 cd ~/
 
-if [ -f "~/.ssh/id_rsa" ]; then
-    echo 'Setting Up Github Account (first input)'
-    ssh-keygen -t rsa -b 4096 -C "$1"
-    git config --global user.email "$1"
-    eval $(ssh-agent -s)
-    ssh-add ~/.ssh/id_rsa
-
-    echo 'Add your public key to your github account'
-    cat < ./.ssh/id_rsa.pub
-fi
-
 
 #Write bashrc file (install permisisons)
 eval $(ssh-agent -s)
 /bin/cat <<EOM >"/home/$(whoami)/.bashrc"
 conda activate py3
-export PLOT_STREAM=true
 EOM
+# 
+# /bin/cat <<EOM >"/home/$(whoami)/.bash_logout"
+# kill $SSH_AGENT_PID
+# EOM
 
-/bin/cat <<EOM >"/home/$(whoami)/.bash_logout"
-kill $SSH_AGENT_PID
-EOM
-
-#echo "@reboot /usr/local/bin/pigpiod" | sudo crontab -
-
-#Add the github identity file using deploy key
-CNFG="/home/$(whoami)/.ssh/config"
-echo "touch $CNFG"
-touch "$CNFG" #ensure config file
-echo "write config $CNFG"
-/bin/cat <<EOM >$CNFG
-Host github.com
-    Hostname github.com
-    IdentityFile=/home/$(whoami)/.ssh/waveware_deploy
-Host gist.github.com
-    Hostname gist.github.com
-    IdentityFile=/home/$(whoami)/.ssh/waveware_deploy
-EOM
-
-ssh-add ~/.ssh/waveware_deploy
 
 #stop pigpiod
 sudo killall pigpiod
@@ -84,12 +55,12 @@ sudo apt install libatlas3-base -y
 sudo apt install awscli boto3 -y
 
 ### Terminal plotting
-git clone https://github.com/mogenson/ploot.git
-cd ploot
-cargo build # or cargo install --path .
+# git clone https://github.com/mogenson/ploot.git
+# cd ploot
+# cargo build # or cargo install --path .
 
 #alias to stream hw data
-alias hwstream= "python ~/wave_tank_driver/waveware/hardware.py | ploot"
+# alias hwstream= "python ~/wave_tank_driver/waveware/hardware.py | ploot"
 
 echo 'Installing Anaconda Python (follow instructions, agree & yes^10)'
 if [ -z "$CONDA_EXE" ] 
@@ -113,7 +84,7 @@ fi
 sudo setcap 'cap_net_bind_service=+ep' "$(which python3.10)"
 
 #python -m pip install --force-reinstall ninja
-pip install git+ssh://git@github.com/neptunyalabs/wave_tank_driver.git
+pip install git+https://github.com/neptunyalabs/wavetankOS.git
 
 #Install pigpiod source
 wget https://github.com/joan2937/pigpio/archive/master.zip
@@ -139,3 +110,45 @@ sudo systemctl enable pigpiod #run at startup
 sudo systemctl start pigpiod #run now too
 
 
+#TODO: install wavetank daeomon to run on startup
+
+sudo bash -c '/bin/cat <<EOM >"/lib/systemd/system/wavetank.service"
+[Unit]
+WaveTankOS Firmware & Dashboard
+[Service]
+ExecStart=/home/$(whoami)/wavetankOS/waveware/fw_main.py
+ExecStop=/bin/systemctl kill -s SIGKILL wavetank
+Type=forking
+
+#here are the potential enviornmental varables for your use
+
+#where to log on aws (if at all)
+#Environment="WAVEWARE_LOG_S3=true"
+#Environment="WAVEWARE_S3_BUCKET=custom_aws_bucket_name" 
+#Environment="WAVEWARE_FLDR_NAME=v1" 
+
+#where to run the daq / control api
+#Environment="WAVEWARE_PORT=8777"
+#Environment="FW_HOST=0.0.0.0"  
+
+#control based on speed with correction
+#Environment="WAVEWARE_VWAVE_DIRECT=true" 
+#use 'step','pwm','off','step-pwm' depending on your motor type
+#Environment="WAVE_SPEED_DRIVE_MODE=pwm"  
+
+#Dashboard Customization
+#Environment="WAVEWARE_DASH_GRAPH_UPT=3.3"
+#Environment="WAVEWARE_DASH_READ_UPT=1.5"
+
+#DAQ Rates
+#Environment="WAVEWARE_POLL_RATE=0.033"
+#Environment="WAVEWARE_POLL_TEMP=60"
+#Environment="WAVEWARE_WINDOW=6" #wavelengths to show for buffer size
+
+[Install]
+WantedBy=multi-user.target
+
+EOM'
+
+sudo systemctl enable wavetank #run at startup
+sudo systemctl start wavetank #run now too

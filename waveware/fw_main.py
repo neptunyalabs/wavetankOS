@@ -177,8 +177,11 @@ class program:
 
         loop.run_until_complete(self.close(print_dash=args.print_dash))
 
+def main():
+    prog = program()
+    prog.cli()
+
 
 if __name__ == "__main__":
     """run the cli"""
-    prog = program()
-    prog.cli()
+    main()

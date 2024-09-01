@@ -36,9 +36,11 @@ def to_date(timestamp):
     return to_test_time(timestamp).date()
 
 if 'AWS_PROFILE' not in os.environ:
+    log.info(f'setting AWS_PROFILE to `wavetank`')
     os.environ['AWS_PROFILE'] = aws_profile = 'wavetank'
 else:
     aws_profile = os.environ.get('AWS_PROFILE','wavetank')
+    log.info(f'loaded AWS_PROFILE to `{aws_profile}`')
 
 #positive vdir indicates positive velocity increases z.
 vdir_bias = -1 
@@ -100,7 +102,7 @@ log.info(f'Running AWS User: {aws_profile}| {REMOTE_HOST} S3: {bucket} fld: {fol
 
 path = pathlib.Path(__file__)
 fdir = path.parent
-cache = diskcache.Cache(os.path.join(fdir,'data_cache'))
+cache = diskcache.Cache(os.path.join(fdir,'data_cache','dl_cache.db'))
 
 def check_failure(typ):
     def f(res):
