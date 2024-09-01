@@ -4,7 +4,7 @@ Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-o
 ![Wave Tank Example](media/waves_test.gif)
 
 > [!CAUTION]
-> This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts I would suggest only experienced makers attempt this project as there are probably several ways to hurt yourself.
+> This project comes with no garuntee of performance, or saftey. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts We suggest only experienced makers attempt this project as there are many ways to hurt or kill yourself.
 
 
 # What Is Included:
