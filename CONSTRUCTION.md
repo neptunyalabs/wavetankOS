@@ -1,5 +1,8 @@
 # Overview & 3D Model
-Please find the wave tank 3D model to inspect and study its construction
 
-<iframe src="https://collaborate.shapr3d.com/v/NPVw5xXpwtwc81BRGQEVF" title="Shapr3D Webviewer" width="640" height="640" frameborder="0" allow="web-share; xr-spatial-tracking" loading="lazy" scrolling="no" referrerpolicy="origin-when-cross-origin" allowfullscreen></iframe>
+![Wave Tank 3D model](media/wavetank.jpg)
+
+3D visualization: [3D](https://collaborate.shapr3d.com/v/NPVw5xXpwtwc81BRGQEVF)
+
+Please find the 3D models inside /design_files folder, feel free to inspect and study its construction
 
