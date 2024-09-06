@@ -97,21 +97,14 @@ setup(
     author="Kevin Russell",
     author_email="kevin@ottermatics.com",
     description="Firmware For Neptunya Wave Tank",
-    license="Neptunya Use Only",
-    keywords="Neptunya Core Python Utilites",
+    license="MIT",
+    keywords="Wave Tank, Ocean Engineering, DIY, Data Aquisition",
     url="https://github.com/neptunya/waveware",
     packages=setuptools.find_packages(),
     install_requires=install_requires,
     #dependency_links = dependency_links, #DEPRICIATED PIP >19
     include_package_data=True,
     long_description=read("README.md"),
-    classifiers=[
-        "Development Status :: 1 - Beta",
-        "Topic :: Utilities",
-        "Topic :: Networking Framework",
-        "Topic :: Distributed Systems",
-        "License :: CONFIDENTIAL | SMARTX USE ONLY",
-    ],
     entry_points={
         "console_scripts": ["wavedaq=waveware.fw_main:main",
                             "wavedash=waveware.live_dashboard:main",
