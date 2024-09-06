@@ -10,9 +10,9 @@ Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-o
 # What Is Included:
 1. a set of structural plans, a bom, and construction guidance for the physical wavetank.
 2. a bill of materials for electronic components as well as pcb schematics and design files. The design only requires soldering connections and headers so this is beginner friendly
-3. this python package that runs a data acquisition system, wave maker control, and a live dashboard service to control and view the data in real time, based on pigpio.
-4. raspberry pi installation instructions
-5. a post-processing data system
+3. this python package that runs a S3 data acquisition, wave maker control, and a live dashboard service to control and view the data in real time, based on pigpio.
+4. electronics & software setup guide
+5. a post-processing data cli `wavepost` that pulls data from S3 storage and creates graphs of each test run
 
 #  What kind of measurements are provided:
 - 4 Encoder positions with RS-485 differential output, we recommend using a magnetic linear scale for its no friction, waterproof design.
@@ -20,7 +20,7 @@ Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-o
 - Several Channels Of ADC with a dedicated IC chip.
 - An integration with an MPU9250 9 axis (Accel,Gyro,Magnetometer) capture
 - A few extra outputs for I2C and debugging
-- Proven data-rate is between 20-100 samples per second to S3 storage.
+- Proven data-rate is between 100 samples per second to S3 storage.
 
 # How To:
 Below you'll find a mostly complete set of items you'll need to have to construct the wavetank system.
