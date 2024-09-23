@@ -1,12 +1,18 @@
 # What Is This:
-Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-office or in-classroom wavetank with a real data acquisition program this might be the cheapest & easiest way to get started. 
-
-![Wave Tank Example](media/waves_test.gif)
-
-![Example Run](media/DetailTestRun.png)
+Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-office or in-classroom wavetank with a cloud based (AWS S3) data acquisition program this might be the cheapest & easiest way to get started. 
 
 > [!CAUTION]
 > This project comes with no guarantee of performance, or safety. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts We suggest only experienced makers attempt this project as there are many ways to hurt or kill yourself.
+
+#### The Wavetank
+The completed wave tank shown below
+![Wave Tank Example](media/waves_test.gif)
+
+#### Example Data
+Example data quality post-processed with the `wavepost` utility
+![Example Run](media/DetailTestRun.png)
+
+
 
 
 # What Is Included:
