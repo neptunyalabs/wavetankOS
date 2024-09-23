@@ -52,7 +52,7 @@ test_data = os.environ.get('WAVEWARE_FLDR_NAME',os.path.join(test_dir,folder.low
 test_data = os.path.abspath(test_data)
 
 results_dir = os.path.join(test_dir,'results')
-os.makedirs(results_dir,mode=754,exist_ok=True)
+os.makedirs(results_dir,mode=0o754,exist_ok=True)
 
 def get_files(wildcard):
     files = glob.glob(os.path.join(test_data,wildcard),recursive=True)
@@ -197,7 +197,7 @@ def load_data():
             data[inpt_fil]['records'] = recs
 
             case_dir = os.path.join(results_dir,case.replace('-','_').strip())
-            os.makedirs(case_dir,exist_ok=True,mode=754)
+            os.makedirs(case_dir,exist_ok=True,mode=0o754)
             time.sleep(1)
             df.to_csv(os.path.join(case_dir,f'run_{run_id}.csv')) 
 
@@ -455,7 +455,7 @@ def plot_data(data):
         print(f'plotting {title} from {inpt} inpt: {dat["input"]["data"]["title"]}')
 
         case_dir = os.path.join(results_dir,case.replace('-','_').strip())
-        os.makedirs(case_dir,exist_ok=True,mode=754)
+        os.makedirs(case_dir,exist_ok=True,mode=0o754)
         #df.to_csv(os.path.join(case_dir,f'run_{i}.csv'))
         fig,axs = subplots(nrows=len(ys),figsize=(24,6),sharex=True)
         for pj,yss in enumerate(ys):
@@ -770,7 +770,7 @@ def process_run(df_sum,run_id,u_key='z_wave',plot=False):
         
         case = rec['title']
         case_dir = os.path.join(results_dir,case.replace('-','_').strip())
-        os.makedirs(case_dir,exist_ok=True,mode=754)
+        os.makedirs(case_dir,exist_ok=True,mode=0o754)
         fig.savefig(os.path.join(case_dir,f'analy_{run_id}.png'))
 
     time = time.to_numpy()

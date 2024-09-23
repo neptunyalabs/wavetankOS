@@ -97,3 +97,12 @@ While using a computer on the same network as the raspberry pi navigate to `http
 2. The edit tab allows safe setting & adjustment of control system parameters and other internal variables. This can be dangerous however restarting the process or device will fix any error.
 3. Finally the log will display the feedback of the DAQ & Control system to give the user an idea of what is going on.
 
+
+##### Post Processing:
+you can easily download your processed data as either a csv or image by using this command. Be sure to set `WAVEWARE_FLDR_NAME` for the output of your data, or use both `WAVEWARE_TESTDATA_DIR` \ `WAVEWARE_FLDR_NAME` as your root folder. This defaults to the fifth folder above the postprocessing file, you've been warned!
+```bash
+wavepost --run-all --run-all
+```
+
+An example set of data is shown below
+![Example Run](media/PostProcessingResult.png)

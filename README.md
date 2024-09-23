@@ -1,7 +1,9 @@
 # What Is This:
-Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-office or in-classroom wavetank with a real data acquisition program this might be the cheapest & easiest way to get started.
+Wavetank OS is a do-it-yourself wave tank solution. For those in need of an in-office or in-classroom wavetank with a real data acquisition program this might be the cheapest & easiest way to get started. 
 
 ![Wave Tank Example](media/waves_test.gif)
+
+![Example Run](media/DetailTestRun.png)
 
 > [!CAUTION]
 > This project comes with no guarantee of performance, or safety. In fact with the combination of electricity and a few hundred gallons of water, as well as fast moving mechanical parts We suggest only experienced makers attempt this project as there are many ways to hurt or kill yourself.
